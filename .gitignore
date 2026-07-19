@@ -33,6 +33,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.local.example
+# public client config only — no secrets (see file header)
+!.env.production
 
 # vercel
 .vercel
