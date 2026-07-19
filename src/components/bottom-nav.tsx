@@ -32,6 +32,15 @@ const TABS = [
     ),
   },
   {
+    href: "/projects",
+    label: "Projects",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" />
+      </svg>
+    ),
+  },
+  {
     href: "/more",
     label: "More",
     icon: (

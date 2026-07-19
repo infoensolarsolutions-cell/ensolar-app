@@ -53,3 +53,12 @@ export function tomorrowManila(): string {
     day: "2-digit",
   }).format(now);
 }
+
+export const PROJECT_STATUSES = {
+  pending: "Pending",
+  ongoing: "Ongoing",
+  completed: "Completed",
+  closed: "Closed",
+} as const;
+
+export type ProjectStatus = keyof typeof PROJECT_STATUSES;
