@@ -112,6 +112,13 @@ export default async function LeadDetailPage({
           </div>
         </div>
 
+        <Link
+          href={`/quotations/new?lead=${lead.id}`}
+          className="block w-full rounded-xl bg-brand-green px-4 py-3.5 text-center text-base font-semibold text-white active:bg-brand-green-dark"
+        >
+          Create Quotation
+        </Link>
+
         <LeadEditForm
           lead={{
             id: lead.id,
