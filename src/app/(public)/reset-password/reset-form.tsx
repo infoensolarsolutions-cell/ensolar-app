@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import { signIn } from "./actions";
+import { updatePassword } from "@/app/(public)/login/actions";
 
-export function LoginForm() {
-  const [state, formAction, pending] = useActionState(signIn, null);
+export function ResetPasswordForm() {
+  const [state, formAction, pending] = useActionState(updatePassword, null);
 
   return (
     <form
@@ -13,33 +13,35 @@ export function LoginForm() {
     >
       <div>
         <label
-          htmlFor="email"
-          className="mb-1 block text-sm font-medium text-gray-700"
-        >
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30"
-        />
-      </div>
-      <div>
-        <label
           htmlFor="password"
           className="mb-1 block text-sm font-medium text-gray-700"
         >
-          Password
+          New password
         </label>
         <input
           id="password"
           name="password"
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
           required
+          minLength={8}
+          className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="confirm"
+          className="mb-1 block text-sm font-medium text-gray-700"
+        >
+          Repeat new password
+        </label>
+        <input
+          id="confirm"
+          name="confirm"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={8}
           className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30"
         />
       </div>
@@ -53,16 +55,8 @@ export function LoginForm() {
         disabled={pending}
         className="w-full rounded-lg bg-brand-green px-4 py-3.5 text-base font-semibold text-white active:bg-brand-green-dark disabled:opacity-60"
       >
-        {pending ? "Logging in…" : "Log in"}
+        {pending ? "Saving…" : "Save password"}
       </button>
-      <p className="text-center">
-        <a
-          href="/forgot-password"
-          className="text-sm font-medium text-brand-green-dark underline"
-        >
-          Forgot password?
-        </a>
-      </p>
     </form>
   );
 }
