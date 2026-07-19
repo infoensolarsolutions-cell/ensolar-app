@@ -2,7 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Paths reachable without a session. Everything else redirects to /login.
-const PUBLIC_PATHS = ["/login", "/inquire"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/inquire",
+  "/forgot-password",
+  "/reset-password",
+  "/auth",
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

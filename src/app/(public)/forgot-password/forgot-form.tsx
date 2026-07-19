@@ -1,10 +1,22 @@
 "use client";
 
 import { useActionState } from "react";
-import { signIn } from "./actions";
+import { requestPasswordReset } from "@/app/(public)/login/actions";
 
-export function LoginForm() {
-  const [state, formAction, pending] = useActionState(signIn, null);
+export function ForgotPasswordForm() {
+  const [state, formAction, pending] = useActionState(requestPasswordReset, null);
+
+  if (state?.done) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center shadow-sm">
+        <p className="font-semibold text-gray-900">Check your email</p>
+        <p className="mt-1 text-sm text-gray-600">
+          If an account exists for that address, a password reset link is on
+          its way. The link is valid for one hour.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -27,22 +39,6 @@ export function LoginForm() {
           className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30"
         />
       </div>
-      <div>
-        <label
-          htmlFor="password"
-          className="mb-1 block text-sm font-medium text-gray-700"
-        >
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30"
-        />
-      </div>
       {state?.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
           {state.error}
@@ -53,16 +49,8 @@ export function LoginForm() {
         disabled={pending}
         className="w-full rounded-lg bg-brand-green px-4 py-3.5 text-base font-semibold text-white active:bg-brand-green-dark disabled:opacity-60"
       >
-        {pending ? "Logging in…" : "Log in"}
+        {pending ? "Sending…" : "Send reset link"}
       </button>
-      <p className="text-center">
-        <a
-          href="/forgot-password"
-          className="text-sm font-medium text-brand-green-dark underline"
-        >
-          Forgot password?
-        </a>
-      </p>
     </form>
   );
 }
