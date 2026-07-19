@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f9f7;
+  --foreground: #171717;
+  /* Ensolar brand — from the company logo */
+  --brand-yellow: #ffe600;
+  --brand-green: #1fa23c;
+  --brand-green-dark: #157a2c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-green: var(--brand-green);
+  --color-brand-green-dark: var(--brand-green-dark);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+}
+
+/* Big touch targets everywhere — staff are not tech experts (Spec §8). */
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}

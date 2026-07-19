@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Recreation of the Ensolar Solutions logo mark: yellow square, black
+       vertical divider, two green bars. Replace with official artwork when
+       the owner provides the original file. -->
+  <rect x="12" y="12" width="488" height="488" fill="#FFF200" stroke="#000000" stroke-width="24"/>
+  <rect x="244" y="12" width="24" height="488" fill="#000000"/>
+  <rect x="118" y="128" width="288" height="82" fill="#1FA23C" stroke="#000000" stroke-width="14"/>
+  <rect x="138" y="288" width="288" height="82" fill="#1FA23C" stroke="#000000" stroke-width="14"/>
+</svg>
