@@ -7,6 +7,7 @@ import { toManilaLocalInput } from "@/lib/format";
 import { EmployeeForm } from "../employee-form";
 import { AttendanceAdmin, type AttendanceEntry } from "./attendance-admin";
 import { LeavesPanel, type LeaveRow } from "./leaves-panel";
+import { AdvancesPanel, type AdvanceRow } from "./advances-panel";
 
 export const metadata: Metadata = { title: "Employee" };
 
@@ -23,6 +24,7 @@ export default async function EmployeeDetailPage({
     { data: employee },
     { data: attendance },
     { data: leaves },
+    { data: advances },
     { data: profiles },
     { data: linked },
   ] = await Promise.all([
@@ -38,6 +40,12 @@ export default async function EmployeeDetailPage({
       .select("id, date_from, date_to, type, paid, note")
       .eq("employee_id", id)
       .order("date_from", { ascending: false })
+      .limit(30),
+    supabase
+      .from("cash_advances")
+      .select("id, amount, repaid, date, note")
+      .eq("employee_id", id)
+      .order("date", { ascending: false })
       .limit(30),
     supabase
       .from("profiles")
@@ -71,6 +79,14 @@ export default async function EmployeeDetailPage({
       <div className="space-y-4 px-4 pb-4">
         <AttendanceAdmin employeeId={id} entries={entries} />
         <LeavesPanel employeeId={id} leaves={(leaves ?? []) as LeaveRow[]} />
+        <AdvancesPanel
+          employeeId={id}
+          advances={((advances ?? []) as AdvanceRow[]).map((a) => ({
+            ...a,
+            amount: Number(a.amount),
+            repaid: Number(a.repaid),
+          }))}
+        />
       </div>
     </>
   );
