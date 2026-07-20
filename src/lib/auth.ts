@@ -2,14 +2,9 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export type UserRole = "owner" | "office_staff" | "technician" | "customer";
-
-export const ROLE_LABELS: Record<UserRole, string> = {
-  owner: "Owner",
-  office_staff: "Office Staff",
-  technician: "Technician",
-  customer: "Customer",
-};
+export type { UserRole } from "@/lib/auth-shared";
+export { ROLE_LABELS } from "@/lib/auth-shared";
+import type { UserRole } from "@/lib/auth-shared";
 
 export type Profile = {
   id: string;
