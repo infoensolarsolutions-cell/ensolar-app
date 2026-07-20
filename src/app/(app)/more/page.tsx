@@ -46,6 +46,10 @@ export default async function MorePage() {
                 <span className="font-medium text-gray-800">👥 Employees</span>
                 <span className="text-gray-400">›</span>
               </Link>
+              <Link href="/payroll" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+                <span className="font-medium text-gray-800">💵 Payroll (Weekly)</span>
+                <span className="text-gray-400">›</span>
+              </Link>
               <Link href="/payroll/settings" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
                 <span className="font-medium text-gray-800">⚙️ Payroll Settings</span>
                 <span className="text-gray-400">›</span>

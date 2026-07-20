@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     "/api/quotations/[id]/pdf": ["./public/fonts/**"],
     "/api/payments/[id]/pdf": ["./public/fonts/**"],
     "/api/pos/[id]/pdf": ["./public/fonts/**"],
+    "/api/payslips/[id]/pdf": ["./public/fonts/**"],
   },
 };
 
