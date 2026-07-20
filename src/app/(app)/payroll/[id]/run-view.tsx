@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { finalizeRun, deleteRun, recomputeRun, setAdvanceDeduction } from "../actions";
+import { finalizeRun, deleteRun, recomputeRun, reopenRun, setAdvanceDeduction } from "../actions";
 import { formatPeso } from "@/lib/format";
 
 export function SlipRow({
@@ -89,10 +89,54 @@ export function SlipRow({
 
 export function RunControls({ runId, status }: { runId: string; status: string }) {
   const [confirm, setConfirm] = useState(false);
+  const [confirmReopen, setConfirmReopen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (status !== "draft") return null;
+  if (status !== "draft") {
+    return (
+      <div className="space-y-2">
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p>
+        )}
+        {!confirmReopen ? (
+          <button
+            onClick={() => setConfirmReopen(true)}
+            className="w-full rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"
+          >
+            Reopen run (undo finalize)
+          </button>
+        ) : (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+            <p className="mb-2 text-sm text-gray-800">
+              Reopening returns this run to draft and reverses the cash-advance
+              repayments it recorded. You can then recompute, adjust, and
+              finalize again — or delete the draft. Continue?
+            </p>
+            <div className="flex gap-2">
+              <button
+                disabled={pending}
+                onClick={() =>
+                  startTransition(async () => {
+                    setError(null);
+                    const res = await reopenRun(runId);
+                    if (res.error) setError(res.error);
+                    setConfirmReopen(false);
+                  })
+                }
+                className="flex-1 rounded-lg bg-amber-600 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+              >
+                {pending ? "Reopening…" : "Yes, reopen"}
+              </button>
+              <button onClick={() => setConfirmReopen(false)} className="rounded-lg px-3 py-2.5 text-sm text-gray-600">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
