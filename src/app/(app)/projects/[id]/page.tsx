@@ -18,6 +18,7 @@ import { CostsPanel, type CostRow } from "./costs-panel";
 import { PhotosPanel, type PhotoRow } from "./photos-panel";
 import { TicketsPanel, type TicketRow } from "./tickets-panel";
 import { InviteButton } from "./invite-button";
+import { IssueForm, type IssueProduct } from "./issue-form";
 import { AssignForm } from "./assign-form";
 import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
@@ -185,6 +186,17 @@ export default async function ProjectDetailPage({
     })
     .filter((p) => p.url);
 
+  let issueProducts: IssueProduct[] = [];
+  if (isStaff) {
+    const { data: stockProducts } = await supabase
+      .from("products_with_stock")
+      .select("id, sku, name, unit, cost_price, on_hand")
+      .eq("active", true)
+      .gt("on_hand", 0)
+      .order("name");
+    issueProducts = (stockProducts ?? []) as IssueProduct[];
+  }
+
   const ticketRows: TicketRow[] = (tickets ?? []).map((t) => {
     const assignee = Array.isArray(t.profiles) ? t.profiles[0] : t.profiles;
     return {
@@ -325,13 +337,16 @@ export default async function ProjectDetailPage({
         />
 
         {isStaff && (
-          <CostsPanel
-            projectId={project.id}
-            costs={costRows}
-            contractAmount={Number(project.contract_amount)}
-            isOwner={profile.role === "owner"}
-            isStaff={isStaff}
-          />
+          <>
+            <CostsPanel
+              projectId={project.id}
+              costs={costRows}
+              contractAmount={Number(project.contract_amount)}
+              isOwner={profile.role === "owner"}
+              isStaff={isStaff}
+            />
+            <IssueForm projectId={project.id} products={issueProducts} />
+          </>
         )}
 
         <PhotosPanel

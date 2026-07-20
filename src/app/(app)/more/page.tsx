@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { getProfile, ROLE_LABELS } from "@/lib/auth";
 import { signOut } from "@/app/(public)/login/actions";
@@ -21,11 +22,18 @@ export default async function MorePage() {
             {ROLE_LABELS[profile.role]}
           </span>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="text-sm text-gray-600">
-            Customers, reports, and settings will live here as Module A grows.
-          </p>
-        </div>
+        {["owner", "office_staff"].includes(profile.role) && (
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <Link href="/products" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">📦 Products & Stock</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+            <div className="flex items-center justify-between px-4 py-3.5 opacity-50">
+              <span className="font-medium text-gray-800">🛒 POS (walk-in sales)</span>
+              <span className="text-xs text-gray-400">next step</span>
+            </div>
+          </div>
+        )}
         <form action={signOut}>
           <button className="w-full rounded-xl border border-red-200 bg-white px-4 py-3.5 text-base font-semibold text-red-600 active:bg-red-50">
             Sign out
