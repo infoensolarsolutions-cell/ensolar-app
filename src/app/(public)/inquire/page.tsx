@@ -8,7 +8,12 @@ export const metadata: Metadata = {
     "Request a free quotation for solar, electrical, CCTV, FDAS, or solar pump installation in Dumaguete City and Negros Oriental.",
 };
 
-export default function InquirePage() {
+export default async function InquirePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ c?: string }>;
+}) {
+  const { c } = await searchParams;
   return (
     <div className="min-h-dvh bg-brand-yellow/10 px-4 py-8">
       <div className="mx-auto max-w-md">
@@ -32,7 +37,7 @@ export default function InquirePage() {
             </p>
           </div>
         </div>
-        <InquiryForm />
+        <InquiryForm campaignId={c ?? null} />
         <p className="mt-6 text-center text-xs text-gray-500">
           19 Espina Road, Taclobo, Dumaguete City • (035) 531-6455 •
           info.ensolarsolutions@gmail.com

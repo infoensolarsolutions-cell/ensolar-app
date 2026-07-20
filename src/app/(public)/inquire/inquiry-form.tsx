@@ -14,7 +14,7 @@ const PUBLIC_SOURCES = {
 const inputClass =
   "w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30";
 
-export function InquiryForm() {
+export function InquiryForm({ campaignId }: { campaignId: string | null }) {
   const [state, formAction, pending] = useActionState(submitInquiry, null);
   const [source, setSource] = useState<string>("");
 
@@ -37,6 +37,7 @@ export function InquiryForm() {
       action={formAction}
       className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
     >
+      {campaignId && <input type="hidden" name="campaign_id" value={campaignId} />}
       {/* Honeypot — hidden from real visitors */}
       <div className="hidden" aria-hidden="true">
         <label htmlFor="website">Website</label>

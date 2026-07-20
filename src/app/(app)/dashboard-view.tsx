@@ -45,6 +45,7 @@ export type DashboardData = {
     on_hand: number;
     reorder_level: number;
   }[];
+  marketingIdle: boolean;
   monthLabel: string;
   bySource: { source: LeadSource; count: number }[];
   counts: { newInquiries: number; quotationsSent: number; won: number };
@@ -243,6 +244,21 @@ export function DashboardView({ data }: { data: DashboardData }) {
             })}
           </ul>
         </div>
+      )}
+
+      {data.marketingIdle && (
+        <Link
+          href="/campaigns"
+          className="block rounded-xl border border-purple-200 bg-purple-50 px-4 py-3"
+        >
+          <p className="text-sm font-semibold text-purple-900">
+            📣 No marketing campaign has been active for 30+ days
+          </p>
+          <p className="mt-0.5 text-xs text-purple-700">
+            Tap to start one — leads from its shared link are tracked
+            automatically.
+          </p>
+        </Link>
       )}
 
       {data.lowStock.length > 0 && (
