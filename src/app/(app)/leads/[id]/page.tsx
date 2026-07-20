@@ -83,7 +83,7 @@ export default async function LeadDetailPage({
 
   return (
     <>
-      <TopBar title="Lead Details" />
+      <TopBar title="Lead Details" backHref="/leads" />
       <div className="space-y-4 p-4">
         <Link href="/leads" className="text-sm font-medium text-brand-green-dark">
           ← Back to pipeline

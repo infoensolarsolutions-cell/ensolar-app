@@ -9,7 +9,7 @@ export default async function NewProductPage() {
   await requireRole("owner", "office_staff");
   return (
     <>
-      <TopBar title="New Product" />
+      <TopBar title="New Product" backHref="/products" />
       <ProductForm />
     </>
   );

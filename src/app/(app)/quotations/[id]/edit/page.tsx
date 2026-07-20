@@ -46,7 +46,7 @@ export default async function EditQuotationPage({
 
   return (
     <>
-      <TopBar title={`Edit ${q.quote_no}`} />
+      <TopBar title={`Edit ${q.quote_no}`} backHref={`/quotations/${id}`} />
       <QuotationBuilder
         products={products ?? []}
         quotation={{

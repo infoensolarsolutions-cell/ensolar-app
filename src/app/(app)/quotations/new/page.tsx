@@ -36,7 +36,7 @@ export default async function NewQuotationPage({
 
     return (
       <>
-        <TopBar title="New Quotation" />
+        <TopBar title="New Quotation" backHref="/quotations" />
         <div className="space-y-3 p-4">
           <p className="text-sm text-gray-600">
             Which lead is this quotation for?
@@ -85,7 +85,7 @@ export default async function NewQuotationPage({
   if (!lead) {
     return (
       <>
-        <TopBar title="New Quotation" />
+        <TopBar title="New Quotation" backHref="/quotations" />
         <p className="p-4 text-sm text-red-600">Lead not found.</p>
       </>
     );
@@ -93,7 +93,7 @@ export default async function NewQuotationPage({
 
   return (
     <>
-      <TopBar title="New Quotation" />
+      <TopBar title="New Quotation" backHref="/quotations" />
       <div className="border-b border-gray-100 bg-white px-4 py-3">
         <p className="font-semibold text-gray-900">{lead.customers?.name}</p>
         <p className="text-sm text-gray-600">{SERVICE_TYPES[lead.service_type]}</p>

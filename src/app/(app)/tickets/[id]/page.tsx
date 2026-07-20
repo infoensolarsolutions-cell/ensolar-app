@@ -63,7 +63,7 @@ export default async function TicketPage({
 
   return (
     <>
-      <TopBar title={ticket.ticket_no} />
+      <TopBar title={ticket.ticket_no} backHref="/projects" />
       <div className="space-y-4 p-4">
         {ticket.projects && (
           <Link
