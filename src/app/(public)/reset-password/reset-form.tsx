@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updatePassword } from "@/app/(public)/login/actions";
+import { PasswordInput } from "@/components/password-input";
 
 export function ResetPasswordForm() {
   const [state, formAction, pending] = useActionState(updatePassword, null);
@@ -18,15 +19,7 @@ export function ResetPasswordForm() {
         >
           New password
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30"
-        />
+        <PasswordInput id="password" name="password" autoComplete="new-password" minLength={8} />
       </div>
       <div>
         <label
@@ -35,15 +28,7 @@ export function ResetPasswordForm() {
         >
           Repeat new password
         </label>
-        <input
-          id="confirm"
-          name="confirm"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30"
-        />
+        <PasswordInput id="confirm" name="confirm" autoComplete="new-password" minLength={8} />
       </div>
       {state?.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
