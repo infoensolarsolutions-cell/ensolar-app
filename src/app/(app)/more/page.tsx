@@ -35,6 +35,19 @@ export default async function MorePage() {
           </div>
         )}
 
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <Link href="/attendance" className="flex items-center justify-between px-4 py-3.5">
+            <span className="font-medium text-gray-800">🕐 My Attendance</span>
+            <span className="text-gray-400">›</span>
+          </Link>
+          {profile.role === "owner" && (
+            <Link href="/employees" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">👥 Employees</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+          )}
+        </div>
+
         {["owner", "office_staff"].includes(profile.role) && (
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="mb-2 font-semibold text-gray-900">📥 Export to Excel (CSV)</p>
