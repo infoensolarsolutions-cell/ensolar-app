@@ -22,6 +22,7 @@ export async function submitInquiry(
   const source = String(formData.get("source") ?? "facebook");
   const referredBy = String(formData.get("referred_by") ?? "").trim().slice(0, MAX);
   const message = String(formData.get("message") ?? "").trim().slice(0, 1000);
+  const campaignIdRaw = String(formData.get("campaign_id") ?? "").trim();
 
   if (!name || !phone) {
     return { error: "Please enter your name and contact number." };
@@ -60,12 +61,24 @@ export async function submitInquiry(
     };
   }
 
+  // Campaign attribution: only accept a real campaign id.
+  let campaignId: string | null = null;
+  if (/^[0-9a-f-]{36}$/i.test(campaignIdRaw)) {
+    const { data: campaign } = await supabase
+      .from("campaigns")
+      .select("id")
+      .eq("id", campaignIdRaw)
+      .maybeSingle();
+    campaignId = campaign?.id ?? null;
+  }
+
   const { data: lead } = await supabase
     .from("leads")
     .insert({
       customer_id: customer.id,
       service_type: serviceType,
       next_followup_at: tomorrowManila(),
+      campaign_id: campaignId,
       notes: message ? `From public inquiry form: ${message}` : "From public inquiry form",
     })
     .select("id")

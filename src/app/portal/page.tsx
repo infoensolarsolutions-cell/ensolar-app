@@ -35,6 +35,13 @@ export default async function PortalPage({
 
   const supabase = await createClient();
 
+  const { data: announcements } = await supabase
+    .from("announcements")
+    .select("id, title, body")
+    .eq("active", true)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
   // RLS limits every query below to this customer's own records.
   const { data: projects } = await supabase
     .from("projects")
@@ -100,6 +107,13 @@ export default async function PortalPage({
         <p className="text-sm text-gray-700">
           Welcome, <span className="font-semibold">{profile.name || "Customer"}</span>
         </p>
+
+        {announcements?.map((a) => (
+          <div key={a.id} className="rounded-xl border border-brand-yellow bg-brand-yellow/15 px-4 py-3">
+            <p className="text-sm font-bold text-gray-900">📣 {a.title}</p>
+            {a.body && <p className="mt-0.5 text-sm text-gray-700">{a.body}</p>}
+          </div>
+        ))}
 
         {paidParam === "1" && (
           <p className="rounded-xl bg-green-50 px-4 py-3 text-sm font-medium text-green-800">

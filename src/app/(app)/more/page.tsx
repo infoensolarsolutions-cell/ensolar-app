@@ -28,8 +28,12 @@ export default async function MorePage() {
               <span className="font-medium text-gray-800">📦 Products & Stock</span>
               <span className="text-gray-400">›</span>
             </Link>
-            <Link href="/pos" className="flex items-center justify-between px-4 py-3.5">
+            <Link href="/pos" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
               <span className="font-medium text-gray-800">🛒 POS (walk-in sales)</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+            <Link href="/campaigns" className="flex items-center justify-between px-4 py-3.5">
+              <span className="font-medium text-gray-800">📣 Marketing</span>
               <span className="text-gray-400">›</span>
             </Link>
           </div>

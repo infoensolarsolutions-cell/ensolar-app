@@ -62,6 +62,7 @@ export default async function DashboardPage() {
     ticketsRes,
     maintenanceRes,
     lowStockRes,
+    campaignsRes,
   ] = await Promise.all([
       supabase
         .from("leads")
@@ -119,6 +120,11 @@ export default async function DashboardPage() {
         .eq("active", true)
         .gt("reorder_level", 0)
         .limit(100),
+      supabase
+        .from("campaigns")
+        .select("end_date")
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
 
   const dayMs = 24 * 60 * 60 * 1000;
@@ -254,12 +260,21 @@ export default async function DashboardPage() {
     .filter((p) => Number(p.on_hand) <= Number(p.reorder_level))
     .slice(0, 15);
 
+  // "Marketing left open" (Spec §6.3): alert when nothing has been active
+  // in the last 30 days.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const campaignRows = campaignsRes.data ?? [];
+  const marketingIdle = !campaignRows.some(
+    (c) => c.end_date === null || c.end_date >= thirtyDaysAgo,
+  );
+
   const data: DashboardData = {
     overdue,
     receivables,
     openTickets,
     maintenance,
     lowStock,
+    marketingIdle,
     money,
     ongoingProfit,
     monthLabel,
