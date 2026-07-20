@@ -6,6 +6,20 @@ import { saveEmployee } from "./actions";
 const inputClass =
   "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-green focus:outline-none";
 
+const POSITIONS = [
+  "General Manager",
+  "Manager",
+  "Department Head",
+  "Supervisor",
+  "Electrical Engineer",
+  "Lead Electrician",
+  "Electrician",
+  "Admin Staff",
+  "Driver",
+  "Security Guard",
+  "Janitor",
+];
+
 export function EmployeeForm({
   employee,
   linkableProfiles,
@@ -37,7 +51,17 @@ export function EmployeeForm({
       </div>
       <div>
         <label className="text-xs text-gray-500">Position</label>
-        <input name="position" defaultValue={employee?.position ?? ""} className={inputClass} />
+        <input
+          name="position"
+          list="positions"
+          defaultValue={employee?.position ?? ""}
+          className={inputClass}
+        />
+        <datalist id="positions">
+          {POSITIONS.map((p) => (
+            <option key={p} value={p} />
+          ))}
+        </datalist>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
