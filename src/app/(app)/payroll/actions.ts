@@ -289,3 +289,55 @@ export async function recomputeRun(runId: string): Promise<{ error?: string }> {
   fd.set("period_start", run.period_start);
   return await createRun(null, fd); // redirects to the fresh run on success
 }
+
+// Unlock a finalized run back to draft, reversing the cash-advance
+// repayments it recorded (newest advances first — the inverse of how
+// finalize applied them oldest-first).
+export async function reopenRun(runId: string): Promise<{ error?: string }> {
+  await requireRole("owner");
+  const supabase = await createClient();
+
+  const { data: run } = await supabase
+    .from("payroll_runs")
+    .select("status")
+    .eq("id", runId)
+    .single();
+  if (!run) return { error: "Run not found." };
+  if (run.status !== "finalized") return { error: "This run is not finalized." };
+
+  const { data: slips } = await supabase
+    .from("payslips")
+    .select("employee_id, advance_deduction")
+    .eq("run_id", runId)
+    .gt("advance_deduction", 0);
+
+  for (const slip of slips ?? []) {
+    let toReverse = Number(slip.advance_deduction);
+    const { data: advances } = await supabase
+      .from("cash_advances")
+      .select("id, repaid")
+      .eq("employee_id", slip.employee_id)
+      .order("date", { ascending: false });
+    for (const adv of advances ?? []) {
+      if (toReverse <= 0) break;
+      const repaid = Number(adv.repaid);
+      if (repaid <= 0) continue;
+      const undo = Math.min(repaid, toReverse);
+      await supabase
+        .from("cash_advances")
+        .update({ repaid: Math.round((repaid - undo) * 100) / 100 })
+        .eq("id", adv.id);
+      toReverse -= undo;
+    }
+  }
+
+  const { error } = await supabase
+    .from("payroll_runs")
+    .update({ status: "draft", finalized_at: null })
+    .eq("id", runId);
+  if (error) return { error: `Could not reopen: ${error.message}` };
+
+  revalidatePath(`/payroll/${runId}`);
+  revalidatePath("/payroll");
+  return {};
+}
