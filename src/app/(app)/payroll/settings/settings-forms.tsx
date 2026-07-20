@@ -13,6 +13,9 @@ const FIELD_LABELS: Record<string, string> = {
   total_percent: "Total premium rate (%)",
   employee_share_percent: "Employee share of premium (%)",
   max_monthly_compensation: "Max monthly compensation ₱",
+  regular_hours_per_day: "Regular working hours per day",
+  unpaid_break_hours: "Unpaid break hours per day",
+  overtime_multiplier_percent: "Overtime rate (% of hourly rate)",
 };
 
 export function ParamsForm({

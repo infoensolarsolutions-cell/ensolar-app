@@ -17,6 +17,8 @@ export type AttendanceEntry = {
   clock_in_local: string;
   clock_out_local: string;
   source: string;
+  hours: number;
+  ot: number;
 };
 
 function fmtTime(ts: string): string {
@@ -112,6 +114,14 @@ export function AttendanceAdmin({
                 <span className="flex items-center gap-2">
                   <span className="font-medium">
                     {fmtTime(a.clock_in)} – {a.clock_out ? fmtTime(a.clock_out) : "…"}
+                    {a.clock_out && (
+                      <span className="ml-1.5 text-xs text-gray-500">{a.hours}h</span>
+                    )}
+                    {a.ot > 0 && (
+                      <span className="ml-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
+                        +{a.ot}h OT
+                      </span>
+                    )}
                   </span>
                   <button
                     onClick={() => setEditing(a.id)}

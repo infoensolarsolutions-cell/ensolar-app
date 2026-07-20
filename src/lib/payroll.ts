@@ -71,3 +71,41 @@ export function addDays(date: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+// ── Overtime ─────────────────────────────────────────────────────────────────
+
+export type WorkRules = {
+  regular_hours_per_day: number;
+  unpaid_break_hours: number;
+  overtime_multiplier_percent: number;
+};
+
+export const WORK_DEFAULTS: WorkRules = {
+  regular_hours_per_day: 8,
+  unpaid_break_hours: 1,
+  overtime_multiplier_percent: 125,
+};
+
+// Total span minus the unpaid break (break only deducted on days long
+// enough to plausibly include one).
+export function payableHours(rawHours: number, rules: WorkRules): number {
+  if (rawHours <= 0) return 0;
+  const payable =
+    rawHours > rules.regular_hours_per_day / 2 + rules.unpaid_break_hours
+      ? rawHours - rules.unpaid_break_hours
+      : rawHours;
+  return Math.round(payable * 100) / 100;
+}
+
+export function otHours(payable: number, rules: WorkRules): number {
+  return Math.max(0, Math.round((payable - rules.regular_hours_per_day) * 100) / 100);
+}
+
+export function hourlyRate(
+  rateType: "daily" | "monthly",
+  rate: number,
+  rules: WorkRules,
+): number {
+  const daily = rateType === "daily" ? rate : rate / DAILY_TO_MONTHLY_DAYS;
+  return daily / rules.regular_hours_per_day;
+}

@@ -15,6 +15,8 @@ export function SlipRow({
     position: string | null;
     days_worked: number;
     gross: number;
+    ot_hours: number;
+    ot_pay: number;
     sss: number;
     philhealth: number;
     pagibig: number;
@@ -37,6 +39,7 @@ export function SlipRow({
           <p className="text-xs text-gray-500">
             {slip.position && `${slip.position} · `}
             {slip.days_worked} day{slip.days_worked === 1 ? "" : "s"}
+            {slip.ot_hours > 0 && ` + ${slip.ot_hours}h OT`}
           </p>
         </div>
         <div className="text-right">
@@ -52,6 +55,7 @@ export function SlipRow({
       </div>
       <div className="mt-2 grid grid-cols-3 gap-x-3 gap-y-1 text-xs text-gray-600">
         <span>Gross: <b>{formatPeso(slip.gross)}</b></span>
+        <span>OT pay: {formatPeso(slip.ot_pay)}</span>
         <span>SSS: {formatPeso(slip.sss)}</span>
         <span>PhilHealth: {formatPeso(slip.philhealth)}</span>
         <span>Pag-IBIG: {formatPeso(slip.pagibig)}</span>

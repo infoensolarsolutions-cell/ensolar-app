@@ -25,7 +25,7 @@ export default async function PayrollRunPage({
       .single(),
     supabase
       .from("payslips")
-      .select("id, days_worked, gross, sss, philhealth, pagibig, tax, advance_deduction, net, employees (id, name, position)")
+      .select("id, days_worked, gross, ot_hours, ot_pay, sss, philhealth, pagibig, tax, advance_deduction, net, employees (id, name, position)")
       .eq("run_id", id),
   ]);
   if (!run) notFound();
@@ -39,6 +39,8 @@ export default async function PayrollRunPage({
         position: emp?.position ?? null,
         days_worked: Number(s.days_worked),
         gross: Number(s.gross),
+        ot_hours: Number(s.ot_hours ?? 0),
+        ot_pay: Number(s.ot_pay ?? 0),
         sss: Number(s.sss),
         philhealth: Number(s.philhealth),
         pagibig: Number(s.pagibig),

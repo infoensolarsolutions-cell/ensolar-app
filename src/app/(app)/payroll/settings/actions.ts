@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
-const KEYS = ["sss", "philhealth", "pagibig", "tax"] as const;
+const KEYS = ["sss", "philhealth", "pagibig", "tax", "work"] as const;
 
 export async function saveContribution(
   _prev: { error?: string; saved?: boolean } | null,
