@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/quotations/[id]/pdf": ["./public/fonts/**"],
     "/api/payments/[id]/pdf": ["./public/fonts/**"],
+    "/api/pos/[id]/pdf": ["./public/fonts/**"],
   },
 };
 
