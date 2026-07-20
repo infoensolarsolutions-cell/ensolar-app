@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/forgot-password",
   "/reset-password",
   "/auth",
+  "/api/webhooks",
 ];
 
 export async function updateSession(request: NextRequest) {
