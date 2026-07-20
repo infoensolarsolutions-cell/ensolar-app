@@ -61,6 +61,7 @@ export default async function DashboardPage() {
     milestonesRes,
     ticketsRes,
     maintenanceRes,
+    lowStockRes,
   ] = await Promise.all([
       supabase
         .from("leads")
@@ -112,6 +113,12 @@ export default async function DashboardPage() {
         .lte("due_date", monthAhead)
         .order("due_date", { ascending: true })
         .limit(15),
+      supabase
+        .from("products_with_stock")
+        .select("id, name, sku, unit, on_hand, reorder_level")
+        .eq("active", true)
+        .gt("reorder_level", 0)
+        .limit(100),
     ]);
 
   const dayMs = 24 * 60 * 60 * 1000;
@@ -207,11 +214,19 @@ export default async function DashboardPage() {
     })
     .filter((m) => m.project_id);
 
+  const lowStock = ((lowStockRes.data ?? []) as {
+    id: string; name: string; sku: string; unit: string;
+    on_hand: number; reorder_level: number;
+  }[])
+    .filter((p) => Number(p.on_hand) <= Number(p.reorder_level))
+    .slice(0, 15);
+
   const data: DashboardData = {
     overdue,
     receivables,
     openTickets,
     maintenance,
+    lowStock,
     monthLabel,
     bySource,
     counts: {

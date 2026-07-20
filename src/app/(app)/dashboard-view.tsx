@@ -37,6 +37,14 @@ export type DashboardData = {
     note: string | null;
     overdue: boolean;
   }[];
+  lowStock: {
+    id: string;
+    name: string;
+    sku: string;
+    unit: string;
+    on_hand: number;
+    reorder_level: number;
+  }[];
   monthLabel: string;
   bySource: { source: LeadSource; count: number }[];
   counts: { newInquiries: number; quotationsSent: number; won: number };
@@ -163,6 +171,32 @@ export function DashboardView({ data }: { data: DashboardData }) {
           <ul className="divide-y divide-gray-100">
             {data.maintenance.map((m) => (
               <MaintenanceItem key={m.id} reminder={m} />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {data.lowStock.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-semibold text-gray-900">Low stock</p>
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+              {data.lowStock.length}
+            </span>
+          </div>
+          <ul className="divide-y divide-gray-100">
+            {data.lowStock.map((p) => (
+              <li key={p.id}>
+                <Link href={`/products/${p.id}`} className="flex items-center justify-between gap-2 py-2.5">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">{p.name}</p>
+                    <p className="text-xs text-gray-500">{p.sku} · reorder at {p.reorder_level}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-bold text-amber-700">
+                    {p.on_hand} {p.unit}
+                  </span>
+                </Link>
+              </li>
             ))}
           </ul>
         </div>
