@@ -86,6 +86,7 @@ export default async function ProjectDetailPage({
     { data: costs },
     { data: photos },
     { data: tickets },
+    { data: contracts },
   ] = await Promise.all([
       isStaff
         ? supabase
@@ -128,6 +129,11 @@ export default async function ProjectDetailPage({
         .select("id, ticket_no, problem, status, warranty, reported_at, profiles:assigned_to (name)")
         .eq("project_id", id)
         .order("reported_at", { ascending: false }),
+      supabase
+        .from("contracts")
+        .select("id, contract_no, created_at")
+        .eq("project_id", id)
+        .order("created_at", { ascending: false }),
     ]);
 
   const paid = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
@@ -355,6 +361,40 @@ export default async function ProjectDetailPage({
           canUpload={isStaff || profile.role === "technician"}
           isStaff={isStaff}
         />
+
+        {isStaff && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 font-semibold text-gray-900">Installation Agreement</p>
+            {!contracts?.length && (
+              <p className="mb-2 text-sm text-gray-500">No contract generated yet.</p>
+            )}
+            <ul className="divide-y divide-gray-100">
+              {contracts?.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <Link href={`/contracts/${c.id}`} className="font-medium text-brand-green-dark underline">
+                    {c.contract_no}
+                  </Link>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{formatDate(c.created_at)}</span>
+                    <a
+                      href={`/api/contracts/${c.id}/pdf`}
+                      target="_blank"
+                      className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700"
+                    >
+                      PDF
+                    </a>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href={`/projects/${project.id}/contract`}
+              className="mt-2 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
+            >
+              + Generate contract
+            </Link>
+          </div>
+        )}
 
         <TicketsPanel
           projectId={project.id}
