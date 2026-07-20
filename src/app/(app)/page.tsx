@@ -49,7 +49,7 @@ export default async function DashboardPage() {
     timeZone: TIMEZONE,
   }).format(new Date());
 
-  const [overdueRes, sourceRes, newInqRes, quotesRes, wonRes] =
+  const [overdueRes, sourceRes, newInqRes, quotesRes, wonRes, milestonesRes] =
     await Promise.all([
       supabase
         .from("leads")
@@ -80,6 +80,14 @@ export default async function DashboardPage() {
         .select("id", { count: "exact", head: true })
         .eq("status", "won" satisfies LeadStatus)
         .gte("updated_at", monthStart),
+      supabase
+        .from("payment_milestones")
+        .select(
+          "id, label, amount, due_date, projects (id, project_no, status, customers (name)), payments (amount)",
+        )
+        .lt("due_date", today)
+        .order("due_date", { ascending: true })
+        .limit(50),
     ]);
 
   const dayMs = 24 * 60 * 60 * 1000;
@@ -106,8 +114,40 @@ export default async function DashboardPage() {
     (source) => ({ source, count: sourceCounts.get(source) ?? 0 }),
   );
 
+  type MilestoneJoin = {
+    id: string;
+    label: string;
+    amount: number;
+    due_date: string;
+    projects:
+      | { id: string; project_no: string; status: string; customers: { name: string } | { name: string }[] | null }
+      | null;
+    payments: { amount: number }[];
+  };
+
+  const receivables = ((milestonesRes.data ?? []) as unknown as MilestoneJoin[])
+    .filter((m) => m.projects && m.projects.status !== "closed")
+    .map((m) => {
+      const paid = (m.payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+      const customer = Array.isArray(m.projects!.customers)
+        ? m.projects!.customers[0]
+        : m.projects!.customers;
+      return {
+        milestone_id: m.id,
+        project_id: m.projects!.id,
+        project_no: m.projects!.project_no,
+        customer_name: customer?.name ?? "Unknown",
+        label: m.label,
+        remaining: Number(m.amount) - paid,
+        due_date: m.due_date,
+      };
+    })
+    .filter((r) => r.remaining > 0.005)
+    .slice(0, 15);
+
   const data: DashboardData = {
     overdue,
+    receivables,
     monthLabel,
     bySource,
     counts: {

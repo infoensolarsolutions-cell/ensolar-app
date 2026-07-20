@@ -13,6 +13,7 @@ import {
 } from "@/lib/crm";
 import { formatDate, formatPeso } from "@/lib/format";
 import { StatusActions } from "./status-actions";
+import { PaymentsPanel } from "./payments-panel";
 import { AssignForm } from "./assign-form";
 import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
@@ -66,7 +67,7 @@ export default async function ProjectDetailPage({
 
   if (!project) notFound();
 
-  const [{ data: technicians }, { data: events }, { data: payments }] =
+  const [{ data: technicians }, { data: events }, { data: payments }, { data: milestones }] =
     await Promise.all([
       isStaff
         ? supabase
@@ -83,11 +84,55 @@ export default async function ProjectDetailPage({
         .order("created_at", { ascending: false })
         .limit(30)
         .overrideTypes<EventRow[]>(),
-      supabase.from("payments").select("amount").eq("project_id", id),
+      supabase
+        .from("payments")
+        .select("id, or_no, amount, method, received_at, milestone_id, payment_milestones (label)")
+        .eq("project_id", id)
+        .order("received_at", { ascending: false }),
+      supabase
+        .from("payment_milestones")
+        .select("id, label, amount, due_date, sort_order")
+        .eq("project_id", id)
+        .order("sort_order"),
     ]);
 
   const paid = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
   const balance = Number(project.contract_amount) - paid;
+
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+
+  const milestoneRows = (milestones ?? []).map((m) => {
+    const paidForMilestone = (payments ?? [])
+      .filter((p) => p.milestone_id === m.id)
+      .reduce((s, p) => s + Number(p.amount), 0);
+    return {
+      id: m.id,
+      label: m.label,
+      amount: Number(m.amount),
+      due_date: m.due_date,
+      paid: paidForMilestone,
+      overdue:
+        m.due_date !== null &&
+        m.due_date < today &&
+        paidForMilestone < Number(m.amount) - 0.005,
+    };
+  });
+
+  const paymentRows = (payments ?? []).map((p) => {
+    const milestone = Array.isArray(p.payment_milestones)
+      ? p.payment_milestones[0]
+      : p.payment_milestones;
+    return {
+      id: p.id,
+      or_no: p.or_no,
+      amount: Number(p.amount),
+      method: p.method,
+      received_at: p.received_at,
+      milestone_label: milestone?.label ?? null,
+    };
+  });
 
   return (
     <>
@@ -179,13 +224,18 @@ export default async function ProjectDetailPage({
           />
         )}
 
+        <PaymentsPanel
+          projectId={project.id}
+          isStaff={isStaff}
+          milestones={milestoneRows}
+          payments={paymentRows}
+        />
+
         <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="mb-2 font-semibold text-gray-900">
-            Payments · Costs · Photos · Tickets
-          </p>
+          <p className="mb-2 font-semibold text-gray-900">Costs · Photos · Tickets</p>
           <p className="text-sm text-gray-500">
-            Payment schedules, cost tracking, site photos and after-sales
-            tickets arrive in the next build steps (B2–B4).
+            Cost tracking, site photos and after-sales tickets arrive in the
+            next build steps (B3–B4).
           </p>
         </div>
 

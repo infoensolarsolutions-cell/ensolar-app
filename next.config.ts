@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@react-pdf/renderer"],
   outputFileTracingIncludes: {
     "/api/quotations/[id]/pdf": ["./public/fonts/**"],
+    "/api/payments/[id]/pdf": ["./public/fonts/**"],
   },
 };
 
