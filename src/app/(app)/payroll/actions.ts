@@ -9,9 +9,8 @@ import {
   monthlyBase,
   weeklyContributions,
   weeklyTax,
-  payableHours,
-  otHours,
   hourlyRate,
+  entryHours,
   DAILY_TO_MONTHLY_DAYS,
   WORK_DEFAULTS,
   type Settings,
@@ -71,16 +70,16 @@ export async function createRun(
   const dayFmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
   });
-  // Per employee, per Manila date: presence + total raw hours worked.
-  const daysByEmployee = new Map<string, Map<string, number>>();
+  // Per employee, per Manila date: regular hours inside office hours and
+  // OT strictly after the official end. Early clock-ins never count.
+  const daysByEmployee = new Map<string, Map<string, { regular: number; ot: number }>>();
   for (const a of attendance ?? []) {
     const day = dayFmt.format(new Date(a.clock_in));
     if (!daysByEmployee.has(a.employee_id)) daysByEmployee.set(a.employee_id, new Map());
     const days = daysByEmployee.get(a.employee_id)!;
-    const hours = a.clock_out
-      ? (new Date(a.clock_out).getTime() - new Date(a.clock_in).getTime()) / 3600000
-      : 0;
-    days.set(day, (days.get(day) ?? 0) + hours);
+    const split = entryHours(a.clock_in, a.clock_out, settings.work);
+    const cur = days.get(day) ?? { regular: 0, ot: 0 };
+    days.set(day, { regular: cur.regular + split.regular, ot: cur.ot + split.ot });
   }
 
   function leaveDays(employeeId: string, paid: boolean): number {
@@ -111,7 +110,7 @@ export async function createRun(
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const rules = settings.work;
   const slips = employees.map((e) => {
-    const dayHours = daysByEmployee.get(e.id) ?? new Map<string, number>();
+    const dayHours = daysByEmployee.get(e.id) ?? new Map<string, { regular: number; ot: number }>();
     const worked = dayHours.size;
     const paidLeave = leaveDays(e.id, true);
     const unpaidLeave = leaveDays(e.id, false);
@@ -121,11 +120,13 @@ export async function createRun(
     // multiplier of the hourly rate.
     const perDay: { date: string; hours: number; ot: number }[] = [];
     let totalOtHours = 0;
-    for (const [date, raw] of [...dayHours.entries()].sort()) {
-      const payable = payableHours(raw, rules);
-      const ot = otHours(payable, rules);
-      totalOtHours += ot;
-      perDay.push({ date, hours: round2(payable), ot });
+    for (const [date, split] of [...dayHours.entries()].sort()) {
+      totalOtHours += split.ot;
+      perDay.push({
+        date,
+        hours: round2(split.regular + split.ot),
+        ot: round2(split.ot),
+      });
     }
     totalOtHours = round2(totalOtHours);
     const hourly = hourlyRate(e.rate_type, rate, rules);

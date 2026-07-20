@@ -16,6 +16,8 @@ const FIELD_LABELS: Record<string, string> = {
   regular_hours_per_day: "Regular working hours per day",
   unpaid_break_hours: "Unpaid break hours per day",
   overtime_multiplier_percent: "Overtime rate (% of hourly rate)",
+  work_start_hour: "Official work start (hour, e.g. 8 = 8:00 AM)",
+  work_end_hour: "Official work end (hour, e.g. 17 = 5:00 PM)",
 };
 
 export function ParamsForm({

@@ -78,13 +78,55 @@ export type WorkRules = {
   regular_hours_per_day: number;
   unpaid_break_hours: number;
   overtime_multiplier_percent: number;
+  // Official office hours (hour of day, decimals allowed: 8.5 = 8:30).
+  // Time before work_start_hour never counts; overtime is strictly time
+  // worked after work_end_hour.
+  work_start_hour: number;
+  work_end_hour: number;
 };
 
 export const WORK_DEFAULTS: WorkRules = {
   regular_hours_per_day: 8,
   unpaid_break_hours: 1,
   overtime_multiplier_percent: 125,
+  work_start_hour: 8,
+  work_end_hour: 17,
 };
+
+// One attendance entry split against the official office hours (Manila):
+// regular = payable time inside the 8–5 window (break deducted on full
+// days), ot = time worked strictly after the official end. Early arrival
+// before the official start never counts.
+export function entryHours(
+  clockIn: string,
+  clockOut: string | null,
+  rules: WorkRules,
+): { regular: number; ot: number } {
+  if (!clockOut) return { regular: 0, ot: 0 };
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(clockIn));
+  const at = (hour: number) => {
+    const hh = String(Math.floor(hour)).padStart(2, "0");
+    const mm = String(Math.round((hour % 1) * 60)).padStart(2, "0");
+    return new Date(`${day}T${hh}:${mm}:00+08:00`).getTime();
+  };
+  const officialStart = at(Number.isFinite(rules.work_start_hour) ? rules.work_start_hour : 8);
+  const officialEnd = at(Number.isFinite(rules.work_end_hour) ? rules.work_end_hour : 17);
+  const inMs = new Date(clockIn).getTime();
+  const outMs = new Date(clockOut).getTime();
+
+  const windowSpan = Math.max(
+    0,
+    (Math.min(outMs, officialEnd) - Math.max(inMs, officialStart)) / 3600000,
+  );
+  const regular = payableHours(windowSpan, rules);
+  const ot = Math.max(0, (outMs - Math.max(inMs, officialEnd)) / 3600000);
+  return {
+    regular: Math.round(regular * 100) / 100,
+    ot: Math.round(ot * 100) / 100,
+  };
+}
 
 // Total span minus the unpaid break (break only deducted on days long
 // enough to plausibly include one).

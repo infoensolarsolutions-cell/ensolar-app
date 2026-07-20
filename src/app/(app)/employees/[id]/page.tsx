@@ -4,7 +4,7 @@ import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { toManilaLocalInput } from "@/lib/format";
-import { payableHours, otHours, WORK_DEFAULTS, type WorkRules } from "@/lib/payroll";
+import { entryHours, WORK_DEFAULTS, type WorkRules } from "@/lib/payroll";
 import { EmployeeForm } from "../employee-form";
 import { AttendanceAdmin, type AttendanceEntry } from "./attendance-admin";
 import { LeavesPanel, type LeaveRow } from "./leaves-panel";
@@ -68,10 +68,7 @@ export default async function EmployeeDetailPage({
 
   const rules: WorkRules = (workSetting?.config as WorkRules) ?? WORK_DEFAULTS;
   const entries: AttendanceEntry[] = (attendance ?? []).map((a) => {
-    const raw = a.clock_out
-      ? (new Date(a.clock_out).getTime() - new Date(a.clock_in).getTime()) / 3600000
-      : 0;
-    const payable = payableHours(raw, rules);
+    const split = entryHours(a.clock_in, a.clock_out, rules);
     return {
       id: a.id,
       clock_in: a.clock_in,
@@ -79,8 +76,8 @@ export default async function EmployeeDetailPage({
       clock_in_local: toManilaLocalInput(a.clock_in),
       clock_out_local: toManilaLocalInput(a.clock_out),
       source: a.source,
-      hours: payable,
-      ot: otHours(payable, rules),
+      hours: Math.round((split.regular + split.ot) * 100) / 100,
+      ot: split.ot,
     };
   });
 
