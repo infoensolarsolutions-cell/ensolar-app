@@ -12,6 +12,7 @@ import {
 } from "@/lib/crm";
 import { formatDate, formatPeso } from "@/lib/format";
 import { RequestServiceForm } from "./request-service-form";
+import { PayButton } from "./pay-button";
 
 export const metadata: Metadata = { title: "My Projects" };
 
@@ -22,7 +23,12 @@ const STATUS_BADGE: Record<ProjectStatus, string> = {
   closed: "bg-gray-200 text-gray-600",
 };
 
-export default async function PortalPage() {
+export default async function PortalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ paid?: string }>;
+}) {
+  const { paid: paidParam } = await searchParams;
   const profile = await getProfile();
   if (!profile) redirect("/login");
   if (profile.role !== "customer") redirect("/");
@@ -94,6 +100,24 @@ export default async function PortalPage() {
         <p className="text-sm text-gray-700">
           Welcome, <span className="font-semibold">{profile.name || "Customer"}</span>
         </p>
+
+        {paidParam === "1" && (
+          <p className="rounded-xl bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+            ✓ Payment received — thank you! Your balance has been updated and
+            the receipt is in your payment history below.
+          </p>
+        )}
+        {paidParam === "pending" && (
+          <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            Your payment is being confirmed. If the balance does not update in
+            a few minutes, please call (035) 531-6455.
+          </p>
+        )}
+        {paidParam === "0" && (
+          <p className="rounded-xl bg-gray-100 px-4 py-3 text-sm text-gray-600">
+            Payment was cancelled. You can try again anytime.
+          </p>
+        )}
 
         {!projects?.length && (
           <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -169,7 +193,7 @@ export default async function PortalPage() {
                             {settled ? (
                               <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">Paid</span>
                             ) : (
-                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">Unpaid</span>
+                              <PayButton milestoneId={m.id} />
                             )}
                           </div>
                         </li>
@@ -178,8 +202,8 @@ export default async function PortalPage() {
                   </ul>
                   {balance > 0 && (
                     <p className="mt-1 rounded-lg bg-brand-yellow/20 px-3 py-2 text-xs text-gray-700">
-                      To pay: visit our office, or GCash/bank transfer — call (035) 531-6455 for details.
-                      Online payment is coming soon.
+                      Pay online with GCash, Maya, or card using the Pay Now
+                      buttons — or visit our office / call (035) 531-6455.
                     </p>
                   )}
                 </div>
