@@ -9,7 +9,7 @@ export default async function NewLeadPage() {
   await requireRole("owner", "office_staff");
   return (
     <>
-      <TopBar title="Add Lead" />
+      <TopBar title="Add Lead" backHref="/leads" />
       <LeadForm />
     </>
   );

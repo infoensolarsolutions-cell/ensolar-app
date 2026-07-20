@@ -41,7 +41,7 @@ export default async function ProductDetailPage({
 
   return (
     <>
-      <TopBar title={product.sku} />
+      <TopBar title={product.sku} backHref="/products" />
       <div className="space-y-4 pb-4">
         <div className="p-4 pb-0">
           <Link href="/products" className="text-sm font-medium text-brand-green-dark">

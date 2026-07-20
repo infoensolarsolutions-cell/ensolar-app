@@ -57,7 +57,7 @@ export default async function QuotationDetailPage({
 
   return (
     <>
-      <TopBar title={q.quote_no} />
+      <TopBar title={q.quote_no} backHref="/quotations" />
       <div className="space-y-4 p-4">
         <Link href="/quotations" className="text-sm font-medium text-brand-green-dark">
           ← All quotations
