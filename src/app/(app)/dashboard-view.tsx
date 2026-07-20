@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LEAD_SOURCES, type LeadSource } from "@/lib/crm";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPeso } from "@/lib/format";
 
 export type DashboardData = {
   overdue: {
@@ -9,6 +9,15 @@ export type DashboardData = {
     assignee_name: string | null;
     next_followup_at: string;
     days_overdue: number;
+  }[];
+  receivables: {
+    milestone_id: string;
+    project_id: string;
+    project_no: string;
+    customer_name: string;
+    label: string;
+    remaining: number;
+    due_date: string;
   }[];
   monthLabel: string;
   bySource: { source: LeadSource; count: number }[];
@@ -53,6 +62,43 @@ export function DashboardView({ data }: { data: DashboardData }) {
                   </div>
                   <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
                     {lead.days_overdue}d late
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="font-semibold text-gray-900">Overdue receivables</p>
+          {data.receivables.length > 0 && (
+            <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700">
+              {data.receivables.length}
+            </span>
+          )}
+        </div>
+        {data.receivables.length === 0 ? (
+          <p className="text-sm text-gray-500">No overdue collections. 👍</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {data.receivables.map((r) => (
+              <li key={r.milestone_id}>
+                <Link
+                  href={`/projects/${r.project_id}`}
+                  className="flex items-center justify-between gap-2 py-2.5"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-red-700">
+                      {r.customer_name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {r.project_no} · {r.label} · due {formatDate(r.due_date)}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-bold text-red-700">
+                    {formatPeso(r.remaining)}
                   </span>
                 </Link>
               </li>
