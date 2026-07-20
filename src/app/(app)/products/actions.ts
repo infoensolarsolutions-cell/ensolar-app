@@ -5,6 +5,20 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
+// Show the real database error so failures are diagnosable, with a plain
+// translation for the two most common cases.
+function describeDbError(
+  error: { code?: string; message?: string } | null,
+): string {
+  if (!error) return "Could not save — no row returned (possibly blocked by row security).";
+  if (error.code === "23505") return "That SKU is already used by another product.";
+  if (error.code === "42501") return "Blocked by row security — your account role may not allow this.";
+  if (error.code === "42703" || error.message?.includes("does not exist")) {
+    return `Database error: ${error.message} — the latest database migration (0004) has probably not been run yet.`;
+  }
+  return `Database error${error.code ? ` (${error.code})` : ""}: ${error.message ?? "unknown"}`;
+}
+
 export async function saveProduct(
   _prev: { error?: string } | null,
   formData: FormData,
@@ -37,7 +51,10 @@ export async function saveProduct(
 
   if (productId) {
     const { error } = await supabase.from("products").update(row).eq("id", productId);
-    if (error) return { error: "Could not save. Is the SKU already used?" };
+    if (error) {
+      console.error("saveProduct update failed:", error);
+      return { error: describeDbError(error) };
+    }
     revalidatePath(`/products/${productId}`);
     revalidatePath("/products");
     return {};
@@ -48,7 +65,10 @@ export async function saveProduct(
     .insert(row)
     .select("id")
     .single();
-  if (error || !created) return { error: "Could not create. Is the SKU already used?" };
+  if (error || !created) {
+    console.error("saveProduct insert failed:", error);
+    return { error: describeDbError(error) };
+  }
   revalidatePath("/products");
   redirect(`/products/${created.id}`);
 }
