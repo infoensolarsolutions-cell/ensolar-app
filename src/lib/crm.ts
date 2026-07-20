@@ -62,3 +62,14 @@ export const PROJECT_STATUSES = {
 } as const;
 
 export type ProjectStatus = keyof typeof PROJECT_STATUSES;
+
+export const COST_TYPES = {
+  materials: "Materials",
+  labor: "Labor",
+  transportation: "Transportation",
+  permits: "Permits",
+  subcontractor: "Subcontractor",
+  other: "Other",
+} as const;
+
+export type CostType = keyof typeof COST_TYPES;

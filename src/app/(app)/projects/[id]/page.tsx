@@ -14,6 +14,8 @@ import {
 import { formatDate, formatPeso } from "@/lib/format";
 import { StatusActions } from "./status-actions";
 import { PaymentsPanel } from "./payments-panel";
+import { CostsPanel, type CostRow } from "./costs-panel";
+import { PhotosPanel, type PhotoRow } from "./photos-panel";
 import { AssignForm } from "./assign-form";
 import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
@@ -67,8 +69,14 @@ export default async function ProjectDetailPage({
 
   if (!project) notFound();
 
-  const [{ data: technicians }, { data: events }, { data: payments }, { data: milestones }] =
-    await Promise.all([
+  const [
+    { data: technicians },
+    { data: events },
+    { data: payments },
+    { data: milestones },
+    { data: costs },
+    { data: photos },
+  ] = await Promise.all([
       isStaff
         ? supabase
             .from("profiles")
@@ -94,6 +102,17 @@ export default async function ProjectDetailPage({
         .select("id, label, amount, due_date, sort_order")
         .eq("project_id", id)
         .order("sort_order"),
+      supabase
+        .from("project_costs")
+        .select("id, type, description, amount, date, inventory_txn_id")
+        .eq("project_id", id)
+        .order("date", { ascending: false }),
+      supabase
+        .from("project_photos")
+        .select("id, storage_path, caption, phase, created_at, profiles:uploaded_by (name)")
+        .eq("project_id", id)
+        .order("created_at", { ascending: false })
+        .limit(60),
     ]);
 
   const paid = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
@@ -119,6 +138,38 @@ export default async function ProjectDetailPage({
         paidForMilestone < Number(m.amount) - 0.005,
     };
   });
+
+  const costRows: CostRow[] = (costs ?? []).map((c) => ({
+    id: c.id,
+    type: c.type,
+    description: c.description,
+    amount: Number(c.amount),
+    date: c.date,
+    from_inventory: c.inventory_txn_id !== null,
+  }));
+
+  // Private bucket → short-lived signed URLs rendered server-side.
+  const signed = photos?.length
+    ? await supabase.storage
+        .from("project-photos")
+        .createSignedUrls(photos.map((p) => p.storage_path), 3600)
+    : { data: [] };
+  const urlByPath = new Map(
+    (signed.data ?? []).map((s) => [s.path, s.signedUrl]),
+  );
+  const photoRows: PhotoRow[] = (photos ?? [])
+    .map((p) => {
+      const uploader = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+      return {
+        id: p.id,
+        url: urlByPath.get(p.storage_path) ?? "",
+        caption: p.caption,
+        phase: p.phase as PhotoRow["phase"],
+        created_at: p.created_at,
+        uploader_name: uploader?.name ?? null,
+      };
+    })
+    .filter((p) => p.url);
 
   const paymentRows = (payments ?? []).map((p) => {
     const milestone = Array.isArray(p.payment_milestones)
@@ -231,11 +282,27 @@ export default async function ProjectDetailPage({
           payments={paymentRows}
         />
 
+        {isStaff && (
+          <CostsPanel
+            projectId={project.id}
+            costs={costRows}
+            contractAmount={Number(project.contract_amount)}
+            isOwner={profile.role === "owner"}
+            isStaff={isStaff}
+          />
+        )}
+
+        <PhotosPanel
+          projectId={project.id}
+          photos={photoRows}
+          canUpload={isStaff || profile.role === "technician"}
+          isStaff={isStaff}
+        />
+
         <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="mb-2 font-semibold text-gray-900">Costs · Photos · Tickets</p>
+          <p className="mb-2 font-semibold text-gray-900">After-sales tickets</p>
           <p className="text-sm text-gray-500">
-            Cost tracking, site photos and after-sales tickets arrive in the
-            next build steps (B3–B4).
+            Service tickets arrive in the next build step (B4).
           </p>
         </div>
 
