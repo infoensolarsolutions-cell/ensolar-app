@@ -34,6 +34,29 @@ export default async function MorePage() {
             </Link>
           </div>
         )}
+
+        {["owner", "office_staff"].includes(profile.role) && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 font-semibold text-gray-900">📥 Export to Excel (CSV)</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ["customers", "Customers"],
+                ["projects", "Projects"],
+                ["payments", "Payments"],
+                ["inventory", "Inventory"],
+                ["sales", "POS Sales"],
+              ].map(([entity, label]) => (
+                <a
+                  key={entity}
+                  href={`/api/export/${entity}`}
+                  className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 active:bg-gray-50"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
         <form action={signOut}>
           <button className="w-full rounded-xl border border-red-200 bg-white px-4 py-3.5 text-base font-semibold text-red-600 active:bg-red-50">
             Sign out

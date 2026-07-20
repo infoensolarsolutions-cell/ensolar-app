@@ -214,6 +214,39 @@ export default async function DashboardPage() {
     })
     .filter((m) => m.project_id);
 
+  // Owner-only money panels (financial reports are owner territory, Spec §3).
+  let money: DashboardData["money"] = null;
+  let ongoingProfit: DashboardData["ongoingProfit"] = null;
+  if (profile.role === "owner") {
+    const monthStartUtc = new Date(`${monthStart}T00:00:00+08:00`).toISOString();
+    const [collectionsRes, posRes, ongoingRes] = await Promise.all([
+      supabase.from("payments").select("amount").gte("received_at", monthStartUtc),
+      supabase.from("pos_sales").select("total").gte("sold_at", monthStartUtc),
+      supabase
+        .from("projects")
+        .select("id, project_no, contract_amount, customers (name), project_costs (amount)")
+        .eq("status", "ongoing")
+        .limit(20),
+    ]);
+    money = {
+      collections: (collectionsRes.data ?? []).reduce((s, p) => s + Number(p.amount), 0),
+      posSales: (posRes.data ?? []).reduce((s, p) => s + Number(p.total), 0),
+    };
+    ongoingProfit = (ongoingRes.data ?? []).map((p) => {
+      const customer = Array.isArray(p.customers) ? p.customers[0] : p.customers;
+      return {
+        project_id: p.id,
+        project_no: p.project_no,
+        customer_name: customer?.name ?? "Unknown",
+        contract: Number(p.contract_amount),
+        costs: (p.project_costs ?? []).reduce(
+          (s: number, c: { amount: number }) => s + Number(c.amount),
+          0,
+        ),
+      };
+    });
+  }
+
   const lowStock = ((lowStockRes.data ?? []) as {
     id: string; name: string; sku: string; unit: string;
     on_hand: number; reorder_level: number;
@@ -227,6 +260,8 @@ export default async function DashboardPage() {
     openTickets,
     maintenance,
     lowStock,
+    money,
+    ongoingProfit,
     monthLabel,
     bySource,
     counts: {

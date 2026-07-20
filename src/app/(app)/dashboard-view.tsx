@@ -48,6 +48,17 @@ export type DashboardData = {
   monthLabel: string;
   bySource: { source: LeadSource; count: number }[];
   counts: { newInquiries: number; quotationsSent: number; won: number };
+  // Owner only — null hides the money panels.
+  money: { collections: number; posSales: number } | null;
+  ongoingProfit:
+    | {
+        project_id: string;
+        project_no: string;
+        customer_name: string;
+        contract: number;
+        costs: number;
+      }[]
+    | null;
 };
 
 export function DashboardView({ data }: { data: DashboardData }) {
@@ -172,6 +183,64 @@ export function DashboardView({ data }: { data: DashboardData }) {
             {data.maintenance.map((m) => (
               <MaintenanceItem key={m.id} reminder={m} />
             ))}
+          </ul>
+        </div>
+      )}
+
+      {data.money && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
+            <p className="text-lg font-extrabold text-brand-green-dark">
+              {formatPeso(data.money.collections)}
+            </p>
+            <p className="text-xs font-medium text-gray-600">Collections</p>
+            <p className="text-[10px] text-gray-400">{data.monthLabel}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
+            <p className="text-lg font-extrabold text-brand-green-dark">
+              {formatPeso(data.money.posSales)}
+            </p>
+            <p className="text-xs font-medium text-gray-600">POS sales</p>
+            <p className="text-[10px] text-gray-400">{data.monthLabel}</p>
+          </div>
+        </div>
+      )}
+
+      {data.ongoingProfit && data.ongoingProfit.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="mb-2 font-semibold text-gray-900">
+            Gross profit — ongoing projects
+          </p>
+          <ul className="divide-y divide-gray-100">
+            {data.ongoingProfit.map((p) => {
+              const profit = p.contract - p.costs;
+              const pct = p.contract > 0 ? (profit / p.contract) * 100 : 0;
+              return (
+                <li key={p.project_id}>
+                  <Link
+                    href={`/projects/${p.project_id}`}
+                    className="flex items-center justify-between gap-2 py-2.5"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {p.customer_name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {p.project_no} · costs {formatPeso(p.costs)}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 text-sm font-bold ${
+                        profit >= 0 ? "text-green-700" : "text-red-600"
+                      }`}
+                    >
+                      {formatPeso(profit)}
+                      <span className="ml-1 text-xs">({pct.toFixed(0)}%)</span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
