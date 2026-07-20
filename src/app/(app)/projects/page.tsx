@@ -26,7 +26,8 @@ type ProjectRow = {
 
 export default async function ProjectsPage() {
   // RLS scopes technicians to their assigned projects automatically.
-  await requireRole("owner", "office_staff", "technician");
+  const profile = await requireRole("owner", "office_staff", "technician");
+  const isStaff = ["owner", "office_staff"].includes(profile.role);
   const supabase = await createClient();
 
   const { data: projects } = await supabase
@@ -63,9 +64,11 @@ export default async function ProjectsPage() {
                 {PROJECT_STATUSES[p.status]}
               </span>
             </div>
-            <p className="mt-2 text-right text-sm font-bold text-gray-900">
-              {formatPeso(p.contract_amount)}
-            </p>
+            {isStaff && (
+              <p className="mt-2 text-right text-sm font-bold text-gray-900">
+                {formatPeso(p.contract_amount)}
+              </p>
+            )}
           </Link>
         ))}
       </div>

@@ -288,22 +288,24 @@ export default async function ProjectDetailPage({
               )}
             </div>
           )}
-          <div className="mt-3 grid grid-cols-3 gap-2 border-t border-gray-100 pt-3 text-center">
-            <div>
-              <p className="text-xs text-gray-500">Contract</p>
-              <p className="text-sm font-bold">{formatPeso(project.contract_amount)}</p>
+          {isStaff && (
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-gray-100 pt-3 text-center">
+              <div>
+                <p className="text-xs text-gray-500">Contract</p>
+                <p className="text-sm font-bold">{formatPeso(project.contract_amount)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Paid</p>
+                <p className="text-sm font-bold text-brand-green-dark">{formatPeso(paid)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Balance</p>
+                <p className={`text-sm font-bold ${balance > 0 ? "text-red-600" : "text-gray-900"}`}>
+                  {formatPeso(balance)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-500">Paid</p>
-              <p className="text-sm font-bold text-brand-green-dark">{formatPeso(paid)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Balance</p>
-              <p className={`text-sm font-bold ${balance > 0 ? "text-red-600" : "text-gray-900"}`}>
-                {formatPeso(balance)}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
 
         <StatusActions projectId={project.id} status={project.status} isStaff={isStaff} />
@@ -335,12 +337,14 @@ export default async function ProjectDetailPage({
           />
         )}
 
-        <PaymentsPanel
-          projectId={project.id}
-          isStaff={isStaff}
-          milestones={milestoneRows}
-          payments={paymentRows}
-        />
+        {isStaff && (
+          <PaymentsPanel
+            projectId={project.id}
+            isStaff={isStaff}
+            milestones={milestoneRows}
+            payments={paymentRows}
+          />
+        )}
 
         {isStaff && (
           <>
