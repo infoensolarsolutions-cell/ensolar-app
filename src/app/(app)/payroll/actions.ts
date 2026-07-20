@@ -259,3 +259,33 @@ export async function deleteRun(runId: string): Promise<{ error?: string }> {
   revalidatePath("/payroll");
   redirect("/payroll");
 }
+
+// Re-read attendance/leaves and rebuild a draft run's payslips.
+// Cash-advance deductions reset to 0 and must be re-entered.
+export async function recomputeRun(runId: string): Promise<{ error?: string }> {
+  await requireRole("owner");
+  const supabase = await createClient();
+
+  const { data: run } = await supabase
+    .from("payroll_runs")
+    .select("id, period_start, status")
+    .eq("id", runId)
+    .single();
+  if (!run) return { error: "Run not found." };
+  if (run.status !== "draft") return { error: "Finalized runs cannot be recomputed." };
+
+  const { error: delError } = await supabase
+    .from("payslips")
+    .delete()
+    .eq("run_id", runId);
+  if (delError) return { error: `Could not reset: ${delError.message}` };
+  const { error: delRunError } = await supabase
+    .from("payroll_runs")
+    .delete()
+    .eq("id", runId);
+  if (delRunError) return { error: `Could not reset: ${delRunError.message}` };
+
+  const fd = new FormData();
+  fd.set("period_start", run.period_start);
+  return await createRun(null, fd); // redirects to the fresh run on success
+}

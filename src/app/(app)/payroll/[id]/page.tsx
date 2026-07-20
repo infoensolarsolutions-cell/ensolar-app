@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, formatPeso } from "@/lib/format";
+import { formatDate, formatPeso, todayManila } from "@/lib/format";
 import { RunControls, SlipRow } from "./run-view";
 
 export const metadata: Metadata = { title: "Payroll Run" };
@@ -97,6 +97,14 @@ export default async function PayrollRunPage({
           <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">
             Draft — review each row, set cash-advance deductions if any, then
             finalize. Finalizing locks the run and records advance repayments.
+            If you add or correct attendance after computing, tap “Recompute”
+            below to refresh the figures.
+          </p>
+        )}
+        {run.status === "draft" && run.period_end >= todayManila() && (
+          <p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-medium text-red-700">
+            ⚠️ This week is not finished yet — attendance may still come in.
+            Recompute before finalizing.
           </p>
         )}
 

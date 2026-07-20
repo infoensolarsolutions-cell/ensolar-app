@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { finalizeRun, deleteRun, setAdvanceDeduction } from "../actions";
+import { finalizeRun, deleteRun, recomputeRun, setAdvanceDeduction } from "../actions";
 import { formatPeso } from "@/lib/format";
 
 export function SlipRow({
@@ -99,6 +99,22 @@ export function RunControls({ runId, status }: { runId: string; status: string }
       {error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p>
       )}
+      <button
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            setError(null);
+            const res = await recomputeRun(runId);
+            if (res?.error) setError(res.error);
+          })
+        }
+        className="w-full rounded-xl border border-blue-300 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 disabled:opacity-60"
+      >
+        {pending ? "Working…" : "↻ Recompute from latest attendance"}
+      </button>
+      <p className="-mt-1 text-center text-xs text-gray-400">
+        Use after adding or correcting attendance. Cash-advance deductions reset.
+      </p>
       {!confirm ? (
         <button
           onClick={() => setConfirm(true)}
