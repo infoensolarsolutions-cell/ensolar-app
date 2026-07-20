@@ -17,6 +17,7 @@ import { PaymentsPanel } from "./payments-panel";
 import { CostsPanel, type CostRow } from "./costs-panel";
 import { PhotosPanel, type PhotoRow } from "./photos-panel";
 import { TicketsPanel, type TicketRow } from "./tickets-panel";
+import { InviteButton } from "./invite-button";
 import { AssignForm } from "./assign-form";
 import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
@@ -34,7 +35,13 @@ type ProjectDetail = {
   target_date: string | null;
   completed_date: string | null;
   created_at: string;
-  customers: { name: string; phone: string | null } | null;
+  customer_id: string;
+  customers: {
+    name: string;
+    phone: string | null;
+    email: string | null;
+    profile_id: string | null;
+  } | null;
   quotations: { id: string; quote_no: string } | null;
   project_assignments: { user_id: string; profiles: { name: string } | null }[];
 };
@@ -62,7 +69,7 @@ export default async function ProjectDetailPage({
   const { data: project } = await supabase
     .from("projects")
     .select(
-      "id, project_no, status, service_type, site_address, contract_amount, start_date, target_date, completed_date, created_at, customers (name, phone), quotations (id, quote_no), project_assignments (user_id, profiles (name))",
+      "id, project_no, status, service_type, site_address, contract_amount, start_date, target_date, completed_date, created_at, customer_id, customers (name, phone, email, profile_id), quotations (id, quote_no), project_assignments (user_id, profiles (name))",
     )
     .eq("id", id)
     .single()
@@ -248,6 +255,21 @@ export default async function ProjectDetailPage({
             {project.target_date && <p>Target: {formatDate(project.target_date)}</p>}
             {project.completed_date && <p>Completed: {formatDate(project.completed_date)}</p>}
           </div>
+          {isStaff && (
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              {project.customers?.profile_id ? (
+                <p className="text-xs font-medium text-green-700">
+                  ✓ Customer has portal access
+                </p>
+              ) : (
+                <InviteButton
+                  customerId={project.customer_id}
+                  projectId={project.id}
+                  hasEmail={!!project.customers?.email}
+                />
+              )}
+            </div>
+          )}
           <div className="mt-3 grid grid-cols-3 gap-2 border-t border-gray-100 pt-3 text-center">
             <div>
               <p className="text-xs text-gray-500">Contract</p>
