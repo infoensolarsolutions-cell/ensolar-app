@@ -70,3 +70,21 @@ export function pesoInWords(amount: number): string {
   }
   return `${groups.join(" ")} Pesos and ${String(centavos).padStart(2, "0")}/100 Only`;
 }
+
+// datetime-local <-> Manila wall-clock helpers for attendance corrections.
+export function toManilaLocalInput(ts: string | null): string {
+  if (!ts) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date(ts));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+export function manilaInputToIso(v: string): string | null {
+  if (!v) return null;
+  const d = new Date(`${v}:00+08:00`);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
