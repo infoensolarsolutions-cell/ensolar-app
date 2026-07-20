@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { getProfile, ROLE_LABELS } from "@/lib/auth";
 import { signOut } from "@/app/(public)/login/actions";
+import { ProfileForm } from "./profile-form";
 
 export const metadata: Metadata = { title: "More" };
 
@@ -18,9 +19,13 @@ export default async function MorePage() {
             {profile.name || profile.email}
           </p>
           <p className="text-sm text-gray-600">{profile.email}</p>
+          {profile.phone && <p className="text-sm text-gray-600">📞 {profile.phone}</p>}
           <span className="mt-2 inline-block rounded-full bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-green-dark">
             {ROLE_LABELS[profile.role]}
           </span>
+          <div>
+            <ProfileForm name={profile.name} phone={profile.phone} />
+          </div>
         </div>
         {["owner", "office_staff"].includes(profile.role) && (
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
