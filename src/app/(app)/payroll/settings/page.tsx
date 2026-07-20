@@ -20,6 +20,7 @@ export default async function PayrollSettingsPage() {
   const philhealth = byKey.get("philhealth");
   const pagibig = byKey.get("pagibig");
   const tax = byKey.get("tax");
+  const work = byKey.get("work");
 
   return (
     <>
@@ -37,6 +38,7 @@ export default async function PayrollSettingsPage() {
         {pagibig && (
           <ParamsForm settingKey="pagibig" label={pagibig.label} config={pagibig.config} />
         )}
+        {work && <ParamsForm settingKey="work" label={work.label} config={work.config} />}
         {tax && <TaxForm brackets={tax.config.brackets ?? []} />}
       </div>
     </>

@@ -4,6 +4,7 @@ import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { toManilaLocalInput } from "@/lib/format";
+import { payableHours, otHours, WORK_DEFAULTS, type WorkRules } from "@/lib/payroll";
 import { EmployeeForm } from "../employee-form";
 import { AttendanceAdmin, type AttendanceEntry } from "./attendance-admin";
 import { LeavesPanel, type LeaveRow } from "./leaves-panel";
@@ -27,6 +28,7 @@ export default async function EmployeeDetailPage({
     { data: advances },
     { data: profiles },
     { data: linked },
+    { data: workSetting },
   ] = await Promise.all([
     supabase.from("employees").select("*").eq("id", id).single(),
     supabase
@@ -54,6 +56,7 @@ export default async function EmployeeDetailPage({
       .eq("active", true)
       .order("name"),
     supabase.from("employees").select("id, profile_id").not("profile_id", "is", null),
+    supabase.from("contribution_settings").select("config").eq("key", "work").maybeSingle(),
   ]);
 
   if (!employee) notFound();
@@ -63,14 +66,23 @@ export default async function EmployeeDetailPage({
   );
   const linkable = (profiles ?? []).filter((p) => !taken.has(p.id));
 
-  const entries: AttendanceEntry[] = (attendance ?? []).map((a) => ({
-    id: a.id,
-    clock_in: a.clock_in,
-    clock_out: a.clock_out,
-    clock_in_local: toManilaLocalInput(a.clock_in),
-    clock_out_local: toManilaLocalInput(a.clock_out),
-    source: a.source,
-  }));
+  const rules: WorkRules = (workSetting?.config as WorkRules) ?? WORK_DEFAULTS;
+  const entries: AttendanceEntry[] = (attendance ?? []).map((a) => {
+    const raw = a.clock_out
+      ? (new Date(a.clock_out).getTime() - new Date(a.clock_in).getTime()) / 3600000
+      : 0;
+    const payable = payableHours(raw, rules);
+    return {
+      id: a.id,
+      clock_in: a.clock_in,
+      clock_out: a.clock_out,
+      clock_in_local: toManilaLocalInput(a.clock_in),
+      clock_out_local: toManilaLocalInput(a.clock_out),
+      source: a.source,
+      hours: payable,
+      ot: otHours(payable, rules),
+    };
+  });
 
   return (
     <>

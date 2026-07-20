@@ -9,17 +9,25 @@ import {
   monthlyBase,
   weeklyContributions,
   weeklyTax,
+  payableHours,
+  otHours,
+  hourlyRate,
   DAILY_TO_MONTHLY_DAYS,
+  WORK_DEFAULTS,
   type Settings,
+  type WorkRules,
 } from "@/lib/payroll";
 
 async function loadSettings(
   supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<Settings | null> {
+): Promise<(Settings & { work: WorkRules }) | null> {
   const { data } = await supabase.from("contribution_settings").select("key, config");
-  if (!data || data.length < 4) return null;
-  const byKey = Object.fromEntries(data.map((s) => [s.key, s.config]));
-  return byKey as unknown as Settings;
+  const byKey = Object.fromEntries((data ?? []).map((s) => [s.key, s.config]));
+  for (const key of ["sss", "philhealth", "pagibig", "tax"]) {
+    if (!byKey[key]) return null;
+  }
+  if (!byKey.work) byKey.work = WORK_DEFAULTS;
+  return byKey as unknown as Settings & { work: WorkRules };
 }
 
 export async function createRun(
@@ -50,7 +58,7 @@ export async function createRun(
   const [{ data: attendance }, { data: leaves }] = await Promise.all([
     supabase
       .from("attendance")
-      .select("employee_id, clock_in")
+      .select("employee_id, clock_in, clock_out")
       .gte("clock_in", startUtc)
       .lte("clock_in", endUtc),
     supabase
@@ -63,11 +71,16 @@ export async function createRun(
   const dayFmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
   });
-  const daysByEmployee = new Map<string, Set<string>>();
+  // Per employee, per Manila date: presence + total raw hours worked.
+  const daysByEmployee = new Map<string, Map<string, number>>();
   for (const a of attendance ?? []) {
     const day = dayFmt.format(new Date(a.clock_in));
-    if (!daysByEmployee.has(a.employee_id)) daysByEmployee.set(a.employee_id, new Set());
-    daysByEmployee.get(a.employee_id)!.add(day);
+    if (!daysByEmployee.has(a.employee_id)) daysByEmployee.set(a.employee_id, new Map());
+    const days = daysByEmployee.get(a.employee_id)!;
+    const hours = a.clock_out
+      ? (new Date(a.clock_out).getTime() - new Date(a.clock_in).getTime()) / 3600000
+      : 0;
+    days.set(day, (days.get(day) ?? 0) + hours);
   }
 
   function leaveDays(employeeId: string, paid: boolean): number {
@@ -96,20 +109,39 @@ export async function createRun(
   }
 
   const round2 = (n: number) => Math.round(n * 100) / 100;
+  const rules = settings.work;
   const slips = employees.map((e) => {
-    const worked = daysByEmployee.get(e.id)?.size ?? 0;
+    const dayHours = daysByEmployee.get(e.id) ?? new Map<string, number>();
+    const worked = dayHours.size;
     const paidLeave = leaveDays(e.id, true);
     const unpaidLeave = leaveDays(e.id, false);
     const rate = Number(e.rate);
 
-    let gross: number;
+    // Overtime: payable hours beyond the regular day, at the configured
+    // multiplier of the hourly rate.
+    const perDay: { date: string; hours: number; ot: number }[] = [];
+    let totalOtHours = 0;
+    for (const [date, raw] of [...dayHours.entries()].sort()) {
+      const payable = payableHours(raw, rules);
+      const ot = otHours(payable, rules);
+      totalOtHours += ot;
+      perDay.push({ date, hours: round2(payable), ot });
+    }
+    totalOtHours = round2(totalOtHours);
+    const hourly = hourlyRate(e.rate_type, rate, rules);
+    const otPay = round2(
+      totalOtHours * hourly * (rules.overtime_multiplier_percent / 100),
+    );
+
+    let basicPay: number;
     if (e.rate_type === "daily") {
-      gross = round2((worked + paidLeave) * rate);
+      basicPay = round2((worked + paidLeave) * rate);
     } else {
       const weekly = (rate * 12) / 52;
       const dailyEquiv = rate / DAILY_TO_MONTHLY_DAYS;
-      gross = round2(Math.max(0, weekly - unpaidLeave * dailyEquiv));
+      basicPay = round2(Math.max(0, weekly - unpaidLeave * dailyEquiv));
     }
+    const gross = round2(basicPay + otPay);
 
     const base = monthlyBase(e.rate_type, rate);
     const c = gross > 0 ? weeklyContributions(base, settings) : { sss: 0, philhealth: 0, pagibig: 0 };
@@ -122,6 +154,8 @@ export async function createRun(
       employee_id: e.id,
       days_worked: worked + paidLeave,
       gross,
+      ot_hours: totalOtHours,
+      ot_pay: otPay,
       sss: c.sss,
       philhealth: c.philhealth,
       pagibig: c.pagibig,
@@ -135,6 +169,12 @@ export async function createRun(
         paid_leave_days: paidLeave,
         unpaid_leave_days: unpaidLeave,
         monthly_base: base,
+        basic_pay: basicPay,
+        hourly_rate: round2(hourly),
+        ot_multiplier_percent: rules.overtime_multiplier_percent,
+        regular_hours_per_day: rules.regular_hours_per_day,
+        unpaid_break_hours: rules.unpaid_break_hours,
+        days: perDay,
       },
     };
   });

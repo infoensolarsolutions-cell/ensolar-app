@@ -56,6 +56,12 @@ export type PayslipPdfData = {
   rate_type: string;
   days_worked: number;
   gross: number;
+  basic_pay: number;
+  ot_hours: number;
+  ot_pay: number;
+  hourly_rate: number;
+  ot_multiplier_percent: number;
+  days: { date: string; hours: number; ot: number }[];
   sss: number;
   philhealth: number;
   pagibig: number;
@@ -115,10 +121,36 @@ export function PayslipPdf({ data }: { data: PayslipPdfData }) {
 
         <View style={styles.section}>
           <View style={styles.row}>
+            <Text style={styles.label}>Basic pay ({data.days_worked} day{data.days_worked === 1 ? "" : "s"} × {peso(data.rate_type === "daily" ? data.rate : data.rate / 26)})</Text>
+            <Text>{peso(data.basic_pay)}</Text>
+          </View>
+          {data.ot_hours > 0 ? (
+            <View style={styles.row}>
+              <Text style={styles.label}>
+                Overtime ({data.ot_hours}h × {peso(data.hourly_rate)} × {data.ot_multiplier_percent}%)
+              </Text>
+              <Text>{peso(data.ot_pay)}</Text>
+            </View>
+          ) : null}
+          <View style={styles.row}>
             <Text style={styles.bold}>Gross pay</Text>
             <Text style={styles.bold}>{peso(data.gross)}</Text>
           </View>
         </View>
+
+        {data.days.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={[styles.bold, { marginBottom: 2 }]}>Daily hours</Text>
+            {data.days.map((day) => (
+              <View key={day.date} style={styles.row}>
+                <Text style={styles.label}>{d(day.date)}</Text>
+                <Text>
+                  {day.hours}h{day.ot > 0 ? ` (incl. ${day.ot}h OT)` : ""}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <Text style={[styles.bold, { marginBottom: 2 }]}>Deductions</Text>
