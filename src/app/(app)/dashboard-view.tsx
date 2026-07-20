@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LEAD_SOURCES, type LeadSource } from "@/lib/crm";
 import { formatDate, formatPeso } from "@/lib/format";
+import { MaintenanceItem } from "./maintenance-item";
 
 export type DashboardData = {
   overdue: {
@@ -18,6 +19,23 @@ export type DashboardData = {
     label: string;
     remaining: number;
     due_date: string;
+  }[];
+  openTickets: {
+    id: string;
+    ticket_no: string;
+    project_no: string;
+    customer_name: string;
+    status: "open" | "in_progress";
+    reported_at: string;
+  }[];
+  maintenance: {
+    id: string;
+    project_id: string;
+    project_no: string;
+    customer_name: string;
+    due_date: string;
+    note: string | null;
+    overdue: boolean;
   }[];
   monthLabel: string;
   bySource: { source: LeadSource; count: number }[];
@@ -106,6 +124,49 @@ export function DashboardView({ data }: { data: DashboardData }) {
           </ul>
         )}
       </div>
+
+      {data.openTickets.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-semibold text-gray-900">Open service tickets</p>
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+              {data.openTickets.length}
+            </span>
+          </div>
+          <ul className="divide-y divide-gray-100">
+            {data.openTickets.map((t) => (
+              <li key={t.id}>
+                <Link href={`/tickets/${t.id}`} className="flex items-center justify-between gap-2 py-2.5">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{t.customer_name}</p>
+                    <p className="text-xs text-gray-500">
+                      {t.ticket_no} · {t.project_no} · {formatDate(t.reported_at)}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      t.status === "open" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {t.status === "open" ? "Open" : "In Progress"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {data.maintenance.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="mb-2 font-semibold text-gray-900">Maintenance due</p>
+          <ul className="divide-y divide-gray-100">
+            {data.maintenance.map((m) => (
+              <MaintenanceItem key={m.id} reminder={m} />
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <p className="mb-3 font-semibold text-gray-900">

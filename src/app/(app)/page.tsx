@@ -48,9 +48,20 @@ export default async function DashboardPage() {
     year: "numeric",
     timeZone: TIMEZONE,
   }).format(new Date());
+  const monthAhead = new Date(Date.now() + 30 * 86400000)
+    .toISOString()
+    .slice(0, 10);
 
-  const [overdueRes, sourceRes, newInqRes, quotesRes, wonRes, milestonesRes] =
-    await Promise.all([
+  const [
+    overdueRes,
+    sourceRes,
+    newInqRes,
+    quotesRes,
+    wonRes,
+    milestonesRes,
+    ticketsRes,
+    maintenanceRes,
+  ] = await Promise.all([
       supabase
         .from("leads")
         .select(
@@ -88,6 +99,19 @@ export default async function DashboardPage() {
         .lt("due_date", today)
         .order("due_date", { ascending: true })
         .limit(50),
+      supabase
+        .from("service_tickets")
+        .select("id, ticket_no, status, reported_at, projects (project_no, customers (name))")
+        .in("status", ["open", "in_progress"])
+        .order("reported_at", { ascending: true })
+        .limit(15),
+      supabase
+        .from("maintenance_reminders")
+        .select("id, due_date, note, projects (id, project_no, customers (name))")
+        .eq("status", "pending")
+        .lte("due_date", monthAhead)
+        .order("due_date", { ascending: true })
+        .limit(15),
     ]);
 
   const dayMs = 24 * 60 * 60 * 1000;
@@ -145,9 +169,49 @@ export default async function DashboardPage() {
     .filter((r) => r.remaining > 0.005)
     .slice(0, 15);
 
+  type NameJoin = { name: string } | { name: string }[] | null;
+  const firstName = (j: NameJoin) => (Array.isArray(j) ? j[0]?.name : j?.name) ?? "Unknown";
+
+  type TicketJoin = {
+    id: string; ticket_no: string; status: "open" | "in_progress"; reported_at: string;
+    projects: { project_no: string; customers: NameJoin } | { project_no: string; customers: NameJoin }[] | null;
+  };
+  const openTickets = ((ticketsRes.data ?? []) as unknown as TicketJoin[]).map((t) => {
+    const project = Array.isArray(t.projects) ? t.projects[0] : t.projects;
+    return {
+      id: t.id,
+      ticket_no: t.ticket_no,
+      project_no: project?.project_no ?? "",
+      customer_name: firstName(project?.customers ?? null),
+      status: t.status,
+      reported_at: t.reported_at,
+    };
+  });
+
+  type ReminderJoin = {
+    id: string; due_date: string; note: string | null;
+    projects: { id: string; project_no: string; customers: NameJoin } | { id: string; project_no: string; customers: NameJoin }[] | null;
+  };
+  const maintenance = ((maintenanceRes.data ?? []) as unknown as ReminderJoin[])
+    .map((m) => {
+      const project = Array.isArray(m.projects) ? m.projects[0] : m.projects;
+      return {
+        id: m.id,
+        project_id: project?.id ?? "",
+        project_no: project?.project_no ?? "",
+        customer_name: firstName(project?.customers ?? null),
+        due_date: m.due_date,
+        note: m.note,
+        overdue: m.due_date < today,
+      };
+    })
+    .filter((m) => m.project_id);
+
   const data: DashboardData = {
     overdue,
     receivables,
+    openTickets,
+    maintenance,
     monthLabel,
     bySource,
     counts: {

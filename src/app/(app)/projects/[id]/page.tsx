@@ -16,6 +16,7 @@ import { StatusActions } from "./status-actions";
 import { PaymentsPanel } from "./payments-panel";
 import { CostsPanel, type CostRow } from "./costs-panel";
 import { PhotosPanel, type PhotoRow } from "./photos-panel";
+import { TicketsPanel, type TicketRow } from "./tickets-panel";
 import { AssignForm } from "./assign-form";
 import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
@@ -76,6 +77,7 @@ export default async function ProjectDetailPage({
     { data: milestones },
     { data: costs },
     { data: photos },
+    { data: tickets },
   ] = await Promise.all([
       isStaff
         ? supabase
@@ -113,6 +115,11 @@ export default async function ProjectDetailPage({
         .eq("project_id", id)
         .order("created_at", { ascending: false })
         .limit(60),
+      supabase
+        .from("service_tickets")
+        .select("id, ticket_no, problem, status, warranty, reported_at, profiles:assigned_to (name)")
+        .eq("project_id", id)
+        .order("reported_at", { ascending: false }),
     ]);
 
   const paid = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
@@ -170,6 +177,19 @@ export default async function ProjectDetailPage({
       };
     })
     .filter((p) => p.url);
+
+  const ticketRows: TicketRow[] = (tickets ?? []).map((t) => {
+    const assignee = Array.isArray(t.profiles) ? t.profiles[0] : t.profiles;
+    return {
+      id: t.id,
+      ticket_no: t.ticket_no,
+      problem: t.problem,
+      status: t.status,
+      warranty: t.warranty,
+      reported_at: t.reported_at,
+      assignee_name: assignee?.name ?? null,
+    };
+  });
 
   const paymentRows = (payments ?? []).map((p) => {
     const milestone = Array.isArray(p.payment_milestones)
@@ -299,12 +319,12 @@ export default async function ProjectDetailPage({
           isStaff={isStaff}
         />
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="mb-2 font-semibold text-gray-900">After-sales tickets</p>
-          <p className="text-sm text-gray-500">
-            Service tickets arrive in the next build step (B4).
-          </p>
-        </div>
+        <TicketsPanel
+          projectId={project.id}
+          tickets={ticketRows}
+          technicians={technicians ?? []}
+          isStaff={isStaff}
+        />
 
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="mb-2 font-semibold text-gray-900">Timeline</p>
