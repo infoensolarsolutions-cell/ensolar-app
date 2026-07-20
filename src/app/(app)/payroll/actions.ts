@@ -280,8 +280,28 @@ export async function finalizeRun(runId: string): Promise<{ error?: string }> {
     .eq("id", runId);
   if (error) return { error: `Could not finalize: ${error.message}` };
 
+  // Cash-basis: record the payout as a Salaries expense (Module E).
+  const { data: runInfo } = await supabase
+    .from("payroll_runs")
+    .select("period_start, period_end, payslips (net)")
+    .eq("id", runId)
+    .single();
+  const totalNet = (runInfo?.payslips ?? []).reduce(
+    (s: number, p: { net: number }) => s + Number(p.net), 0,
+  );
+  if (totalNet > 0) {
+    await supabase.from("expenses").insert({
+      category: "Salaries",
+      description: `Payroll ${runInfo?.period_start} to ${runInfo?.period_end}`,
+      amount: Math.round(totalNet * 100) / 100,
+      date: runInfo?.period_end,
+      payroll_run_id: runId,
+    });
+  }
+
   revalidatePath(`/payroll/${runId}`);
   revalidatePath("/payroll");
+  revalidatePath("/expenses");
   return {};
 }
 
@@ -371,6 +391,8 @@ export async function reopenRun(runId: string): Promise<{ error?: string }> {
       toReverse -= undo;
     }
   }
+
+  await supabase.from("expenses").delete().eq("payroll_run_id", runId);
 
   const { error } = await supabase
     .from("payroll_runs")
