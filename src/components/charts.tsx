@@ -14,7 +14,8 @@ export function MonthlyBars({
   format?: (v: number) => string;
 }) {
   if (!data.length) return null;
-  const W = 360;
+  // Wider viewBox for dense (e.g. daily) data so bars stay readable.
+  const W = Math.max(360, data.length * 24);
   const H = 150;
   const top = 18;
   const bottom = 18;
@@ -23,6 +24,8 @@ export function MonthlyBars({
   const slot = W / data.length;
   const barW = Math.min(36, slot * 0.62);
   const maxIdx = data.findIndex((d) => d.value === Math.max(...data.map((x) => x.value)));
+  // With many bars, label only every Nth tick to avoid collisions.
+  const labelEvery = Math.ceil(data.length / 8);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Bar chart">
@@ -54,15 +57,17 @@ export function MonthlyBars({
                 {format(d.value)}
               </text>
             )}
-            <text
-              x={i * slot + slot / 2}
-              y={H - 4}
-              textAnchor="middle"
-              className="fill-gray-400"
-              fontSize="10"
-            >
-              {d.label}
-            </text>
+            {i % labelEvery === 0 && (
+              <text
+                x={i * slot + slot / 2}
+                y={H - 4}
+                textAnchor="middle"
+                className="fill-gray-400"
+                fontSize="10"
+              >
+                {d.label}
+              </text>
+            )}
           </g>
         );
       })}
