@@ -16,7 +16,7 @@ export default async function AppLayout({
     <div className="flex min-h-dvh">
       <SideNav role={profile.role} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <main className="mx-auto w-full max-w-lg flex-1 pb-24 lg:max-w-3xl lg:pb-8">
+        <main className="mx-auto w-full max-w-lg flex-1 pb-24 lg:max-w-6xl lg:pb-8">
           {children}
         </main>
         <div className="lg:hidden">
