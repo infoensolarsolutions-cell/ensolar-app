@@ -13,6 +13,7 @@ import {
 } from "@/lib/crm";
 import { formatDate } from "@/lib/format";
 import { LeadEditForm } from "./edit-form";
+import { ContactEditForm } from "./contact-edit-form";
 
 export const metadata: Metadata = { title: "Lead" };
 
@@ -25,6 +26,7 @@ type LeadDetail = {
   notes: string | null;
   assigned_to: string | null;
   created_at: string;
+  customer_id: string;
   customers: {
     name: string;
     phone: string | null;
@@ -55,7 +57,7 @@ export default async function LeadDetailPage({
   const { data: lead } = await supabase
     .from("leads")
     .select(
-      "id, status, service_type, next_followup_at, lost_reason, notes, assigned_to, created_at, customers (name, phone, email, address, barangay, referred_by)",
+      "id, status, service_type, next_followup_at, lost_reason, notes, assigned_to, created_at, customer_id, customers (name, phone, email, address, barangay, referred_by)",
     )
     .eq("id", id)
     .single()
@@ -110,6 +112,13 @@ export default async function LeadDetailPage({
               Created {formatDate(lead.created_at)}
             </p>
           </div>
+          {c && (
+            <ContactEditForm
+              leadId={lead.id}
+              customerId={lead.customer_id}
+              contact={c}
+            />
+          )}
         </div>
 
         <Link

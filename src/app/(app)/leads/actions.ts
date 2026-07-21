@@ -116,3 +116,41 @@ export async function updateLead(
   revalidatePath(`/leads/${leadId}`);
   return { saved: true };
 }
+
+export async function updateLeadContact(
+  _prev: { error?: string; saved?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; saved?: boolean }> {
+  const profile = await requireRole("owner", "office_staff");
+  const leadId = String(formData.get("lead_id") ?? "");
+  const customerId = String(formData.get("customer_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 120);
+  if (!leadId || !customerId) return { error: "Missing lead reference." };
+  if (!name) return { error: "The name cannot be empty." };
+
+  const field = (k: string) => String(formData.get(k) ?? "").trim() || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("customers")
+    .update({
+      name,
+      phone: field("phone"),
+      email: field("email"),
+      address: field("address"),
+      barangay: field("barangay"),
+      referred_by: field("referred_by"),
+    })
+    .eq("id", customerId);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  await supabase.from("lead_events").insert({
+    lead_id: leadId,
+    user_id: profile.id,
+    event: "contact_updated",
+  });
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+  return { saved: true };
+}
