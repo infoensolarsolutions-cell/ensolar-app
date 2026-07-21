@@ -360,7 +360,7 @@ async function TechnicianDashboard({ profile }: { profile: Profile }) {
     await Promise.all([
       supabase
         .from("projects")
-        .select("id, project_no, status, service_type, site_address")
+        .select("id, project_no, status, service_type, site_address, customers (name)")
         .neq("status", "closed")
         .order("created_at", { ascending: false })
         .limit(20),
@@ -460,9 +460,13 @@ async function TechnicianDashboard({ profile }: { profile: Profile }) {
                   className="flex items-center justify-between gap-2 py-2.5"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">{p.project_no}</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {(Array.isArray(p.customers) ? p.customers[0]?.name : p.customers?.name) ??
+                        p.project_no}
+                    </p>
                     <p className="text-xs text-gray-500">
                       {[
+                        p.project_no,
                         p.service_type
                           ? SERVICE_TYPES[p.service_type as ServiceType]
                           : null,
