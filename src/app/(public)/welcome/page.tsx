@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { InquiryForm } from "../inquire/inquiry-form";
+
+// Re-render at most every 5 minutes so newly uploaded photos appear.
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Ensolar Solutions — Solar Power for Dumaguete & Negros Oriental",
@@ -9,13 +13,36 @@ export const metadata: Metadata = {
     "Solar PV installation, electrical works, CCTV, FDAS and solar pumps in Dumaguete City. Licensed electrical engineer, 25-year panel performance guarantee. Get a free quotation.",
 };
 
-// Photos are hotlinked from Unsplash (free to use under the Unsplash License).
-const PHOTOS = {
-  hero: "https://images.unsplash.com/photo-1509391366360-2e959784a276?w=1800&q=70&fm=jpg&fit=crop",
-  work1: "https://images.unsplash.com/photo-1592833159155-c62df1b65634?w=900&q=70&fm=jpg&fit=crop",
-  work2: "https://images.unsplash.com/photo-1613665813446-82a78c468a1d?w=900&q=70&fm=jpg&fit=crop",
-  work3: "https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=900&q=70&fm=jpg&fit=crop",
+// Stock fallbacks (Unsplash License) used until the owner uploads real
+// project photos via More > Landing Page Photos.
+const STOCK_PHOTOS: Record<string, string> = {
+  "hero.jpg": "https://images.unsplash.com/photo-1509391366360-2e959784a276?w=1800&q=70&fm=jpg&fit=crop",
+  "work1.jpg": "https://images.unsplash.com/photo-1592833159155-c62df1b65634?w=900&q=70&fm=jpg&fit=crop",
+  "work2.jpg": "https://images.unsplash.com/photo-1613665813446-82a78c468a1d?w=900&q=70&fm=jpg&fit=crop",
+  "work3.jpg": "https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=900&q=70&fm=jpg&fit=crop",
 };
+
+async function getPhotos(): Promise<{ photos: Record<string, string>; anyOwn: boolean }> {
+  const photos = { ...STOCK_PHOTOS };
+  let anyOwn = false;
+  try {
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    const { data: files } = await supabase.storage.from("landing").list();
+    const base = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/landing`;
+    for (const f of files ?? []) {
+      if (f.name in photos) {
+        photos[f.name] = `${base}/${f.name}?v=${encodeURIComponent(f.updated_at ?? "1")}`;
+        anyOwn = true;
+      }
+    }
+  } catch {
+    // Storage unavailable — keep stock photos so the page still renders.
+  }
+  return { photos, anyOwn };
+}
 
 const SERVICES = [
   ["☀️", "Solar PV Systems", "On-grid, hybrid and off-grid packages for homes and businesses — design, installation, testing and commissioning."],
@@ -72,7 +99,8 @@ const WARRANTY = [
   ["3 yrs", "Free service warranty + yearly cleaning"],
 ] as const;
 
-export default function WelcomePage() {
+export default async function WelcomePage() {
+  const { photos: PHOTOS, anyOwn } = await getPhotos();
   return (
     <div className="min-h-dvh bg-[#0d1a12] text-gray-100">
       {/* Header */}
@@ -93,7 +121,7 @@ export default function WelcomePage() {
       <section className="relative overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={PHOTOS.hero}
+          src={PHOTOS["hero.jpg"]}
           alt="Solar panels under a clear sky"
           className="absolute inset-0 h-full w-full object-cover opacity-25"
         />
@@ -132,9 +160,9 @@ export default function WelcomePage() {
         <h2 className="mb-6 text-center text-2xl font-bold">Our Work</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
-            [PHOTOS.work1, "Rooftop solar panel installation"],
-            [PHOTOS.work2, "Technician installing solar panels"],
-            [PHOTOS.work3, "Solar panels catching the sunlight"],
+            [PHOTOS["work1.jpg"], "Rooftop solar panel installation"],
+            [PHOTOS["work2.jpg"], "Solar installation by Ensolar Solutions"],
+            [PHOTOS["work3.jpg"], "Completed solar PV system"],
           ].map(([src, alt]) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -255,9 +283,11 @@ export default function WelcomePage() {
         <p className="mt-1">
           (035) 531-6455 • 0961-885-6986 • info.ensolarsolutions@gmail.com
         </p>
-        <p className="mt-3 text-gray-600">
-          Photos courtesy of Unsplash contributors.
-        </p>
+        {!anyOwn && (
+          <p className="mt-3 text-gray-600">
+            Photos courtesy of Unsplash contributors.
+          </p>
+        )}
       </footer>
     </div>
   );
