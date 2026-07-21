@@ -89,6 +89,10 @@ export default async function MorePage() {
               <span className="font-medium text-gray-800">👤 Users & Roles</span>
               <span className="text-gray-400">›</span>
             </Link>
+            <Link href="/settings/landing-photos" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">🖼️ Landing Page Photos</span>
+              <span className="text-gray-400">›</span>
+            </Link>
           </div>
         )}
 
