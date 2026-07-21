@@ -22,12 +22,19 @@ export default async function QuotationsPage() {
   await requireRole("owner", "office_staff");
   const supabase = await createClient();
 
-  const { data: quotations } = await supabase
-    .from("quotations")
-    .select("id, quote_no, status, valid_until, total, created_at, customers (name)")
-    .order("created_at", { ascending: false })
-    .limit(100)
-    .overrideTypes<QuotationRow[]>();
+  const [{ data: quotations }, { count: trashed }] = await Promise.all([
+    supabase
+      .from("quotations")
+      .select("id, quote_no, status, valid_until, total, created_at, customers (name)")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(100)
+      .overrideTypes<QuotationRow[]>(),
+    supabase
+      .from("quotations")
+      .select("id", { count: "exact", head: true })
+      .not("deleted_at", "is", null),
+  ]);
 
   const today = todayManila();
 
@@ -35,12 +42,20 @@ export default async function QuotationsPage() {
     <>
       <TopBar title="Quotations" />
       <div className="space-y-3 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0 xl:grid-cols-3">
-        <Link
-          href="/quotations/new"
-          className="block w-full rounded-xl bg-brand-green px-4 py-3.5 text-center text-base font-semibold text-white active:bg-brand-green-dark lg:col-span-full lg:w-auto lg:justify-self-start lg:px-6"
-        >
-          + New Quotation
-        </Link>
+        <div className="flex items-center justify-between gap-2 lg:col-span-full">
+          <Link
+            href="/quotations/new"
+            className="rounded-xl bg-brand-green px-6 py-3.5 text-center text-base font-semibold text-white active:bg-brand-green-dark max-lg:flex-1"
+          >
+            + New Quotation
+          </Link>
+          <Link
+            href="/quotations/trash"
+            className="shrink-0 text-sm font-medium text-gray-500 underline"
+          >
+            🗑 Recycle Bin{(trashed ?? 0) > 0 ? ` (${trashed})` : ""}
+          </Link>
+        </div>
 
         {!quotations?.length && (
           <p className="pt-8 text-center text-sm text-gray-500 lg:col-span-full">
