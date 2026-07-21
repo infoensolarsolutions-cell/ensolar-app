@@ -11,8 +11,10 @@ const PUBLIC_SOURCES = {
   referral: "Referred by someone",
 };
 
+// Explicit text color: this form also renders on the dark landing page,
+// where inherited light text would be invisible inside the white card.
 const inputClass =
-  "w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30";
 
 export function InquiryForm({ campaignId }: { campaignId: string | null }) {
   const [state, formAction, pending] = useActionState(submitInquiry, null);
