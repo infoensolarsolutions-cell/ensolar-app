@@ -107,7 +107,12 @@ export default async function WelcomePage() {
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
         <div className="flex items-center gap-2">
           <Image src="/branding/logo.svg" alt="Ensolar Solutions" width={36} height={36} />
-          <span className="text-sm font-bold tracking-wide">ENSOLAR SOLUTIONS</span>
+          <div>
+            <span className="block text-sm font-bold tracking-wide">ENSOLAR SOLUTIONS</span>
+            <span className="block text-[10px] italic tracking-widest text-brand-green">
+              LINKING THE SUN
+            </span>
+          </div>
         </div>
         <Link
           href="/login"
