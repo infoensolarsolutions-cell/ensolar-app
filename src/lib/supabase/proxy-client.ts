@@ -40,7 +40,22 @@ export async function updateSession(request: NextRequest) {
   // client creation and getUser() — see Supabase SSR docs.
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
+
+  // A revoked/rotated refresh token would otherwise be re-sent forever,
+  // failing every request. Drop the dead auth cookies so the next login
+  // starts clean.
+  const staleAuthCookies =
+    !user && error && (error as { code?: string }).code === "refresh_token_not_found"
+      ? request.cookies.getAll().filter((c) => c.name.startsWith("sb-"))
+      : [];
+  const clearStale = (res: NextResponse) => {
+    for (const c of staleAuthCookies) {
+      res.cookies.set(c.name, "", { maxAge: 0, path: "/" });
+    }
+    return res;
+  };
 
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some(
@@ -53,8 +68,10 @@ export async function updateSession(request: NextRequest) {
     // deep links to internal pages still go to login.
     url.pathname = pathname === "/" ? "/welcome" : "/login";
     url.search = "";
-    return NextResponse.redirect(url);
+    return clearStale(NextResponse.redirect(url));
   }
+
+  if (staleAuthCookies.length) clearStale(response);
 
   if (user && pathname === "/login") {
     const url = request.nextUrl.clone();
