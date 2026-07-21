@@ -363,7 +363,17 @@ async function TechnicianDashboard({ profile }: { profile: Profile }) {
         .select("id, project_no, status, service_type, site_address, customers (name)")
         .neq("status", "closed")
         .order("created_at", { ascending: false })
-        .limit(20),
+        .limit(20)
+        .overrideTypes<
+          {
+            id: string;
+            project_no: string;
+            status: string;
+            service_type: string | null;
+            site_address: string | null;
+            customers: { name: string } | null;
+          }[]
+        >(),
       supabase
         .from("service_tickets")
         .select("id, ticket_no, problem, status, reported_at")
@@ -461,8 +471,7 @@ async function TechnicianDashboard({ profile }: { profile: Profile }) {
                 >
                   <div>
                     <p className="text-sm font-semibold text-gray-800">
-                      {(Array.isArray(p.customers) ? p.customers[0]?.name : p.customers?.name) ??
-                        p.project_no}
+                      {p.customers?.name ?? p.project_no}
                     </p>
                     <p className="text-xs text-gray-500">
                       {[
