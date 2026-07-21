@@ -21,7 +21,7 @@ export default async function LandingPhotosPage() {
   return (
     <>
       <TopBar title="Landing Page Photos" backHref="/more" />
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 lg:max-w-4xl">
         <div className="rounded-xl bg-gray-100 px-4 py-3 text-xs text-gray-600">
           These photos appear on your public landing page at{" "}
           <span className="font-mono">ensolar-app.vercel.app</span>. Upload

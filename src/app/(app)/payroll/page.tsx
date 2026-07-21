@@ -22,11 +22,11 @@ export default async function PayrollPage() {
   return (
     <>
       <TopBar title="Payroll (Weekly)" backHref="/more" />
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 xl:grid-cols-3">
         <NewRunForm defaultStart={lastCompleteWeekStart()} />
 
         {!runs?.length && (
-          <p className="pt-4 text-center text-sm text-gray-500">No payroll runs yet.</p>
+          <p className="pt-4 text-center text-sm text-gray-500 lg:col-span-full">No payroll runs yet.</p>
         )}
         {runs?.map((r) => {
           const total = (r.payslips ?? []).reduce(

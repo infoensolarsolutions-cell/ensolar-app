@@ -89,7 +89,7 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex w-[280px] shrink-0 snap-center flex-col rounded-xl border p-2 ${
+      className={`flex w-[280px] shrink-0 snap-center flex-col rounded-xl border p-2 lg:w-auto ${
         isOver ? "border-brand-green bg-brand-green/5" : "border-gray-200 bg-gray-50"
       }`}
     >
@@ -166,7 +166,7 @@ export function KanbanBoard({ leads }: { leads: BoardLead[] }) {
         </p>
       )}
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4">
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:grid lg:grid-cols-4 lg:snap-none lg:overflow-visible">
           {STATUS_KEYS.map((status) => (
             <Column
               key={status}

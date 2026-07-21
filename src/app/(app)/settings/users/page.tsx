@@ -39,7 +39,7 @@ export default async function UsersPage() {
   return (
     <>
       <TopBar title="Users & Roles" backHref="/more" />
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <p className="border-b border-gray-100 px-4 pb-2 pt-3 font-semibold text-gray-900">
             ➕ Add a new user

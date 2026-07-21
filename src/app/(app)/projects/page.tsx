@@ -40,9 +40,9 @@ export default async function ProjectsPage() {
   return (
     <>
       <TopBar title="Projects" />
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0 xl:grid-cols-3">
         {!projects?.length && (
-          <p className="pt-8 text-center text-sm text-gray-500">
+          <p className="pt-8 text-center text-sm text-gray-500 lg:col-span-full">
             No projects yet. Projects are created when a quotation is accepted.
           </p>
         )}

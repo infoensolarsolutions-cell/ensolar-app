@@ -37,8 +37,8 @@ export default async function ExpensesPage({
   return (
     <>
       <TopBar title="Expenses" backHref="/more" />
-      <div className="space-y-4 p-4">
-        <form action="/expenses" className="flex gap-2">
+      <div className="space-y-4 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
+        <form action="/expenses" className="flex gap-2 lg:col-span-full lg:max-w-xs">
           <input name="month" type="month" defaultValue={m}
             className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm" />
           <button className="rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-semibold text-white">View</button>
