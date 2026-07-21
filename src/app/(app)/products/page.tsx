@@ -45,8 +45,8 @@ export default async function ProductsPage({
   return (
     <>
       <TopBar title="Products & Stock" />
-      <div className="space-y-3 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0 xl:grid-cols-3">
-        <form action="/products" className="flex gap-2 lg:col-span-full lg:max-w-md">
+      <div className="space-y-3 p-4">
+        <form action="/products" className="flex gap-2 lg:max-w-md">
           <input
             name="q"
             defaultValue={q ?? ""}
@@ -58,7 +58,7 @@ export default async function ProductsPage({
           </button>
         </form>
 
-        <div className="flex items-center justify-between lg:col-span-full">
+        <div className="flex items-center justify-between">
           <p className="text-xs text-gray-500">
             Stock value at cost:{" "}
             <span className="font-bold text-gray-800">{formatPeso(stockValue)}</span>
@@ -72,45 +72,117 @@ export default async function ProductsPage({
         </div>
 
         {!products?.length && (
-          <p className="pt-6 text-center text-sm text-gray-500 lg:col-span-full">No products found.</p>
+          <p className="pt-6 text-center text-sm text-gray-500">No products found.</p>
         )}
 
-        {products?.map((p) => {
-          const low = p.reorder_level > 0 && Number(p.on_hand) <= Number(p.reorder_level);
-          return (
-            <Link
-              key={p.id}
-              href={`/products/${p.id}`}
-              className={`block rounded-xl border bg-white p-3.5 ${
-                low ? "border-amber-300 ring-1 ring-amber-200" : "border-gray-200"
-              } ${p.active ? "" : "opacity-50"}`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-900">{p.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {p.sku}
-                    {p.category && ` · ${p.category}`}
-                    {!p.active && " · inactive"}
-                  </p>
+        {/* Phones: tappable cards */}
+        <div className="space-y-3 lg:hidden">
+          {products?.map((p) => {
+            const low = p.reorder_level > 0 && Number(p.on_hand) <= Number(p.reorder_level);
+            return (
+              <Link
+                key={p.id}
+                href={`/products/${p.id}`}
+                className={`block rounded-xl border bg-white p-3.5 ${
+                  low ? "border-amber-300 ring-1 ring-amber-200" : "border-gray-200"
+                } ${p.active ? "" : "opacity-50"}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-900">{p.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {p.sku}
+                      {p.category && ` · ${p.category}`}
+                      {!p.active && " · inactive"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className={`text-sm font-bold ${low ? "text-amber-700" : "text-gray-900"}`}>
+                      {Number(p.on_hand)} {p.unit}
+                    </p>
+                    {low && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                        LOW STOCK
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className={`text-sm font-bold ${low ? "text-amber-700" : "text-gray-900"}`}>
-                    {Number(p.on_hand)} {p.unit}
-                  </p>
-                  {low && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                      LOW STOCK
-                    </span>
-                  )}
-                </div>
-              </div>
-              <p className="mt-1 text-right text-xs text-gray-500">
-                Sell {formatPeso(p.selling_price)} · Cost {formatPeso(p.cost_price)}
-              </p>
-            </Link>
-          );
-        })}
+                <p className="mt-1 text-right text-xs text-gray-500">
+                  Sell {formatPeso(p.selling_price)} · Cost {formatPeso(p.cost_price)}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Desktop: full table */}
+        {!!products?.length && (
+          <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white lg:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wider text-gray-400">
+                  <th className="px-4 py-3 font-semibold">Product</th>
+                  <th className="px-4 py-3 font-semibold">Category</th>
+                  <th className="px-4 py-3 text-right font-semibold">Price</th>
+                  <th className="px-4 py-3 text-right font-semibold">Cost</th>
+                  <th className="px-4 py-3 text-right font-semibold">Stock</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {products.map((p) => {
+                  const low =
+                    p.reorder_level > 0 && Number(p.on_hand) <= Number(p.reorder_level);
+                  return (
+                    <tr key={p.id} className={`hover:bg-gray-50 ${p.active ? "" : "opacity-50"}`}>
+                      <td className="px-4 py-2.5">
+                        <Link href={`/products/${p.id}`} className="font-semibold text-gray-900 hover:underline">
+                          {p.name}
+                        </Link>
+                        <p className="text-xs text-gray-500">{p.sku}</p>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-600">{p.category ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-right font-medium text-gray-900">
+                        {formatPeso(p.selling_price)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-gray-500">
+                        {formatPeso(p.cost_price)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-bold text-gray-900">
+                        {Number(p.on_hand)}{" "}
+                        <span className="font-normal text-gray-500">{p.unit}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {!p.active ? (
+                          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-bold text-gray-600">
+                            INACTIVE
+                          </span>
+                        ) : low ? (
+                          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                            LOW STOCK
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[10px] font-bold text-green-800">
+                            OK
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Link
+                          href={`/products/${p.id}`}
+                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                        >
+                          Manage
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   );
