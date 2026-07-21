@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { LEAD_STATUSES, LOST_REASONS } from "@/lib/crm";
@@ -175,4 +176,39 @@ export async function updateLeadContact(
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/leads");
   return { saved: true };
+}
+
+export async function deleteLead(leadId: string): Promise<{ error?: string }> {
+  await requireRole("owner");
+  if (!leadId) return { error: "Missing lead reference." };
+
+  const supabase = await createClient();
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id, status, customer_id")
+    .eq("id", leadId)
+    .single();
+  if (!lead) return { error: "Lead not found." };
+  if (lead.status !== "new_inquiry") {
+    return { error: "Only leads still in New Inquiry can be deleted. Move it to Lost instead." };
+  }
+
+  const { error } = await supabase.from("leads").delete().eq("id", leadId);
+  if (error) {
+    return { error: `Could not delete: ${error.message}` };
+  }
+
+  // Housekeeping: remove the customer record too if nothing else uses it.
+  const [{ count: otherLeads }, { count: quotes }, { count: projects }] =
+    await Promise.all([
+      supabase.from("leads").select("id", { count: "exact", head: true }).eq("customer_id", lead.customer_id),
+      supabase.from("quotations").select("id", { count: "exact", head: true }).eq("customer_id", lead.customer_id),
+      supabase.from("projects").select("id", { count: "exact", head: true }).eq("customer_id", lead.customer_id),
+    ]);
+  if ((otherLeads ?? 0) === 0 && (quotes ?? 0) === 0 && (projects ?? 0) === 0) {
+    await supabase.from("customers").delete().eq("id", lead.customer_id);
+  }
+
+  revalidatePath("/leads");
+  redirect("/leads");
 }

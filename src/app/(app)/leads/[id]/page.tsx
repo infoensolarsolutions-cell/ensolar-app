@@ -14,6 +14,7 @@ import {
 import { formatDate } from "@/lib/format";
 import { LeadEditForm } from "./edit-form";
 import { ContactEditForm } from "./contact-edit-form";
+import { DeleteLeadButton } from "./delete-lead-button";
 
 export const metadata: Metadata = { title: "Lead" };
 
@@ -50,7 +51,7 @@ export default async function LeadDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("owner", "office_staff");
+  const profile = await requireRole("owner", "office_staff");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -139,6 +140,10 @@ export default async function LeadDetailPage({
           }}
           staff={staff ?? []}
         />
+
+        {profile.role === "owner" && lead.status === "new_inquiry" && (
+          <DeleteLeadButton leadId={lead.id} />
+        )}
 
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="mb-2 font-semibold text-gray-900">Activity</p>
