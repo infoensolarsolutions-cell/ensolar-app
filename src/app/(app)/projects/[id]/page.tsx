@@ -22,6 +22,7 @@ import { IssueForm, type IssueProduct } from "./issue-form";
 import { AssignForm } from "./assign-form";
 import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
+import { SiteAddressForm } from "./site-address-form";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -252,7 +253,11 @@ export default async function ProjectDetailPage({
             </span>
           </div>
           <div className="mt-3 space-y-1 text-sm text-gray-700">
-            {project.site_address && <p>📍 {project.site_address}</p>}
+            {isStaff ? (
+              <SiteAddressForm projectId={project.id} siteAddress={project.site_address} />
+            ) : (
+              project.site_address && <p>📍 {project.site_address}</p>
+            )}
             {project.customers?.phone && (
               <p>
                 📞{" "}
