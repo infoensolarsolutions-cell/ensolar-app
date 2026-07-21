@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatPeso, todayManila } from "@/lib/format";
 import { StatusBadge } from "../status-badge";
 import { QuotationActions } from "./quotation-actions";
+import { TrashButton } from "./trash-button";
 
 export const metadata: Metadata = { title: "Quotation" };
 
@@ -20,6 +21,7 @@ type Detail = {
   total: number;
   terms: string | null;
   created_at: string;
+  deleted_at: string | null;
   customers: { name: string; phone: string | null; address: string | null; barangay: string | null } | null;
   quotation_items: {
     id: string;
@@ -44,7 +46,7 @@ export default async function QuotationDetailPage({
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "id, quote_no, status, valid_until, subtotal, discount, total, terms, created_at, customers (name, phone, address, barangay), quotation_items (id, description, qty, unit_price, line_total, sort_order), projects (id, project_no)",
+      "id, quote_no, status, valid_until, subtotal, discount, total, terms, created_at, deleted_at, customers (name, phone, address, barangay), quotation_items (id, description, qty, unit_price, line_total, sort_order), projects (id, project_no)",
     )
     .eq("id", id)
     .single()
@@ -130,11 +132,17 @@ export default async function QuotationDetailPage({
           Download PDF
         </a>
 
-        <QuotationActions
-          quotationId={q.id}
-          status={q.status}
-          hasProject={!!q.projects}
-        />
+        {!q.deleted_at && (
+          <QuotationActions
+            quotationId={q.id}
+            status={q.status}
+            hasProject={!!q.projects}
+          />
+        )}
+
+        {q.status !== "accepted" && !q.projects && (
+          <TrashButton quotationId={q.id} deleted={!!q.deleted_at} />
+        )}
       </div>
     </>
   );

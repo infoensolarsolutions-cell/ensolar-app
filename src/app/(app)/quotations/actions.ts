@@ -240,3 +240,53 @@ export async function acceptQuotation(
   revalidatePath("/leads");
   return {};
 }
+
+export async function trashQuotation(id: string): Promise<{ error?: string }> {
+  await requireRole("owner", "office_staff");
+  if (!id) return { error: "Missing quotation." };
+
+  const supabase = await createClient();
+  const { data: q } = await supabase
+    .from("quotations")
+    .select("id, status, projects (id)")
+    .eq("id", id)
+    .single();
+  if (!q) return { error: "Quotation not found." };
+  if (q.status === "accepted" || (q.projects && (Array.isArray(q.projects) ? q.projects.length : 1))) {
+    return { error: "This quotation was accepted and has a project — it cannot be moved to the Recycle Bin." };
+  }
+
+  const { error } = await supabase
+    .from("quotations")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { error: `Could not move to Recycle Bin: ${error.message}` };
+
+  revalidatePath("/quotations");
+  redirect("/quotations");
+}
+
+export async function restoreQuotation(id: string): Promise<{ error?: string }> {
+  await requireRole("owner", "office_staff");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("quotations")
+    .update({ deleted_at: null })
+    .eq("id", id);
+  if (error) return { error: `Could not restore: ${error.message}` };
+  revalidatePath("/quotations");
+  revalidatePath("/quotations/trash");
+  return {};
+}
+
+export async function destroyQuotation(id: string): Promise<{ error?: string }> {
+  await requireRole("owner");
+  const supabase = await createClient();
+  const { error } = await supabase.from("quotations").delete().eq("id", id);
+  if (error) {
+    return { error: `Could not delete permanently: ${error.message}` };
+  }
+  revalidatePath("/quotations");
+  revalidatePath("/quotations/trash");
+  return {};
+}

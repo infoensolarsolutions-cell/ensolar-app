@@ -86,6 +86,7 @@ export default async function DashboardPage() {
         .from("quotations")
         .select("id", { count: "exact", head: true })
         .neq("status", "draft")
+        .is("deleted_at", null)
         .gte("created_at", monthStart),
       supabase
         .from("leads")
