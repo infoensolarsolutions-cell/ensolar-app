@@ -67,6 +67,59 @@ export async function updateProjectStatus(
   return {};
 }
 
+// Undo an accidental status change, one step back (Spec keeps forward moves
+// for technicians; going backward is an office decision).
+const BACK: Partial<Record<ProjectStatus, ProjectStatus>> = {
+  ongoing: "pending",
+  completed: "ongoing",
+  closed: "completed",
+};
+
+export async function revertProjectStatus(
+  projectId: string,
+): Promise<{ error?: string }> {
+  const profile = await requireRole("owner", "office_staff");
+
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("status")
+    .eq("id", projectId)
+    .single();
+  if (!project) return { error: "Project not found." };
+
+  const to = BACK[project.status as ProjectStatus];
+  if (!to) return { error: "This project has no previous status." };
+
+  const patch: Record<string, unknown> = { status: to };
+  if (project.status === "completed") patch.completed_date = null;
+  if (project.status === "ongoing") patch.start_date = null;
+
+  const { error } = await supabase.from("projects").update(patch).eq("id", projectId);
+  if (error) return { error: `Could not update: ${error.message}` };
+
+  // Un-completing removes the auto-scheduled maintenance visit (if untouched).
+  if (project.status === "completed") {
+    await supabase
+      .from("maintenance_reminders")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("status", "pending")
+      .eq("note", "6-month preventive maintenance visit");
+  }
+
+  await supabase.from("project_events").insert({
+    project_id: projectId,
+    user_id: profile.id,
+    event: "status_changed",
+    detail: { from: project.status, to },
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/projects");
+  return {};
+}
+
 export async function assignTechnicians(
   projectId: string,
   userIds: string[],
