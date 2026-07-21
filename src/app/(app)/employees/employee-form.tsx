@@ -112,6 +112,20 @@ export function EmployeeForm({
 
       <div>
         <label className="text-xs text-gray-500">
+          Kiosk PIN (4–6 digits, for the office clock-in terminal)
+        </label>
+        <input
+          name="pin"
+          inputMode="numeric"
+          pattern="\d{4,6}"
+          maxLength={6}
+          placeholder={employee ? "Leave blank to keep current PIN" : "e.g. 4821"}
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500">
           App login (links their account for clock in/out)
         </label>
         <select name="profile_id" defaultValue={employee?.profile_id ?? ""} className={inputClass}>

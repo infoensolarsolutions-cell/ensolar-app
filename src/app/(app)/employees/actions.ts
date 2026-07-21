@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { makePinHash } from "@/lib/pin";
 
 export async function saveEmployee(
   _prev: { error?: string } | null,
@@ -26,8 +27,13 @@ export async function saveEmployee(
   if (!name) return { error: "Name is required." };
   if (!["daily", "monthly"].includes(rateType)) return { error: "Invalid rate type." };
 
+  const pin = String(formData.get("pin") ?? "").trim();
+  if (pin && !/^\d{4,6}$/.test(pin)) {
+    return { error: "Kiosk PIN must be 4–6 digits (numbers only)." };
+  }
+
   const supabase = await createClient();
-  const row = {
+  const row: Record<string, unknown> = {
     name,
     position: position || null,
     rate_type: rateType,
@@ -39,6 +45,8 @@ export async function saveEmployee(
     profile_id: profileId || null,
     active,
   };
+  // Blank PIN leaves the existing one unchanged.
+  if (pin) row.pin_hash = makePinHash(pin);
 
   if (employeeId) {
     const { error } = await supabase.from("employees").update(row).eq("id", employeeId);
