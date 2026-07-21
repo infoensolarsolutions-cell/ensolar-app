@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { LEAD_SOURCES, type LeadSource } from "@/lib/crm";
 import { formatDate, formatPeso } from "@/lib/format";
+import { BarRows, MonthlyBars } from "@/components/charts";
 import { MaintenanceItem } from "./maintenance-item";
+
+// Compact peso for chart labels: ₱1.2M / ₱850k / ₱950.
+function pesoShort(v: number): string {
+  if (v >= 1_000_000) return `₱${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `₱${Math.round(v / 1_000)}k`;
+  return `₱${Math.round(v)}`;
+}
 
 export type DashboardData = {
   overdue: {
@@ -49,8 +57,11 @@ export type DashboardData = {
   monthLabel: string;
   bySource: { source: LeadSource; count: number }[];
   counts: { newInquiries: number; quotationsSent: number; won: number };
+  pipeline: { label: string; value: number }[];
+  projectsByStatus: { label: string; value: number }[];
   // Owner only — null hides the money panels.
   money: { collections: number; posSales: number } | null;
+  revenueByMonth: { label: string; value: number }[] | null;
   ongoingProfit:
     | {
         project_id: string;
@@ -188,6 +199,16 @@ export function DashboardView({ data }: { data: DashboardData }) {
         </div>
       )}
 
+      {data.revenueByMonth && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="mb-1 font-semibold text-gray-900">Money received per month</p>
+          <p className="mb-2 text-xs text-gray-500">
+            Project payments + POS sales, last 6 months
+          </p>
+          <MonthlyBars data={data.revenueByMonth} format={pesoShort} />
+        </div>
+      )}
+
       {data.money && (
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
@@ -286,6 +307,25 @@ export function DashboardView({ data }: { data: DashboardData }) {
           </ul>
         </div>
       )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="mb-3 font-semibold text-gray-900">Sales pipeline</p>
+          {data.pipeline.every((s) => s.value === 0) ? (
+            <p className="text-sm text-gray-500">No leads yet.</p>
+          ) : (
+            <BarRows data={data.pipeline} />
+          )}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="mb-3 font-semibold text-gray-900">Projects by status</p>
+          {data.projectsByStatus.every((s) => s.value === 0) ? (
+            <p className="text-sm text-gray-500">No projects yet.</p>
+          ) : (
+            <BarRows data={data.projectsByStatus} />
+          )}
+        </div>
+      </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <p className="mb-3 font-semibold text-gray-900">
