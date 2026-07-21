@@ -190,3 +190,29 @@ export async function updateProjectDates(
   revalidatePath(`/projects/${projectId}`);
   return { saved: true };
 }
+
+export async function updateSiteAddress(
+  _prev: { error?: string; saved?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; saved?: boolean }> {
+  const profile = await requireRole("owner", "office_staff");
+  const projectId = String(formData.get("project_id") ?? "");
+  const siteAddress = String(formData.get("site_address") ?? "").trim() || null;
+  if (!projectId) return { error: "Missing project reference." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("projects")
+    .update({ site_address: siteAddress })
+    .eq("id", projectId);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  await supabase.from("project_events").insert({
+    project_id: projectId,
+    user_id: profile.id,
+    event: "site_address_updated",
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  return { saved: true };
+}

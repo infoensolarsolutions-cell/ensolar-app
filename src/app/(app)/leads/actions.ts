@@ -131,18 +131,40 @@ export async function updateLeadContact(
   const field = (k: string) => String(formData.get(k) ?? "").trim() || null;
 
   const supabase = await createClient();
+  const { data: before } = await supabase
+    .from("customers")
+    .select("address, barangay")
+    .eq("id", customerId)
+    .single();
+
+  const address = field("address");
+  const barangay = field("barangay");
   const { error } = await supabase
     .from("customers")
     .update({
       name,
       phone: field("phone"),
       email: field("email"),
-      address: field("address"),
-      barangay: field("barangay"),
+      address,
+      barangay,
       referred_by: field("referred_by"),
     })
     .eq("id", customerId);
   if (error) return { error: `Could not save: ${error.message}` };
+
+  // Projects snapshot the site address at creation. Keep snapshots that
+  // still match the customer's old address in sync; a site address that
+  // was changed on purpose (different installation site) is left alone.
+  const oldSite = [before?.address, before?.barangay].filter(Boolean).join(", ");
+  const newSite = [address, barangay].filter(Boolean).join(", ") || null;
+  if (oldSite !== (newSite ?? "")) {
+    const sync = supabase.from("projects").update({ site_address: newSite }).eq("customer_id", customerId);
+    if (oldSite) {
+      await sync.eq("site_address", oldSite);
+    } else {
+      await sync.is("site_address", null);
+    }
+  }
 
   await supabase.from("lead_events").insert({
     lead_id: leadId,
