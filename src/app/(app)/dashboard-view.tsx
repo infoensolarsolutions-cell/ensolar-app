@@ -77,14 +77,88 @@ export function DashboardView({ data }: { data: DashboardData }) {
   const maxSource = Math.max(1, ...data.bySource.map((s) => s.count));
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="grid grid-cols-3 gap-3">
+    <div className="space-y-4 p-4 lg:grid lg:grid-cols-3 lg:items-start lg:gap-3 lg:space-y-0 xl:grid-cols-4">
+      <div className="grid grid-cols-3 gap-3 lg:col-span-2">
         <StatCard label="New inquiries" value={data.counts.newInquiries} />
         <StatCard label="Quotes sent" value={data.counts.quotationsSent} sub={data.monthLabel} />
         <StatCard label="Won" value={data.counts.won} sub={data.monthLabel} />
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
+      {data.money && (
+        <div className="grid grid-cols-2 gap-3 lg:contents">
+          <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
+            <p className="text-lg font-extrabold text-brand-green-dark">
+              {formatPeso(data.money.collections)}
+            </p>
+            <p className="text-xs font-medium text-gray-600">Collections</p>
+            <p className="text-[10px] text-gray-400">{data.monthLabel}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
+            <p className="text-lg font-extrabold text-brand-green-dark">
+              {formatPeso(data.money.posSales)}
+            </p>
+            <p className="text-xs font-medium text-gray-600">POS sales</p>
+            <p className="text-[10px] text-gray-400">{data.monthLabel}</p>
+          </div>
+        </div>
+      )}
+
+      {data.revenueByMonth && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3">
+          <p className="mb-1 font-semibold text-gray-900">Money received per month</p>
+          <p className="mb-2 text-xs text-gray-500">
+            Project payments + POS sales, last 6 months
+          </p>
+          <MonthlyBars data={data.revenueByMonth} format={pesoShort} />
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:contents">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3">
+          <p className="mb-3 font-semibold text-gray-900">Sales pipeline</p>
+          {data.pipeline.every((s) => s.value === 0) ? (
+            <p className="text-sm text-gray-500">No leads yet.</p>
+          ) : (
+            <BarRows data={data.pipeline} />
+          )}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3">
+          <p className="mb-3 font-semibold text-gray-900">Projects by status</p>
+          {data.projectsByStatus.every((s) => s.value === 0) ? (
+            <p className="text-sm text-gray-500">No projects yet.</p>
+          ) : (
+            <BarRows data={data.projectsByStatus} />
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3">
+        <p className="mb-3 font-semibold text-gray-900">
+          Leads by source · {data.monthLabel}
+        </p>
+        {data.bySource.every((s) => s.count === 0) ? (
+          <p className="text-sm text-gray-500">No leads yet this month.</p>
+        ) : (
+          <ul className="space-y-2.5">
+            {data.bySource.map((s) => (
+              <li key={s.source}>
+                <div className="mb-0.5 flex justify-between text-sm">
+                  <span className="text-gray-700">{LEAD_SOURCES[s.source]}</span>
+                  <span className="font-semibold text-gray-900">{s.count}</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-gray-100">
+                  <div
+                    className="h-2.5 rounded-full bg-brand-green"
+                    style={{ width: `${(s.count / maxSource) * 100}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
         <div className="mb-2 flex items-center justify-between">
           <p className="font-semibold text-gray-900">Overdue follow-ups</p>
           {data.overdue.length > 0 && (
@@ -119,7 +193,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
         )}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
         <div className="mb-2 flex items-center justify-between">
           <p className="font-semibold text-gray-900">Overdue receivables</p>
           {data.receivables.length > 0 && (
@@ -157,7 +231,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
       </div>
 
       {data.openTickets.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
           <div className="mb-2 flex items-center justify-between">
             <p className="font-semibold text-gray-900">Open service tickets</p>
             <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
@@ -189,7 +263,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
       )}
 
       {data.maintenance.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
           <p className="mb-2 font-semibold text-gray-900">Maintenance due</p>
           <ul className="divide-y divide-gray-100">
             {data.maintenance.map((m) => (
@@ -199,37 +273,8 @@ export function DashboardView({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {data.revenueByMonth && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="mb-1 font-semibold text-gray-900">Money received per month</p>
-          <p className="mb-2 text-xs text-gray-500">
-            Project payments + POS sales, last 6 months
-          </p>
-          <MonthlyBars data={data.revenueByMonth} format={pesoShort} />
-        </div>
-      )}
-
-      {data.money && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
-            <p className="text-lg font-extrabold text-brand-green-dark">
-              {formatPeso(data.money.collections)}
-            </p>
-            <p className="text-xs font-medium text-gray-600">Collections</p>
-            <p className="text-[10px] text-gray-400">{data.monthLabel}</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
-            <p className="text-lg font-extrabold text-brand-green-dark">
-              {formatPeso(data.money.posSales)}
-            </p>
-            <p className="text-xs font-medium text-gray-600">POS sales</p>
-            <p className="text-[10px] text-gray-400">{data.monthLabel}</p>
-          </div>
-        </div>
-      )}
-
       {data.ongoingProfit && data.ongoingProfit.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
           <p className="mb-2 font-semibold text-gray-900">
             Gross profit — ongoing projects
           </p>
@@ -252,12 +297,12 @@ export function DashboardView({ data }: { data: DashboardData }) {
                       </p>
                     </div>
                     <span
-                      className={`shrink-0 text-sm font-bold ${
+                      className={`shrink-0 text-sm font-bold lg:text-xs ${
                         profit >= 0 ? "text-green-700" : "text-red-600"
                       }`}
                     >
                       {formatPeso(profit)}
-                      <span className="ml-1 text-xs">({pct.toFixed(0)}%)</span>
+                      <span className="ml-1 text-xs lg:text-[10px]">({pct.toFixed(0)}%)</span>
                     </span>
                   </Link>
                 </li>
@@ -270,7 +315,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
       {data.marketingIdle && (
         <Link
           href="/campaigns"
-          className="block rounded-xl border border-purple-200 bg-purple-50 px-4 py-3"
+          className="block rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 lg:col-span-3 xl:col-span-4"
         >
           <p className="text-sm font-semibold text-purple-900">
             📣 No marketing campaign has been active for 30+ days
@@ -283,7 +328,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
       )}
 
       {data.lowStock.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
           <div className="mb-2 flex items-center justify-between">
             <p className="font-semibold text-gray-900">Low stock</p>
             <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
@@ -308,50 +353,6 @@ export function DashboardView({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="mb-3 font-semibold text-gray-900">Sales pipeline</p>
-          {data.pipeline.every((s) => s.value === 0) ? (
-            <p className="text-sm text-gray-500">No leads yet.</p>
-          ) : (
-            <BarRows data={data.pipeline} />
-          )}
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="mb-3 font-semibold text-gray-900">Projects by status</p>
-          {data.projectsByStatus.every((s) => s.value === 0) ? (
-            <p className="text-sm text-gray-500">No projects yet.</p>
-          ) : (
-            <BarRows data={data.projectsByStatus} />
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <p className="mb-3 font-semibold text-gray-900">
-          Leads by source · {data.monthLabel}
-        </p>
-        {data.bySource.every((s) => s.count === 0) ? (
-          <p className="text-sm text-gray-500">No leads yet this month.</p>
-        ) : (
-          <ul className="space-y-2.5">
-            {data.bySource.map((s) => (
-              <li key={s.source}>
-                <div className="mb-0.5 flex justify-between text-sm">
-                  <span className="text-gray-700">{LEAD_SOURCES[s.source]}</span>
-                  <span className="font-semibold text-gray-900">{s.count}</span>
-                </div>
-                <div className="h-2.5 rounded-full bg-gray-100">
-                  <div
-                    className="h-2.5 rounded-full bg-brand-green"
-                    style={{ width: `${(s.count / maxSource) * 100}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
     </div>
   );
 }

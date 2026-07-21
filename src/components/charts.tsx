@@ -89,16 +89,16 @@ export function BarRows({
 }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
-    <ul className="space-y-2.5">
+    <ul className="space-y-2.5 lg:space-y-1.5">
       {data.map((d) => (
         <li key={d.label}>
-          <div className="mb-0.5 flex justify-between text-sm">
+          <div className="mb-0.5 flex justify-between text-sm lg:text-xs">
             <span className="text-gray-700">{d.label}</span>
             <span className="font-semibold text-gray-900">{format(d.value)}</span>
           </div>
-          <div className="h-2.5 rounded-full bg-gray-100">
+          <div className="h-2.5 rounded-full bg-gray-100 lg:h-2">
             <div
-              className="h-2.5 rounded-full bg-brand-green"
+              className="h-2.5 rounded-full bg-brand-green lg:h-2"
               style={{ width: `${(d.value / max) * 100}%` }}
             />
           </div>
