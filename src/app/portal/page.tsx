@@ -11,6 +11,7 @@ import {
   type ServiceType,
 } from "@/lib/crm";
 import { formatDate, formatPeso } from "@/lib/format";
+import { ProgressBar } from "@/components/charts";
 import { RequestServiceForm } from "./request-service-form";
 import { PayButton } from "./pay-button";
 
@@ -184,6 +185,10 @@ export default async function PortalPage({
                   </p>
                 </div>
               </div>
+
+              {Number(project.contract_amount) > 0 && (
+                <ProgressBar value={paid} max={Number(project.contract_amount)} />
+              )}
 
               {projMilestones.length > 0 && (
                 <div>

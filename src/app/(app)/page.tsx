@@ -1,8 +1,19 @@
+import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
-import { getProfile } from "@/lib/auth";
+import { getProfile, type Profile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { LEAD_SOURCES, type LeadSource, type LeadStatus } from "@/lib/crm";
+import {
+  LEAD_SOURCES,
+  LEAD_STATUSES,
+  PROJECT_STATUSES,
+  SERVICE_TYPES,
+  type LeadSource,
+  type LeadStatus,
+  type ProjectStatus,
+  type ServiceType,
+} from "@/lib/crm";
 import { todayManila, TIMEZONE } from "@/lib/format";
+import { BarRows } from "@/components/charts";
 import { DashboardView, type DashboardData } from "./dashboard-view";
 
 type OverdueRow = {
@@ -20,24 +31,10 @@ type SourceRow = {
 export default async function DashboardPage() {
   const profile = (await getProfile())!;
 
-  // Technicians get their module in Phase 1 Module B (assigned projects).
+  // Technicians get a work-focused dashboard: their projects, tickets,
+  // and clocked hours this week.
   if (profile.role === "technician") {
-    return (
-      <>
-        <TopBar title="Ensolar" />
-        <div className="p-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="font-semibold text-gray-900">
-              Welcome, {profile.name || "Technician"}
-            </p>
-            <p className="mt-1 text-sm text-gray-600">
-              Your assigned projects and job updates arrive with the Projects
-              module. For now, please coordinate with the office.
-            </p>
-          </div>
-        </div>
-      </>
-    );
+    return <TechnicianDashboard profile={profile} />;
   }
 
   const supabase = await createClient();
@@ -63,6 +60,8 @@ export default async function DashboardPage() {
     maintenanceRes,
     lowStockRes,
     campaignsRes,
+    leadStatusRes,
+    projStatusRes,
   ] = await Promise.all([
       supabase
         .from("leads")
@@ -125,6 +124,8 @@ export default async function DashboardPage() {
         .select("end_date")
         .order("created_at", { ascending: false })
         .limit(50),
+      supabase.from("leads").select("status").limit(2000),
+      supabase.from("projects").select("status").limit(2000),
     ]);
 
   const dayMs = 24 * 60 * 60 * 1000;
@@ -220,12 +221,30 @@ export default async function DashboardPage() {
     })
     .filter((m) => m.project_id);
 
+  const statusCount = <K extends string>(
+    rows: { status: string }[] | null,
+    labels: Record<K, string>,
+  ) =>
+    (Object.keys(labels) as K[]).map((key) => ({
+      label: labels[key],
+      value: (rows ?? []).filter((r) => r.status === key).length,
+    }));
+
+  const pipeline = statusCount(leadStatusRes.data, LEAD_STATUSES);
+  const projectsByStatus = statusCount(projStatusRes.data, PROJECT_STATUSES);
+
   // Owner-only money panels (financial reports are owner territory, Spec §3).
   let money: DashboardData["money"] = null;
   let ongoingProfit: DashboardData["ongoingProfit"] = null;
+  let revenueByMonth: DashboardData["revenueByMonth"] = null;
   if (profile.role === "owner") {
     const monthStartUtc = new Date(`${monthStart}T00:00:00+08:00`).toISOString();
-    const [collectionsRes, posRes, ongoingRes] = await Promise.all([
+    // First day of the month five months back → six month buckets incl. this one.
+    const sixMonthsBack = new Date(Date.UTC(Number(monthStart.slice(0, 4)), Number(monthStart.slice(5, 7)) - 6, 1));
+    const sixMonthsBackIso = new Date(
+      `${sixMonthsBack.toISOString().slice(0, 10)}T00:00:00+08:00`,
+    ).toISOString();
+    const [collectionsRes, posRes, ongoingRes, payHistRes, posHistRes] = await Promise.all([
       supabase.from("payments").select("amount").gte("received_at", monthStartUtc),
       supabase.from("pos_sales").select("total").gte("sold_at", monthStartUtc),
       supabase
@@ -233,11 +252,39 @@ export default async function DashboardPage() {
         .select("id, project_no, contract_amount, customers (name), project_costs (amount)")
         .eq("status", "ongoing")
         .limit(20),
+      supabase
+        .from("payments")
+        .select("amount, received_at")
+        .gte("received_at", sixMonthsBackIso)
+        .limit(5000),
+      supabase
+        .from("pos_sales")
+        .select("total, sold_at")
+        .gte("sold_at", sixMonthsBackIso)
+        .limit(5000),
     ]);
     money = {
       collections: (collectionsRes.data ?? []).reduce((s, p) => s + Number(p.amount), 0),
       posSales: (posRes.data ?? []).reduce((s, p) => s + Number(p.total), 0),
     };
+
+    const monthFmt = new Intl.DateTimeFormat("en-PH", { month: "short", timeZone: TIMEZONE });
+    const keyFmt = new Intl.DateTimeFormat("en-CA", {
+      year: "numeric", month: "2-digit", timeZone: TIMEZONE,
+    });
+    const buckets: { key: string; label: string; value: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(Date.UTC(Number(monthStart.slice(0, 4)), Number(monthStart.slice(5, 7)) - 1 - i, 15));
+      buckets.push({ key: keyFmt.format(d), label: monthFmt.format(d), value: 0 });
+    }
+    const addTo = (iso: string, amount: number) => {
+      const key = keyFmt.format(new Date(iso));
+      const bucket = buckets.find((b) => b.key === key);
+      if (bucket) bucket.value += amount;
+    };
+    for (const p of payHistRes.data ?? []) addTo(p.received_at, Number(p.amount));
+    for (const s of posHistRes.data ?? []) addTo(s.sold_at, Number(s.total));
+    revenueByMonth = buckets.map(({ label, value }) => ({ label, value }));
     ongoingProfit = (ongoingRes.data ?? []).map((p) => {
       const customer = Array.isArray(p.customers) ? p.customers[0] : p.customers;
       return {
@@ -277,6 +324,9 @@ export default async function DashboardPage() {
     marketingIdle,
     money,
     ongoingProfit,
+    revenueByMonth,
+    pipeline,
+    projectsByStatus,
     monthLabel,
     bySource,
     counts: {
@@ -290,6 +340,177 @@ export default async function DashboardPage() {
     <>
       <TopBar title="Ensolar" />
       <DashboardView data={data} />
+    </>
+  );
+}
+
+async function TechnicianDashboard({ profile }: { profile: Profile }) {
+  const supabase = await createClient();
+  const today = todayManila();
+
+  // Monday of the current week, Manila time.
+  const [y, m, d] = today.split("-").map(Number);
+  const todayUtcNoon = new Date(Date.UTC(y, m - 1, d, 12));
+  const dow = (todayUtcNoon.getUTCDay() + 6) % 7; // 0 = Monday
+  const monday = new Date(todayUtcNoon.getTime() - dow * 86400000);
+  const mondayStr = monday.toISOString().slice(0, 10);
+  const weekStartIso = new Date(`${mondayStr}T00:00:00+08:00`).toISOString();
+
+  const [{ data: projects }, { data: tickets }, { data: employee }] =
+    await Promise.all([
+      supabase
+        .from("projects")
+        .select("id, project_no, status, service_type, site_address")
+        .neq("status", "closed")
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("service_tickets")
+        .select("id, ticket_no, problem, status, reported_at")
+        .eq("assigned_to", profile.id)
+        .in("status", ["open", "in_progress"])
+        .order("reported_at", { ascending: true })
+        .limit(15),
+      supabase
+        .from("employees")
+        .select("id")
+        .eq("profile_id", profile.id)
+        .maybeSingle(),
+    ]);
+
+  let hoursByDay: { label: string; value: number }[] | null = null;
+  let clockedIn = false;
+  if (employee) {
+    const { data: entries } = await supabase
+      .from("attendance")
+      .select("clock_in, clock_out")
+      .eq("employee_id", employee.id)
+      .gte("clock_in", weekStartIso)
+      .order("clock_in");
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const totals = new Array(6).fill(0);
+    const dayFmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit",
+    });
+    for (const e of entries ?? []) {
+      if (!e.clock_out) {
+        clockedIn = true;
+        continue;
+      }
+      const entryDay = dayFmt.format(new Date(e.clock_in));
+      const idx = Math.round(
+        (new Date(`${entryDay}T12:00:00Z`).getTime() -
+          new Date(`${mondayStr}T12:00:00Z`).getTime()) /
+          86400000,
+      );
+      if (idx >= 0 && idx < 6) {
+        totals[idx] +=
+          (new Date(e.clock_out).getTime() - new Date(e.clock_in).getTime()) /
+          3600000;
+      }
+    }
+    hoursByDay = days.map((label, i) => ({
+      label,
+      value: Math.round(totals[i] * 10) / 10,
+    }));
+  }
+
+  return (
+    <>
+      <TopBar title="Ensolar" />
+      <div className="space-y-4 p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="font-semibold text-gray-900">
+            Welcome, {profile.name || "Technician"} 👷
+          </p>
+          <Link
+            href="/attendance"
+            className={`mt-3 block w-full rounded-lg px-4 py-3 text-center text-sm font-semibold ${
+              clockedIn
+                ? "bg-amber-100 text-amber-900"
+                : "bg-brand-green text-white active:bg-brand-green-dark"
+            }`}
+          >
+            {clockedIn ? "⏱ You are clocked in — tap to clock out" : "🕐 Clock in / out"}
+          </Link>
+        </div>
+
+        {hoursByDay && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-3 font-semibold text-gray-900">
+              Clocked hours this week
+            </p>
+            <BarRows data={hoursByDay} format={(v) => `${v} h`} />
+          </div>
+        )}
+
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="mb-2 font-semibold text-gray-900">My projects</p>
+          {!projects?.length && (
+            <p className="text-sm text-gray-500">
+              No assigned projects yet. The office assigns you from the
+              project page.
+            </p>
+          )}
+          <ul className="divide-y divide-gray-100">
+            {projects?.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/projects/${p.id}`}
+                  className="flex items-center justify-between gap-2 py-2.5"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{p.project_no}</p>
+                    <p className="text-xs text-gray-500">
+                      {[
+                        p.service_type
+                          ? SERVICE_TYPES[p.service_type as ServiceType]
+                          : null,
+                        p.site_address,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                    {PROJECT_STATUSES[p.status as ProjectStatus]}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {(tickets?.length ?? 0) > 0 && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 font-semibold text-gray-900">My service tickets</p>
+            <ul className="divide-y divide-gray-100">
+              {tickets!.map((t) => (
+                <li key={t.id}>
+                  <Link
+                    href={`/tickets/${t.id}`}
+                    className="flex items-center justify-between gap-2 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{t.ticket_no}</p>
+                      <p className="truncate text-xs text-gray-500">{t.problem}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        t.status === "open"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {t.status === "open" ? "Open" : "In Progress"}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </>
   );
 }

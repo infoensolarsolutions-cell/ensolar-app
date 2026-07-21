@@ -51,13 +51,18 @@ const TABS = [
   },
 ];
 
-export function BottomNav() {
+export function BottomNav({ role }: { role?: string }) {
   const pathname = usePathname();
+  // Technicians only ever reach Home, Projects, and More.
+  const tabs =
+    role === "technician"
+      ? TABS.filter((t) => ["/", "/projects", "/more"].includes(t.href))
+      : TABS;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto flex max-w-lg">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active =
             tab.href === "/"
               ? pathname === "/"
