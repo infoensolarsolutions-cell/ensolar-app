@@ -51,7 +51,7 @@ export default async function CampaignsPage() {
   return (
     <>
       <TopBar title="Marketing" backHref="/more" />
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
         <CampaignForm />
         {rows.length === 0 && (
           <p className="pt-2 text-center text-sm text-gray-500">

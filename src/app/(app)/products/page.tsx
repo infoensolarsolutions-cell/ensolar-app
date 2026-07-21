@@ -45,8 +45,8 @@ export default async function ProductsPage({
   return (
     <>
       <TopBar title="Products & Stock" />
-      <div className="space-y-3 p-4">
-        <form action="/products" className="flex gap-2">
+      <div className="space-y-3 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0 xl:grid-cols-3">
+        <form action="/products" className="flex gap-2 lg:col-span-full lg:max-w-md">
           <input
             name="q"
             defaultValue={q ?? ""}
@@ -58,7 +58,7 @@ export default async function ProductsPage({
           </button>
         </form>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between lg:col-span-full">
           <p className="text-xs text-gray-500">
             Stock value at cost:{" "}
             <span className="font-bold text-gray-800">{formatPeso(stockValue)}</span>
@@ -72,7 +72,7 @@ export default async function ProductsPage({
         </div>
 
         {!products?.length && (
-          <p className="pt-6 text-center text-sm text-gray-500">No products found.</p>
+          <p className="pt-6 text-center text-sm text-gray-500 lg:col-span-full">No products found.</p>
         )}
 
         {products?.map((p) => {

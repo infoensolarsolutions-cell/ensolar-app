@@ -34,16 +34,16 @@ export default async function QuotationsPage() {
   return (
     <>
       <TopBar title="Quotations" />
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0 xl:grid-cols-3">
         <Link
           href="/quotations/new"
-          className="block w-full rounded-xl bg-brand-green px-4 py-3.5 text-center text-base font-semibold text-white active:bg-brand-green-dark"
+          className="block w-full rounded-xl bg-brand-green px-4 py-3.5 text-center text-base font-semibold text-white active:bg-brand-green-dark lg:col-span-full lg:w-auto lg:justify-self-start lg:px-6"
         >
           + New Quotation
         </Link>
 
         {!quotations?.length && (
-          <p className="pt-8 text-center text-sm text-gray-500">
+          <p className="pt-8 text-center text-sm text-gray-500 lg:col-span-full">
             No quotations yet.
           </p>
         )}

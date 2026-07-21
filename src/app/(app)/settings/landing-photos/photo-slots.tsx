@@ -62,9 +62,9 @@ export function PhotoSlots({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p>
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 lg:col-span-full">{error}</p>
       )}
       {SLOTS.map((slot) => {
         const v = versions[slot.name];

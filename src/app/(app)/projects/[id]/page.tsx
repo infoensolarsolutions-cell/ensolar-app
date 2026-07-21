@@ -234,8 +234,8 @@ export default async function ProjectDetailPage({
   return (
     <>
       <TopBar title={project.project_no} backHref="/projects" />
-      <div className="space-y-4 p-4">
-        <Link href="/projects" className="text-sm font-medium text-brand-green-dark">
+      <div className="space-y-4 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
+        <Link href="/projects" className="text-sm font-medium text-brand-green-dark lg:col-span-full">
           ← All projects
         </Link>
 

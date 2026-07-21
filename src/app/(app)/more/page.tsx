@@ -13,7 +13,7 @@ export default async function MorePage() {
   return (
     <>
       <TopBar title="More" />
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="font-semibold text-gray-900">
             {profile.name || profile.email}

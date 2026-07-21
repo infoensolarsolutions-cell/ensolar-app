@@ -19,15 +19,15 @@ export default async function EmployeesPage() {
   return (
     <>
       <TopBar title="Employees" backHref="/more" />
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0 xl:grid-cols-3">
         <Link
           href="/employees/new"
-          className="block w-full rounded-xl bg-brand-green px-4 py-3.5 text-center text-base font-semibold text-white"
+          className="block w-full rounded-xl bg-brand-green px-4 py-3.5 text-center text-base font-semibold text-white lg:col-span-full lg:w-auto lg:justify-self-start lg:px-6"
         >
           + Add Employee
         </Link>
         {!employees?.length && (
-          <p className="pt-6 text-center text-sm text-gray-500">No employees yet.</p>
+          <p className="pt-6 text-center text-sm text-gray-500 lg:col-span-full">No employees yet.</p>
         )}
         {employees?.map((e) => (
           <Link

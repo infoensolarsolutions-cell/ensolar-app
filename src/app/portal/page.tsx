@@ -104,8 +104,8 @@ export default async function PortalPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-lg space-y-4 p-4 pb-16">
-        <p className="text-sm text-gray-700">
+      <main className="mx-auto max-w-lg space-y-4 p-4 pb-16 lg:max-w-5xl lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
+        <p className="text-sm text-gray-700 lg:col-span-full">
           Welcome, <span className="font-semibold">{profile.name || "Customer"}</span>
         </p>
 
