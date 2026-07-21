@@ -14,10 +14,28 @@ const inputClass =
   "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-green focus:outline-none";
 
 export function ExpenseForm() {
+  const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(addExpense, null);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-white active:bg-brand-green-dark"
+      >
+        + New Expense
+      </button>
+    );
+  }
+
   return (
-    <form action={formAction} className="space-y-2 rounded-xl border border-gray-200 bg-white p-4">
-      <p className="font-semibold text-gray-900">Add expense</p>
+    <form action={formAction} className="w-full space-y-2 rounded-xl border border-gray-200 bg-white p-4 lg:max-w-md">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold text-gray-900">Add expense</p>
+        <button type="button" onClick={() => setOpen(false)} className="text-xs text-gray-400 underline">
+          close
+        </button>
+      </div>
       <input name="category" list="expense-categories" placeholder="Category *" required className={inputClass} />
       <datalist id="expense-categories">
         {CATEGORIES.map((c) => <option key={c} value={c} />)}
@@ -85,5 +103,89 @@ export function ExpenseItem({
         )}
       </div>
     </li>
+  );
+}
+
+function DeleteButton({ id, onError }: { id: string; onError: (m: string) => void }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          const res = await deleteExpense(id);
+          if (res.error) onError(res.error);
+        })
+      }
+      className="text-xs text-gray-400 underline"
+    >
+      remove
+    </button>
+  );
+}
+
+// Desktop table presentation; phones use ExpenseItem cards.
+export function ExpenseTable({
+  expenses,
+}: {
+  expenses: {
+    id: string;
+    category: string;
+    description: string | null;
+    amount: number;
+    date: string;
+    payroll_run_id: string | null;
+  }[];
+}) {
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      {error && (
+        <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm font-medium text-red-700">
+          {error}
+        </p>
+      )}
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wider text-gray-400">
+            <th className="px-4 py-3 font-semibold">Date</th>
+            <th className="px-4 py-3 font-semibold">Category</th>
+            <th className="px-4 py-3 font-semibold">Description</th>
+            <th className="px-4 py-3 text-right font-semibold">Amount</th>
+            <th className="px-4 py-3" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {expenses.length === 0 && (
+            <tr>
+              <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                No expenses recorded this month.
+              </td>
+            </tr>
+          )}
+          {expenses.map((e) => (
+            <tr key={e.id} className="hover:bg-gray-50">
+              <td className="px-4 py-2.5 text-gray-600">{formatDate(e.date)}</td>
+              <td className="px-4 py-2.5 font-medium text-gray-800">
+                {e.category}
+                {e.payroll_run_id && (
+                  <span className="ml-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                    from payroll
+                  </span>
+                )}
+              </td>
+              <td className="px-4 py-2.5 text-gray-500">{e.description || "—"}</td>
+              <td className="px-4 py-2.5 text-right font-bold text-red-600">
+                {formatPeso(e.amount)}
+              </td>
+              <td className="px-4 py-2.5 text-right">
+                {!e.payroll_run_id && <DeleteButton id={e.id} onError={setError} />}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
