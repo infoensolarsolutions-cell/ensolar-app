@@ -219,9 +219,16 @@ export default async function ProductsPage({
                           <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
                             LOW STOCK
                           </span>
-                        ) : (
+                        ) : Number(p.reorder_level) > 0 ? (
                           <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[10px] font-bold text-green-800">
                             OK
+                          </span>
+                        ) : (
+                          <span
+                            className="rounded-full bg-gray-50 px-2.5 py-0.5 text-[10px] font-semibold text-gray-400"
+                            title="No reorder level set — restocking not tracked"
+                          >
+                            NOT TRACKED
                           </span>
                         )}
                       </td>
