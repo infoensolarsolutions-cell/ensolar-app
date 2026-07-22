@@ -59,7 +59,10 @@ export function StockForms({ productId }: { productId: string }) {
     <form action={adjAction} className="space-y-2 rounded-lg border border-gray-200 p-3">
       <p className="text-sm font-semibold text-gray-800">Stock adjustment</p>
       <input type="hidden" name="product_id" value={productId} />
-      <input name="qty" type="number" step="any" inputMode="decimal" placeholder="Quantity (+add / −remove) *" required className={inputClass} />
+      <div className="grid grid-cols-2 gap-2">
+        <input name="qty" type="number" step="any" inputMode="decimal" placeholder="Quantity (+add / −remove) *" required className={inputClass} />
+        <input name="date" type="date" className={inputClass} />
+      </div>
       <input name="reason" placeholder="Reason (required — e.g. damaged, count correction)" required className={inputClass} />
       {adjState?.error && <p className="text-xs font-medium text-red-600">{adjState.error}</p>}
       <div className="flex gap-2">

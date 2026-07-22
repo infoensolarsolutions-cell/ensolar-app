@@ -118,6 +118,7 @@ export async function adjustStock(
   const productId = String(formData.get("product_id") ?? "");
   const qty = Number(formData.get("qty") ?? 0);
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
+  const date = String(formData.get("date") ?? "");
 
   if (!productId || !qty) return { error: "Enter the adjustment quantity (+ or −)." };
   if (!reason) return { error: "A reason is required for adjustments." };
@@ -128,6 +129,7 @@ export async function adjustStock(
     type: "adjustment",
     qty,
     reason,
+    ...(date ? { date } : {}),
     user_id: profile.id,
   });
   if (error) return { error: "Could not record the adjustment." };

@@ -57,6 +57,16 @@ export default async function ProductDetailPage({
               {Number(product.reorder_level) > 0 &&
                 ` · Reorder at ${Number(product.reorder_level)}`}
             </p>
+            {(() => {
+              const lastIn = txns?.find((t) => Number(t.qty) > 0)?.date;
+              const lastOut = txns?.find((t) => Number(t.qty) < 0)?.date;
+              return (
+                <p className="mt-0.5 text-xs text-gray-400">
+                  Last stock in: {lastIn ? formatDate(lastIn) : "—"} · Last stock
+                  out: {lastOut ? formatDate(lastOut) : "—"}
+                </p>
+              );
+            })()}
           </div>
           <div className="mt-3">
             <StockForms productId={product.id} />
