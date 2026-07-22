@@ -49,10 +49,10 @@ export default async function QuotationTemplatesPage() {
         )}
 
         {templates?.map((t) => {
-          const total = (t.items ?? []).reduce(
-            (s, i) => s + (Number(i.qty) || 0) * (Number(i.unit_price) || 0),
-            0,
-          );
+          let total = 0;
+          for (const i of t.items ?? []) {
+            total += (Number(i.qty) || 0) * (Number(i.unit_price) || 0);
+          }
           return (
             <div key={t.id} className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
