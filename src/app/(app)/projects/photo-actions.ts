@@ -14,36 +14,57 @@ export async function uploadProjectPhoto(
   const projectId = String(formData.get("project_id") ?? "");
   const phase = String(formData.get("phase") ?? "during");
   const caption = String(formData.get("caption") ?? "").trim().slice(0, 200);
-  const photo = formData.get("photo") as File | null;
+  const photos = (formData.getAll("photo") as File[]).filter(
+    (f) => f && typeof f.size === "number" && f.size > 0,
+  );
 
   if (!projectId) return { error: "Invalid project." };
-  if (!photo || photo.size === 0) return { error: "Choose a photo first." };
-  if (photo.size > 15 * 1024 * 1024) return { error: "Photo too large (max 15 MB)." };
+  if (!photos.length) return { error: "Choose a photo first." };
+  if (photos.length > 10) return { error: "Maximum 10 photos per upload." };
+  for (const photo of photos) {
+    if (photo.size > 15 * 1024 * 1024) {
+      return { error: `"${photo.name}" is too large (max 15 MB per photo).` };
+    }
+  }
   if (!["before", "during", "after"].includes(phase)) return { error: "Invalid phase." };
 
   const supabase = await createClient();
-  const ext = (photo.name.split(".").pop() || "jpg").toLowerCase().slice(0, 5);
-  const storagePath = `projects/${projectId}/${crypto.randomUUID()}.${ext}`;
+  let uploaded = 0;
+  for (const photo of photos) {
+    const ext = (photo.name.split(".").pop() || "jpg").toLowerCase().slice(0, 5);
+    const storagePath = `projects/${projectId}/${crypto.randomUUID()}.${ext}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("project-photos")
-    .upload(storagePath, photo);
-  if (uploadError) return { error: "Could not upload the photo." };
+    const { error: uploadError } = await supabase.storage
+      .from("project-photos")
+      .upload(storagePath, photo);
+    if (uploadError) {
+      revalidatePath(`/projects/${projectId}`);
+      return {
+        error: `Uploaded ${uploaded} of ${photos.length} — then failed: ${uploadError.message}`,
+      };
+    }
 
-  const { error } = await supabase.from("project_photos").insert({
-    project_id: projectId,
-    storage_path: storagePath,
-    caption: caption || null,
-    phase,
-    uploaded_by: profile.id,
-  });
-  if (error) return { error: "Could not save the photo record." };
+    const { error } = await supabase.from("project_photos").insert({
+      project_id: projectId,
+      storage_path: storagePath,
+      caption: caption || null,
+      phase,
+      uploaded_by: profile.id,
+    });
+    if (error) {
+      revalidatePath(`/projects/${projectId}`);
+      return {
+        error: `Uploaded ${uploaded} of ${photos.length} — then failed: ${error.message}`,
+      };
+    }
+    uploaded++;
+  }
 
   await supabase.from("project_events").insert({
     project_id: projectId,
     user_id: profile.id,
     event: "photo_uploaded",
-    detail: { phase, caption },
+    detail: { phase, caption, count: String(uploaded) },
   });
 
   revalidatePath(`/projects/${projectId}`);
