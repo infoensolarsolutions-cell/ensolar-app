@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getProfile, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { PROJECT_STATUSES, type ProjectStatus } from "@/lib/crm";
+import { PROJECT_STATUSES, SERVICE_TYPES, type ProjectStatus } from "@/lib/crm";
 
 const FLOW: Record<string, ProjectStatus[]> = {
   pending: ["ongoing"],
@@ -214,5 +214,55 @@ export async function updateSiteAddress(
   });
 
   revalidatePath(`/projects/${projectId}`);
+  return { saved: true };
+}
+
+export async function updateProjectData(
+  _prev: { error?: string; saved?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; saved?: boolean }> {
+  const profile = await requireRole("owner");
+  const projectId = String(formData.get("project_id") ?? "");
+  const serviceType = String(formData.get("service_type") ?? "");
+  const contractAmount = Number(formData.get("contract_amount") ?? 0);
+
+  if (!projectId) return { error: "Missing project reference." };
+  if (serviceType && !(serviceType in SERVICE_TYPES)) {
+    return { error: "Invalid service type." };
+  }
+  if (!Number.isFinite(contractAmount) || contractAmount < 0) {
+    return { error: "Contract amount must be zero or more." };
+  }
+
+  const supabase = await createClient();
+  const { data: before } = await supabase
+    .from("projects")
+    .select("contract_amount, service_type")
+    .eq("id", projectId)
+    .single();
+  if (!before) return { error: "Project not found." };
+
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      service_type: serviceType || null,
+      contract_amount: contractAmount,
+    })
+    .eq("id", projectId);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  if (Number(before.contract_amount) !== contractAmount) {
+    await supabase.from("project_events").insert({
+      project_id: projectId,
+      user_id: profile.id,
+      event: "note",
+      detail: {
+        text: `Contract amount changed from ${Number(before.contract_amount).toLocaleString()} to ${contractAmount.toLocaleString()}`,
+      },
+    });
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/projects");
   return { saved: true };
 }
