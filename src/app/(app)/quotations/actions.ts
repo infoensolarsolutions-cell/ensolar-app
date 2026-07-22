@@ -322,3 +322,41 @@ export async function saveQuotationTemplate(
   revalidatePath("/quotations/new");
   return {};
 }
+
+export async function renameQuotationTemplate(
+  id: string,
+  name: string,
+): Promise<{ error?: string }> {
+  await requireRole("owner", "office_staff");
+  const cleanName = String(name ?? "").trim().slice(0, 120);
+  if (!id || !cleanName) return { error: "Template name is required." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("quotation_templates")
+    .update({ name: cleanName })
+    .eq("id", id);
+  if (error) return { error: `Could not rename: ${error.message}` };
+
+  revalidatePath("/settings/quotation-templates");
+  revalidatePath("/quotations/new");
+  return {};
+}
+
+export async function deleteQuotationTemplate(
+  id: string,
+): Promise<{ error?: string }> {
+  await requireRole("owner", "office_staff");
+  if (!id) return { error: "Missing template." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("quotation_templates")
+    .delete()
+    .eq("id", id);
+  if (error) return { error: `Could not delete: ${error.message}` };
+
+  revalidatePath("/settings/quotation-templates");
+  revalidatePath("/quotations/new");
+  return {};
+}
