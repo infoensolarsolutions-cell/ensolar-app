@@ -23,6 +23,7 @@ import { AssignForm } from "./assign-form";
 import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
 import { SiteAddressForm } from "./site-address-form";
+import { EditProjectForm } from "./edit-project-form";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -292,6 +293,13 @@ export default async function ProjectDetailPage({
                 />
               )}
             </div>
+          )}
+          {profile.role === "owner" && (
+            <EditProjectForm
+              projectId={project.id}
+              serviceType={project.service_type}
+              contractAmount={Number(project.contract_amount)}
+            />
           )}
           {isStaff && (
             <div className="mt-3 grid grid-cols-3 gap-2 border-t border-gray-100 pt-3 text-center">
