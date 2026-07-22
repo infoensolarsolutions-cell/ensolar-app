@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
 import { getProfile, ROLE_LABELS, type UserRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { BroadcastForm } from "./broadcast-form";
 
 export const metadata: Metadata = { title: "Messages" };
 
@@ -58,6 +59,7 @@ export default async function MessagesPage() {
     <>
       <TopBar title="Messages" backHref="/more" />
       <div className="space-y-3 p-4 lg:max-w-2xl">
+        {["owner", "office_staff"].includes(profile.role) && <BroadcastForm />}
         {!sorted.length && (
           <p className="pt-8 text-center text-sm text-gray-500">
             No teammates yet. Add users under More → Users &amp; Roles.
