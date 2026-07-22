@@ -41,6 +41,15 @@ const TABS = [
     ),
   },
   {
+    href: "/messages",
+    label: "Chat",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a8 8 0 0 1-8 8H4l2.5-2.5A8 8 0 1 1 21 12Z" />
+      </svg>
+    ),
+  },
+  {
     href: "/more",
     label: "More",
     icon: (
@@ -53,10 +62,10 @@ const TABS = [
 
 export function BottomNav({ role }: { role?: string }) {
   const pathname = usePathname();
-  // Technicians only ever reach Home, Projects, and More.
+  // Technicians only ever reach Home, Projects, Chat, and More.
   const tabs =
     role === "technician"
-      ? TABS.filter((t) => ["/", "/projects", "/more"].includes(t.href))
+      ? TABS.filter((t) => ["/", "/projects", "/messages", "/more"].includes(t.href))
       : TABS;
 
   return (
