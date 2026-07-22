@@ -34,6 +34,8 @@ export async function saveProduct(
   const sellingPrice = Math.max(0, Number(formData.get("selling_price") ?? 0) || 0);
   const reorderLevel = Math.max(0, Number(formData.get("reorder_level") ?? 0) || 0);
   const active = String(formData.get("active") ?? "true") === "true";
+  // Unchecked checkboxes are absent from FormData.
+  const availableInPos = formData.get("available_in_pos") !== null;
 
   if (!sku || !name) return { error: "SKU and name are required." };
 
@@ -47,6 +49,7 @@ export async function saveProduct(
     selling_price: sellingPrice,
     reorder_level: reorderLevel,
     active,
+    available_in_pos: availableInPos,
   };
 
   if (productId) {

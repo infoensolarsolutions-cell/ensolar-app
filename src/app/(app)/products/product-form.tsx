@@ -24,6 +24,7 @@ export function ProductForm({
     selling_price: number;
     reorder_level: number;
     active: boolean;
+    available_in_pos: boolean;
   };
 }) {
   const [state, formAction, pending] = useActionState(saveProduct, null);
@@ -80,6 +81,21 @@ export function ProductForm({
           </select>
         </div>
       )}
+
+      <label className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5">
+        <span>
+          <span className="block text-sm font-medium text-gray-800">Sell in POS</span>
+          <span className="block text-xs text-gray-500">
+            Off = project material only; still tracked in inventory
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          name="available_in_pos"
+          defaultChecked={product?.available_in_pos ?? true}
+          className="h-5 w-5 accent-[--brand-green]"
+        />
+      </label>
 
       {state?.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{state.error}</p>
