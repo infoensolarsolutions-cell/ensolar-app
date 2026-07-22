@@ -3,7 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { formatPeso } from "@/lib/format";
+import { formatDate, formatPeso } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Products & Stock" };
 
@@ -35,7 +35,22 @@ export default async function ProductsPage({
     .order("name")
     .limit(200);
   if (q) query = query.or(`name.ilike.%${q}%,sku.ilike.%${q}%,category.ilike.%${q}%`);
-  const { data: products } = await query.overrideTypes<StockRow[]>();
+  const [{ data: products }, { data: txnDates }] = await Promise.all([
+    query.overrideTypes<StockRow[]>(),
+    supabase
+      .from("inventory_txns")
+      .select("product_id, qty, date")
+      .order("date", { ascending: false })
+      .limit(3000),
+  ]);
+
+  // Latest stock-in (qty > 0) and stock-out (qty < 0) date per product.
+  const lastIn = new Map<string, string>();
+  const lastOut = new Map<string, string>();
+  for (const t of txnDates ?? []) {
+    const target = Number(t.qty) > 0 ? lastIn : lastOut;
+    if (!target.has(t.product_id)) target.set(t.product_id, t.date);
+  }
 
   const stockValue = (products ?? []).reduce(
     (s, p) => s + Number(p.on_hand) * Number(p.cost_price),
@@ -110,6 +125,10 @@ export default async function ProductsPage({
                 <p className="mt-1 text-right text-xs text-gray-500">
                   Sell {formatPeso(p.selling_price)} · Cost {formatPeso(p.cost_price)}
                 </p>
+                <p className="text-right text-[11px] text-gray-400">
+                  Last in: {lastIn.has(p.id) ? formatDate(lastIn.get(p.id)!) : "—"} · Last
+                  out: {lastOut.has(p.id) ? formatDate(lastOut.get(p.id)!) : "—"}
+                </p>
               </Link>
             );
           })}
@@ -126,6 +145,8 @@ export default async function ProductsPage({
                   <th className="px-4 py-3 text-right font-semibold">Price</th>
                   <th className="px-4 py-3 text-right font-semibold">Cost</th>
                   <th className="px-4 py-3 text-right font-semibold">Stock</th>
+                  <th className="px-4 py-3 font-semibold">Last In</th>
+                  <th className="px-4 py-3 font-semibold">Last Out</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 text-right font-semibold">Actions</th>
                 </tr>
@@ -152,6 +173,12 @@ export default async function ProductsPage({
                       <td className="px-4 py-2.5 text-right font-bold text-gray-900">
                         {Number(p.on_hand)}{" "}
                         <span className="font-normal text-gray-500">{p.unit}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-gray-500">
+                        {lastIn.has(p.id) ? formatDate(lastIn.get(p.id)!) : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-gray-500">
+                        {lastOut.has(p.id) ? formatDate(lastOut.get(p.id)!) : "—"}
                       </td>
                       <td className="px-4 py-2.5">
                         {!p.active ? (
