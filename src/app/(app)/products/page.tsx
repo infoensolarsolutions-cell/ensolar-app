@@ -23,10 +23,10 @@ type StockRow = {
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; kind?: string }>;
 }) {
   await requireRole("owner", "office_staff", "technician");
-  const { q } = await searchParams;
+  const { q, kind } = await searchParams;
   const supabase = await createClient();
 
   let query = supabase
@@ -35,6 +35,8 @@ export default async function ProductsPage({
     .order("name")
     .limit(200);
   if (q) query = query.or(`name.ilike.%${q}%,sku.ilike.%${q}%,category.ilike.%${q}%`);
+  if (kind === "pos") query = query.eq("available_in_pos", true);
+  if (kind === "materials") query = query.eq("available_in_pos", false);
   const [{ data: products }, { data: txnDates }] = await Promise.all([
     query.overrideTypes<StockRow[]>(),
     supabase
@@ -62,6 +64,7 @@ export default async function ProductsPage({
       <TopBar title="Products & Stock" />
       <div className="space-y-3 p-4">
         <form action="/products" className="flex gap-2 lg:max-w-md">
+          {kind && <input type="hidden" name="kind" value={kind} />}
           <input
             name="q"
             defaultValue={q ?? ""}
@@ -72,6 +75,33 @@ export default async function ProductsPage({
             Search
           </button>
         </form>
+
+        <div className="flex flex-wrap gap-2">
+          {[
+            [undefined, "All products"],
+            ["pos", "POS items"],
+            ["materials", "Project materials only"],
+          ].map(([value, label]) => {
+            const active = (kind ?? undefined) === value || (!kind && !value);
+            const params = new URLSearchParams();
+            if (q) params.set("q", q);
+            if (value) params.set("kind", value);
+            const qs = params.toString();
+            return (
+              <Link
+                key={label}
+                href={`/products${qs ? `?${qs}` : ""}`}
+                className={`rounded-full border px-4 py-2 text-sm font-medium ${
+                  active
+                    ? "border-brand-green bg-brand-green text-white"
+                    : "border-gray-300 bg-white text-gray-700"
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </div>
 
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-500">

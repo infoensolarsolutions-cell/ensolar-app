@@ -15,6 +15,7 @@ export default async function PosPage() {
     .from("products_with_stock")
     .select("id, sku, name, unit, selling_price, on_hand")
     .eq("active", true)
+    .eq("available_in_pos", true)
     .gt("on_hand", 0)
     .order("name")
     .overrideTypes<PosProduct[]>();
