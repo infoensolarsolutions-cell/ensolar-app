@@ -68,7 +68,18 @@ export function ProductForm({
         </div>
         <div>
           <label className="text-xs text-gray-500">Reorder level</label>
-          <input name="reorder_level" type="number" min="0" step="any" inputMode="decimal" defaultValue={product?.reorder_level ?? ""} className={inputClass} />
+          <input
+            name="reorder_level"
+            type="number"
+            min="0"
+            step="any"
+            inputMode="decimal"
+            placeholder="Blank = no restocking"
+            defaultValue={
+              product ? (Number(product.reorder_level) > 0 ? product.reorder_level : "") : ""
+            }
+            className={inputClass}
+          />
         </div>
       </div>
 
