@@ -4,7 +4,7 @@ import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SERVICE_TYPES, LEAD_STATUSES, type LeadStatus, type ServiceType } from "@/lib/crm";
-import { QuotationBuilder, type ProductOption } from "../builder";
+import { QuotationBuilder, type ProductOption, type QuotationTemplate } from "../builder";
 
 export const metadata: Metadata = { title: "New Quotation" };
 
@@ -67,7 +67,7 @@ export default async function NewQuotationPage({
     );
   }
 
-  const [{ data: lead }, { data: products }] = await Promise.all([
+  const [{ data: lead }, { data: products }, { data: templates }] = await Promise.all([
     supabase
       .from("leads")
       .select("id, service_type, customers (name)")
@@ -80,6 +80,11 @@ export default async function NewQuotationPage({
       .eq("active", true)
       .order("name")
       .overrideTypes<ProductOption[]>(),
+    supabase
+      .from("quotation_templates")
+      .select("id, name, items, terms")
+      .order("name")
+      .overrideTypes<QuotationTemplate[]>(),
   ]);
 
   if (!lead) {
@@ -98,7 +103,11 @@ export default async function NewQuotationPage({
         <p className="font-semibold text-gray-900">{lead.customers?.name}</p>
         <p className="text-sm text-gray-600">{SERVICE_TYPES[lead.service_type]}</p>
       </div>
-      <QuotationBuilder products={products ?? []} leadId={lead.id} />
+      <QuotationBuilder
+        products={products ?? []}
+        leadId={lead.id}
+        templates={templates ?? []}
+      />
     </>
   );
 }

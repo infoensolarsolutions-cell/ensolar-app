@@ -290,3 +290,35 @@ export async function destroyQuotation(id: string): Promise<{ error?: string }> 
   revalidatePath("/quotations/trash");
   return {};
 }
+
+export async function saveQuotationTemplate(
+  name: string,
+  itemsJson: string,
+  terms: string,
+): Promise<{ error?: string }> {
+  const profile = await requireRole("owner", "office_staff");
+  const cleanName = String(name ?? "").trim().slice(0, 120);
+  if (!cleanName) return { error: "Template name is required." };
+
+  let items: unknown;
+  try {
+    items = JSON.parse(itemsJson);
+  } catch {
+    return { error: "Invalid items." };
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    return { error: "Add at least one line item first." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("quotation_templates").insert({
+    name: cleanName,
+    items,
+    terms: String(terms ?? "").trim() || null,
+    created_by: profile.id,
+  });
+  if (error) return { error: `Could not save template: ${error.message}` };
+
+  revalidatePath("/quotations/new");
+  return {};
+}

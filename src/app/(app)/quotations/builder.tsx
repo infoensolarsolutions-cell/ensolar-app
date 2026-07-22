@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
-import { saveQuotation } from "./actions";
+import { useActionState, useMemo, useState, useTransition } from "react";
+import { saveQuotation, saveQuotationTemplate } from "./actions";
 import { formatPeso } from "@/lib/format";
 
 export type ProductOption = {
@@ -10,6 +10,13 @@ export type ProductOption = {
   name: string;
   unit: string;
   selling_price: number;
+};
+
+export type QuotationTemplate = {
+  id: string;
+  name: string;
+  items: { product_id: string | null; description: string; qty: number; unit_price: number }[];
+  terms: string | null;
 };
 
 type Row = {
@@ -39,6 +46,7 @@ export function QuotationBuilder({
   products,
   leadId,
   quotation,
+  templates,
 }: {
   products: ProductOption[];
   leadId?: string;
@@ -49,8 +57,27 @@ export function QuotationBuilder({
     discount: number;
     items: { product_id: string | null; description: string; qty: number; unit_price: number }[];
   };
+  templates?: QuotationTemplate[];
 }) {
   const [state, formAction, pending] = useActionState(saveQuotation, null);
+  const [terms, setTerms] = useState<string>(quotation?.terms ?? DEFAULT_TERMS);
+  const [tplMessage, setTplMessage] = useState<string | null>(null);
+  const [tplPending, startTplTransition] = useTransition();
+
+  function applyTemplate(templateId: string) {
+    const t = templates?.find((x) => x.id === templateId);
+    if (!t) return;
+    setRows(
+      t.items.map((i) => ({
+        key: nextKey++,
+        product_id: i.product_id,
+        description: i.description,
+        qty: String(i.qty),
+        unit_price: String(i.unit_price),
+      })),
+    );
+    if (t.terms) setTerms(t.terms);
+  }
   const [rows, setRows] = useState<Row[]>(
     quotation?.items.length
       ? quotation.items.map((i) => ({
@@ -107,6 +134,24 @@ export function QuotationBuilder({
       {quotation && <input type="hidden" name="quotation_id" value={quotation.id} />}
       {leadId && <input type="hidden" name="lead_id" value={leadId} />}
       <input type="hidden" name="items" value={itemsJson} />
+
+      {!quotation && (templates?.length ?? 0) > 0 && (
+        <select
+          defaultValue=""
+          onChange={(e) => {
+            applyTemplate(e.target.value);
+            e.target.value = "";
+          }}
+          className={`${inputClass} border-brand-green/50 font-medium`}
+        >
+          <option value="">📋 Start from a template…</option>
+          {templates!.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      )}
 
       <div className="space-y-3">
         {rows.map((row, idx) => (
@@ -226,10 +271,33 @@ export function QuotationBuilder({
           Payment terms
         </label>
         <textarea
-          id="terms" name="terms" rows={3}
-          defaultValue={quotation?.terms ?? DEFAULT_TERMS}
+          id="terms" name="terms" rows={6}
+          value={terms}
+          onChange={(e) => setTerms(e.target.value)}
           className={inputClass}
         />
+      </div>
+
+      <div>
+        <button
+          type="button"
+          disabled={tplPending}
+          onClick={() => {
+            const name = prompt(
+              "Save these items and terms as a template. Template name:",
+            );
+            if (!name?.trim()) return;
+            setTplMessage(null);
+            startTplTransition(async () => {
+              const res = await saveQuotationTemplate(name.trim(), itemsJson, terms);
+              setTplMessage(res.error ?? "Template saved — it will appear in the template list.");
+            });
+          }}
+          className="text-sm font-medium text-brand-green-dark underline disabled:opacity-60"
+        >
+          {tplPending ? "Saving template…" : "💾 Save these items as a template"}
+        </button>
+        {tplMessage && <p className="mt-1 text-xs text-gray-500">{tplMessage}</p>}
       </div>
 
       {state?.error && (
