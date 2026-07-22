@@ -82,11 +82,12 @@ export function PhotosPanel({
       {canUpload && (
         <form action={formAction} className="mt-3 space-y-2 rounded-lg border border-gray-200 p-3">
           <input type="hidden" name="project_id" value={projectId} />
+          {/* No `capture` attribute: the phone offers Camera OR Photo Gallery. */}
           <input
             name="photo"
             type="file"
             accept="image/*"
-            capture="environment"
+            multiple
             required
             className="w-full text-sm"
           />
@@ -106,7 +107,7 @@ export function PhotosPanel({
             disabled={pending}
             className="w-full rounded-lg bg-brand-green px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
-            {pending ? "Uploading…" : "Upload photo"}
+            {pending ? "Uploading…" : "Upload photo(s)"}
           </button>
         </form>
       )}
