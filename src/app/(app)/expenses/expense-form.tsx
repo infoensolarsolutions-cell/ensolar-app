@@ -1,8 +1,62 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { addExpense, deleteExpense } from "./actions";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { addExpense, deleteExpense, updateExpense } from "./actions";
 import { formatDate, formatPeso } from "@/lib/format";
+
+type Expense = {
+  id: string;
+  category: string;
+  description: string | null;
+  amount: number;
+  date: string;
+  payroll_run_id: string | null;
+};
+
+// Shared inline editor used by both the mobile list and the desktop table.
+function EditExpenseFields({
+  expense,
+  onClose,
+}: {
+  expense: Expense;
+  onClose: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(updateExpense, null);
+
+  useEffect(() => {
+    if (state?.saved && !state.error) onClose();
+  }, [state, onClose]);
+
+  return (
+    <form action={formAction} className="w-full space-y-2 py-2">
+      <input type="hidden" name="expense_id" value={expense.id} />
+      <div className="grid grid-cols-2 gap-2">
+        <input name="date" type="date" defaultValue={expense.date}
+          className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-brand-green focus:outline-none" />
+        <input name="category" defaultValue={expense.category} required placeholder="Category *"
+          className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-brand-green focus:outline-none" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input name="description" defaultValue={expense.description ?? ""} placeholder="Description"
+          className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-brand-green focus:outline-none" />
+        <input name="amount" type="number" min="0.01" step="any" inputMode="decimal"
+          defaultValue={expense.amount} required placeholder="Amount ₱ *"
+          className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-brand-green focus:outline-none" />
+      </div>
+      {state?.error && <p className="text-xs font-medium text-red-600">{state.error}</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onClose}
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 active:bg-gray-50">
+          Cancel
+        </button>
+        <button disabled={pending}
+          className="rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">
+          {pending ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 const CATEGORIES = [
   "Rent", "Utilities", "Salaries", "Marketing", "Fuel",
@@ -53,20 +107,18 @@ export function ExpenseForm() {
   );
 }
 
-export function ExpenseItem({
-  expense,
-}: {
-  expense: {
-    id: string;
-    category: string;
-    description: string | null;
-    amount: number;
-    date: string;
-    payroll_run_id: string | null;
-  };
-}) {
+export function ExpenseItem({ expense }: { expense: Expense }) {
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  if (editing) {
+    return (
+      <li>
+        <EditExpenseFields expense={expense} onClose={() => setEditing(false)} />
+      </li>
+    );
+  }
 
   return (
     <li className="flex items-center justify-between gap-2 py-2.5 text-sm">
@@ -88,18 +140,26 @@ export function ExpenseItem({
       <div className="flex shrink-0 items-center gap-2">
         <span className="font-bold">{formatPeso(expense.amount)}</span>
         {!expense.payroll_run_id && (
-          <button
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                const res = await deleteExpense(expense.id);
-                if (res.error) setError(res.error);
-              })
-            }
-            className="text-xs text-gray-400 underline"
-          >
-            remove
-          </button>
+          <>
+            <button
+              onClick={() => setEditing(true)}
+              className="text-xs text-brand-green-dark underline"
+            >
+              edit
+            </button>
+            <button
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const res = await deleteExpense(expense.id);
+                  if (res.error) setError(res.error);
+                })
+              }
+              className="text-xs text-gray-400 underline"
+            >
+              remove
+            </button>
+          </>
         )}
       </div>
     </li>
@@ -124,19 +184,59 @@ function DeleteButton({ id, onError }: { id: string; onError: (m: string) => voi
   );
 }
 
-// Desktop table presentation; phones use ExpenseItem cards.
-export function ExpenseTable({
-  expenses,
+function ExpenseTableRow({
+  expense,
+  onError,
 }: {
-  expenses: {
-    id: string;
-    category: string;
-    description: string | null;
-    amount: number;
-    date: string;
-    payroll_run_id: string | null;
-  }[];
+  expense: Expense;
+  onError: (m: string) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <tr>
+        <td colSpan={5} className="px-4">
+          <EditExpenseFields expense={expense} onClose={() => setEditing(false)} />
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-4 py-2.5 text-gray-600">{formatDate(expense.date)}</td>
+      <td className="px-4 py-2.5 font-medium text-gray-800">
+        {expense.category}
+        {expense.payroll_run_id && (
+          <span className="ml-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+            from payroll
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-2.5 text-gray-500">{expense.description || "—"}</td>
+      <td className="px-4 py-2.5 text-right font-bold text-red-600">
+        {formatPeso(expense.amount)}
+      </td>
+      <td className="px-4 py-2.5 text-right">
+        {!expense.payroll_run_id && (
+          <span className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setEditing(true)}
+              className="text-xs text-brand-green-dark underline"
+            >
+              edit
+            </button>
+            <DeleteButton id={expense.id} onError={onError} />
+          </span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// Desktop table presentation; phones use ExpenseItem cards.
+export function ExpenseTable({ expenses }: { expenses: Expense[] }) {
   const [error, setError] = useState<string | null>(null);
 
   return (
@@ -165,24 +265,7 @@ export function ExpenseTable({
             </tr>
           )}
           {expenses.map((e) => (
-            <tr key={e.id} className="hover:bg-gray-50">
-              <td className="px-4 py-2.5 text-gray-600">{formatDate(e.date)}</td>
-              <td className="px-4 py-2.5 font-medium text-gray-800">
-                {e.category}
-                {e.payroll_run_id && (
-                  <span className="ml-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
-                    from payroll
-                  </span>
-                )}
-              </td>
-              <td className="px-4 py-2.5 text-gray-500">{e.description || "—"}</td>
-              <td className="px-4 py-2.5 text-right font-bold text-red-600">
-                {formatPeso(e.amount)}
-              </td>
-              <td className="px-4 py-2.5 text-right">
-                {!e.payroll_run_id && <DeleteButton id={e.id} onError={setError} />}
-              </td>
-            </tr>
+            <ExpenseTableRow key={e.id} expense={e} onError={setError} />
           ))}
         </tbody>
       </table>
