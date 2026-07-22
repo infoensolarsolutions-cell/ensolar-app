@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatPeso, todayManila } from "@/lib/format";
 import { StatusBadge } from "./status-badge";
+import { ListTrashButton } from "./list-trash-button";
 
 export const metadata: Metadata = { title: "Quotations" };
 
@@ -64,23 +65,28 @@ export default async function QuotationsPage() {
         )}
 
         {quotations?.map((q) => (
-          <Link
-            key={q.id}
-            href={`/quotations/${q.id}`}
-            className="block rounded-xl border border-gray-200 bg-white p-4"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-semibold text-gray-900">{q.quote_no}</p>
-                <p className="text-sm text-gray-600">{q.customers?.name}</p>
+          <div key={q.id} className="relative rounded-xl border border-gray-200 bg-white">
+            {q.status !== "accepted" && (
+              <ListTrashButton quotationId={q.id} quoteNo={q.quote_no} />
+            )}
+            <Link href={`/quotations/${q.id}`} className="block p-4">
+              <div
+                className={`flex items-start justify-between gap-2 ${
+                  q.status !== "accepted" ? "pr-8" : ""
+                }`}
+              >
+                <div>
+                  <p className="font-semibold text-gray-900">{q.quote_no}</p>
+                  <p className="text-sm text-gray-600">{q.customers?.name}</p>
+                </div>
+                <StatusBadge status={q.status} validUntil={q.valid_until} today={today} />
               </div>
-              <StatusBadge status={q.status} validUntil={q.valid_until} today={today} />
-            </div>
-            <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-gray-500">{formatDate(q.created_at)}</span>
-              <span className="font-bold text-gray-900">{formatPeso(q.total)}</span>
-            </div>
-          </Link>
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-gray-500">{formatDate(q.created_at)}</span>
+                <span className="font-bold text-gray-900">{formatPeso(q.total)}</span>
+              </div>
+            </Link>
+          </div>
         ))}
       </div>
     </>
