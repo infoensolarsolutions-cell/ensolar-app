@@ -1,7 +1,10 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { uploadProjectPhoto, deleteProjectPhoto } from "../photo-actions";
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { registerProjectPhotos, deleteProjectPhoto } from "../photo-actions";
+import { createClient } from "@/lib/supabase/client";
+import { downscaleImage } from "@/lib/image";
 import { formatDate } from "@/lib/format";
 
 export type PhotoRow = {
@@ -26,9 +29,62 @@ export function PhotosPanel({
   canUpload: boolean;
   isStaff: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(uploadProjectPhoto, null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const [, startTransition] = useTransition();
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const phaseRef = useRef<HTMLSelectElement>(null);
+  const captionRef = useRef<HTMLInputElement>(null);
+
+  async function uploadPhotos() {
+    const files = Array.from(fileRef.current?.files ?? []);
+    if (!files.length) {
+      setError("Choose photos first — tap the file button above.");
+      return;
+    }
+    if (files.length > 10) {
+      setError("Maximum 10 photos per upload.");
+      return;
+    }
+    setPending(true);
+    setError(null);
+    const supabase = createClient();
+    const uploadedPaths: string[] = [];
+    try {
+      for (let i = 0; i < files.length; i++) {
+        setProgress(`Uploading photo ${i + 1} of ${files.length}…`);
+        const blob = await downscaleImage(files[i]);
+        const path = `projects/${projectId}/${crypto.randomUUID()}.jpg`;
+        const { error: upErr } = await supabase.storage
+          .from("project-photos")
+          .upload(path, blob, { contentType: "image/jpeg" });
+        if (upErr) throw new Error(upErr.message);
+        uploadedPaths.push(path);
+      }
+      setProgress("Saving…");
+      const res = await registerProjectPhotos(
+        projectId,
+        phaseRef.current?.value ?? "during",
+        captionRef.current?.value ?? "",
+        uploadedPaths,
+      );
+      if (res?.error) throw new Error(res.error);
+      if (fileRef.current) fileRef.current.value = "";
+      if (captionRef.current) captionRef.current.value = "";
+      router.refresh();
+    } catch (e) {
+      setError(
+        `Upload failed after ${uploadedPaths.length} of ${files.length} photos: ${
+          e instanceof Error ? e.message : "unknown error"
+        }`,
+      );
+    } finally {
+      setPending(false);
+      setProgress(null);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -73,43 +129,42 @@ export function PhotosPanel({
         ))}
       </div>
 
-      {(error || state?.error) && (
+      {error && (
         <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-          {error ?? state?.error}
+          {error}
         </p>
       )}
 
       {canUpload && (
-        <form action={formAction} className="mt-3 space-y-2 rounded-lg border border-gray-200 p-3">
-          <input type="hidden" name="project_id" value={projectId} />
+        <div className="mt-3 space-y-2 rounded-lg border border-gray-200 p-3">
           {/* No `capture` attribute: the phone offers Camera OR Photo Gallery. */}
           <input
-            name="photo"
+            ref={fileRef}
             type="file"
             accept="image/*"
             multiple
-            required
             className="w-full text-sm"
           />
           <div className="grid grid-cols-2 gap-2">
-            <select name="phase" defaultValue="during" className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm">
+            <select ref={phaseRef} defaultValue="during" className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm">
               <option value="before">Before</option>
               <option value="during">During</option>
               <option value="after">After</option>
             </select>
             <input
-              name="caption"
+              ref={captionRef}
               placeholder="Caption (optional)"
               className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
             />
           </div>
           <button
+            onClick={uploadPhotos}
             disabled={pending}
             className="w-full rounded-lg bg-brand-green px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
-            {pending ? "Uploading…" : "Upload photo(s)"}
+            {pending ? progress ?? "Uploading…" : "Upload photo(s)"}
           </button>
-        </form>
+        </div>
       )}
     </div>
   );
