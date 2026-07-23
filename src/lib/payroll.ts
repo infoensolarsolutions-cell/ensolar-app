@@ -121,11 +121,21 @@ export function entryHours(
     (Math.min(outMs, officialEnd) - Math.max(inMs, officialStart)) / 3600000,
   );
   const regular = payableHours(windowSpan, rules);
-  const ot = Math.max(0, (outMs - Math.max(inMs, officialEnd)) / 3600000);
+  // Grace period: clocking out within 30 minutes after the official end
+  // counts as the official end — no overtime for the sliver.
+  const otRaw = Math.max(0, (outMs - Math.max(inMs, officialEnd)) / 3600000);
+  const ot = otRaw >= OT_GRACE_HOURS ? otRaw : 0;
   return {
     regular: Math.round(regular * 100) / 100,
     ot: Math.round(ot * 100) / 100,
   };
+}
+
+const OT_GRACE_HOURS = 0.5;
+
+// "8" / "7.5" style — no stray decimals on whole hours.
+export function fmtHours(h: number): string {
+  return String(Math.round(h * 100) / 100);
 }
 
 // Total span minus the unpaid break (break only deducted on days long
