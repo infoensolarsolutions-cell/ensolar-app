@@ -220,9 +220,10 @@ async function TeamAttendance({ day }: { day?: string }) {
       <p className="mt-2 text-xs text-gray-400">
         🖥️ = office kiosk punch. AUTO = closed automatically at 5:00 PM —
         tap &ldquo;fix time&rdquo; to enter the actual clock-out reported by the
-        employee. Hour totals are payable hours (counted from 8:00 AM, cut at
-        5:00 PM, lunch deducted; a full day is 8h). OT starts past 5:30 PM,
-        counted from 5:00 PM.
+        employee. Hour totals are payable hours (counted from 8:00 AM —
+        arriving by 8:30 AM still counts as 8:00 — cut at 5:00 PM, lunch
+        deducted; a full day is 8h). OT starts past 5:30 PM, counted from
+        5:00 PM.
       </p>
     </div>
   );

@@ -224,9 +224,9 @@ export default async function WeeklyAttendancePage({
           Times are 24-hour format. 🖥️ = kiosk punch · A = auto clock-out at
           5 PM (open the day view to fix the actual time) · &ldquo;…&rdquo; =
           still clocked in. Hour totals are payable hours: counted from 8:00 AM
-          regardless of early clock-in, cut at 5:00 PM (clock-outs up to 5:30 PM
-          count as 5:00 PM), lunch hour deducted — a full day is 8h. OT is time
-          beyond 5:30 PM, counted from 5:00 PM.
+          (clock-ins up to 8:30 AM count as 8:00 AM), cut at 5:00 PM
+          (clock-outs up to 5:30 PM count as 5:00 PM), lunch hour deducted — a
+          full day is 8h. OT is time beyond 5:30 PM, counted from 5:00 PM.
         </p>
       </div>
     </>

@@ -116,22 +116,28 @@ export function entryHours(
   const inMs = new Date(clockIn).getTime();
   const outMs = new Date(clockOut).getTime();
 
+  // Grace period: clocking in up to 30 minutes after the official start
+  // counts as the official start (only later than that counts as late).
+  const inEffective =
+    inMs <= officialStart + GRACE_HOURS * 3600000 ? officialStart : inMs;
+
   const windowSpan = Math.max(
     0,
-    (Math.min(outMs, officialEnd) - Math.max(inMs, officialStart)) / 3600000,
+    (Math.min(outMs, officialEnd) - Math.max(inEffective, officialStart)) / 3600000,
   );
   const regular = payableHours(windowSpan, rules);
   // Grace period: clocking out within 30 minutes after the official end
   // counts as the official end — no overtime for the sliver.
   const otRaw = Math.max(0, (outMs - Math.max(inMs, officialEnd)) / 3600000);
-  const ot = otRaw >= OT_GRACE_HOURS ? otRaw : 0;
+  const ot = otRaw >= GRACE_HOURS ? otRaw : 0;
   return {
     regular: Math.round(regular * 100) / 100,
     ot: Math.round(ot * 100) / 100,
   };
 }
 
-const OT_GRACE_HOURS = 0.5;
+// 30-minute grace on both ends of the office day.
+const GRACE_HOURS = 0.5;
 
 // "8" / "7.5" style — no stray decimals on whole hours.
 export function fmtHours(h: number): string {
