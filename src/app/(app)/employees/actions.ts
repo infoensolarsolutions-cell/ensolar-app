@@ -46,6 +46,7 @@ export async function saveEmployee(
     philhealth_no: philhealth || null,
     pagibig_no: pagibig || null,
     hired_at: hiredAt || null,
+    resigned_at: String(formData.get("resigned_at") ?? "") || null,
     profile_id: profileId || null,
     active,
     address: text("address", 300),

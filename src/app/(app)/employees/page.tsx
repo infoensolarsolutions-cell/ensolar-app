@@ -15,6 +15,11 @@ type EmployeeRow = {
   rate: number;
   active: boolean;
   profile_id: string | null;
+  sss_no: string | null;
+  philhealth_no: string | null;
+  pagibig_no: string | null;
+  hired_at: string | null;
+  resigned_at: string | null;
   address: string | null;
   birth_date: string | null;
   gender: string | null;
@@ -42,7 +47,7 @@ export default async function EmployeesPage() {
   const { data: employees } = await supabase
     .from("employees")
     .select(
-      "id, name, position, rate_type, rate, active, profile_id, address, birth_date, gender, contact_no, email, emergency_name, emergency_relationship, emergency_contact_no, emergency_address",
+      "id, name, position, rate_type, rate, active, profile_id, sss_no, philhealth_no, pagibig_no, hired_at, resigned_at, address, birth_date, gender, contact_no, email, emergency_name, emergency_relationship, emergency_contact_no, emergency_address",
     )
     .order("name")
     .overrideTypes<EmployeeRow[]>();
@@ -94,7 +99,7 @@ export default async function EmployeesPage() {
         {/* Desktop: personnel register table */}
         {!!employees?.length && (
           <div className="hidden overflow-x-auto rounded-xl border border-gray-200 bg-white lg:block">
-            <table className="w-full min-w-[1100px] text-sm">
+            <table className="w-full min-w-[1500px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wider text-gray-400">
                   <th className="px-3 py-3 font-semibold">Name</th>
@@ -110,6 +115,11 @@ export default async function EmployeesPage() {
                       Name · Relationship · Contact No. · Address
                     </span>
                   </th>
+                  <th className="px-3 py-3 font-semibold">SSS</th>
+                  <th className="px-3 py-3 font-semibold">PhilHealth</th>
+                  <th className="px-3 py-3 font-semibold">Pag-IBIG</th>
+                  <th className="px-3 py-3 font-semibold">Date Started</th>
+                  <th className="px-3 py-3 font-semibold">Date Resigned</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -148,6 +158,15 @@ export default async function EmployeesPage() {
                       ) : (
                         "—"
                       )}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-600">{e.sss_no ?? "—"}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-600">{e.philhealth_no ?? "—"}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-600">{e.pagibig_no ?? "—"}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-600">
+                      {e.hired_at ? formatDate(e.hired_at) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-600">
+                      {e.resigned_at ? formatDate(e.resigned_at) : "—"}
                     </td>
                   </tr>
                 ))}
