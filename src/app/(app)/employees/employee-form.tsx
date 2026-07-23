@@ -35,6 +35,7 @@ export function EmployeeForm({
     philhealth_no: string | null;
     pagibig_no: string | null;
     hired_at: string | null;
+    resigned_at: string | null;
     profile_id: string | null;
     active: boolean;
     address: string | null;
@@ -157,10 +158,14 @@ export function EmployeeForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <div>
           <label className="text-xs text-gray-500">Date hired</label>
           <input name="hired_at" type="date" defaultValue={employee?.hired_at ?? ""} className={inputClass} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Date resigned</label>
+          <input name="resigned_at" type="date" defaultValue={employee?.resigned_at ?? ""} className={inputClass} />
         </div>
         {employee && (
           <div>
