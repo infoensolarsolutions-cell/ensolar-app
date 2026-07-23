@@ -5,6 +5,7 @@ import { TopBar } from "@/components/top-bar";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, todayManila, TIMEZONE } from "@/lib/format";
+import { entryHours, fmtHours, WORK_DEFAULTS, type WorkRules } from "@/lib/payroll";
 
 export const metadata: Metadata = { title: "Weekly Attendance" };
 
@@ -55,17 +56,35 @@ export default async function WeeklyAttendancePage({
   const endIso = new Date(`${addDays(monday, 7)}T00:00:00+08:00`).toISOString();
 
   const supabase = await createClient();
-  const [{ data: directory }, { data: entries }] = await Promise.all([
-    supabase.rpc("employee_directory"),
-    supabase
-      .from("attendance")
-      .select("id, employee_id, clock_in, clock_out, source, auto_clocked_out")
-      .gte("clock_in", startIso)
-      .lt("clock_in", endIso)
-      .order("clock_in")
-      .overrideTypes<Entry[]>(),
-  ]);
+  const [{ data: directory }, { data: entries }, { data: workSetting }] =
+    await Promise.all([
+      supabase.rpc("employee_directory"),
+      supabase
+        .from("attendance")
+        .select("id, employee_id, clock_in, clock_out, source, auto_clocked_out")
+        .gte("clock_in", startIso)
+        .lt("clock_in", endIso)
+        .order("clock_in")
+        .overrideTypes<Entry[]>(),
+      supabase
+        .from("contribution_settings")
+        .select("config")
+        .eq("key", "work")
+        .maybeSingle(),
+    ]);
   const employees = (directory ?? []) as { id: string; name: string }[];
+  const rules: WorkRules = (workSetting?.config as WorkRules) ?? WORK_DEFAULTS;
+
+  const dayTotals = (list: Entry[]): { regular: number; ot: number } => {
+    let regular = 0;
+    let ot = 0;
+    for (const e of list) {
+      const h = entryHours(e.clock_in, e.clock_out, rules);
+      regular += h.regular;
+      ot += h.ot;
+    }
+    return { regular, ot };
+  };
 
   const dayFmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit",
@@ -79,17 +98,15 @@ export default async function WeeklyAttendancePage({
     byDay.set(day, [...(byDay.get(day) ?? []), e]);
   }
 
-  const weekHours = (empId: string): number => {
-    let total = 0;
+  const weekHours = (empId: string): { regular: number; ot: number } => {
+    let regular = 0;
+    let ot = 0;
     for (const list of grid.get(empId)?.values() ?? []) {
-      for (const e of list) {
-        if (e.clock_out) {
-          total +=
-            (new Date(e.clock_out).getTime() - new Date(e.clock_in).getTime()) / 3600000;
-        }
-      }
+      const t = dayTotals(list);
+      regular += t.regular;
+      ot += t.ot;
     }
-    return total;
+    return { regular, ot };
   };
 
   return (
@@ -150,6 +167,7 @@ export default async function WeeklyAttendancePage({
                   <td className="px-3 py-2.5 font-semibold text-gray-800">{emp.name}</td>
                   {days.map((d) => {
                     const list = grid.get(emp.id)?.get(d) ?? [];
+                    const t = dayTotals(list);
                     return (
                       <td key={d} className="px-2 py-2.5 text-center text-xs">
                         {list.length === 0 && <span className="text-gray-300">—</span>}
@@ -164,12 +182,38 @@ export default async function WeeklyAttendancePage({
                             )}
                           </span>
                         ))}
+                        {(t.regular > 0 || t.ot > 0) && (
+                          <span className="mt-0.5 block font-bold text-gray-900">
+                            {fmtHours(t.regular)}h
+                            {t.ot > 0 && (
+                              <span className="font-semibold text-amber-700">
+                                {" "}+{fmtHours(t.ot)} OT
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </td>
                     );
                   })}
-                  <td className="px-3 py-2.5 text-right font-bold text-gray-900">
-                    {weekHours(emp.id) > 0 ? `${weekHours(emp.id).toFixed(1)}h` : "—"}
-                  </td>
+                  {(() => {
+                    const t = weekHours(emp.id);
+                    return (
+                      <td className="px-3 py-2.5 text-right font-bold text-gray-900">
+                        {t.regular > 0 || t.ot > 0 ? (
+                          <>
+                            {fmtHours(t.regular)}h
+                            {t.ot > 0 && (
+                              <span className="block text-xs font-semibold text-amber-700">
+                                +{fmtHours(t.ot)} OT
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    );
+                  })()}
                 </tr>
               ))}
             </tbody>
@@ -177,10 +221,12 @@ export default async function WeeklyAttendancePage({
         </div>
 
         <p className="text-xs text-gray-400">
-          Times are 24-hour format. 🖥️ = kiosk punch · A = auto clock-out at 5 PM
-          (open the day view to fix the actual time) · &ldquo;…&rdquo; = still
-          clocked in. Totals are raw clocked hours; payroll applies the 8AM–5PM
-          rules automatically.
+          Times are 24-hour format. 🖥️ = kiosk punch · A = auto clock-out at
+          5 PM (open the day view to fix the actual time) · &ldquo;…&rdquo; =
+          still clocked in. Hour totals are payable hours: counted from 8:00 AM
+          regardless of early clock-in, cut at 5:00 PM (clock-outs up to 5:30 PM
+          count as 5:00 PM), lunch hour deducted — a full day is 8h. OT is time
+          beyond 5:30 PM, counted from 5:00 PM.
         </p>
       </div>
     </>

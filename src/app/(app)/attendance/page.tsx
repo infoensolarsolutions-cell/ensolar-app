@@ -5,6 +5,7 @@ import { getProfile } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, todayManila } from "@/lib/format";
+import { entryHours, fmtHours, WORK_DEFAULTS, type WorkRules } from "@/lib/payroll";
 import { ClockWidget } from "./clock-widget";
 import { FixClockOut } from "./fix-clockout";
 
@@ -108,16 +109,23 @@ async function TeamAttendance({ day }: { day?: string }) {
   const endIso = new Date(new Date(startIso).getTime() + 86400000).toISOString();
 
   const supabase = await createClient();
-  const [{ data: directory }, { data: entries }] = await Promise.all([
-    supabase.rpc("employee_directory"),
-    supabase
-      .from("attendance")
-      .select("id, employee_id, clock_in, clock_out, source, auto_clocked_out")
-      .gte("clock_in", startIso)
-      .lt("clock_in", endIso)
-      .order("clock_in"),
-  ]);
+  const [{ data: directory }, { data: entries }, { data: workSetting }] =
+    await Promise.all([
+      supabase.rpc("employee_directory"),
+      supabase
+        .from("attendance")
+        .select("id, employee_id, clock_in, clock_out, source, auto_clocked_out")
+        .gte("clock_in", startIso)
+        .lt("clock_in", endIso)
+        .order("clock_in"),
+      supabase
+        .from("contribution_settings")
+        .select("config")
+        .eq("key", "work")
+        .maybeSingle(),
+    ]);
   const employees = (directory ?? []) as { id: string; name: string }[];
+  const rules: WorkRules = (workSetting?.config as WorkRules) ?? WORK_DEFAULTS;
 
   const byEmployee = new Map<string, NonNullable<typeof entries>>();
   for (const e of entries ?? []) {
@@ -156,14 +164,13 @@ async function TeamAttendance({ day }: { day?: string }) {
       <ul className="divide-y divide-gray-100">
         {employees.map((emp) => {
           const rows = byEmployee.get(emp.id) ?? [];
-          const totalH = rows.reduce(
-            (s, r) =>
-              s +
-              (r.clock_out
-                ? (new Date(r.clock_out).getTime() - new Date(r.clock_in).getTime()) / 3600000
-                : 0),
-            0,
-          );
+          let regularH = 0;
+          let otH = 0;
+          for (const r of rows) {
+            const h = entryHours(r.clock_in, r.clock_out, rules);
+            regularH += h.regular;
+            otH += h.ot;
+          }
           const stillIn = rows.some((r) => !r.clock_out);
           return (
             <li key={emp.id} className="flex items-start justify-between gap-3 py-2.5">
@@ -200,7 +207,11 @@ async function TeamAttendance({ day }: { day?: string }) {
                       : "bg-red-50 text-red-600"
                 }`}
               >
-                {stillIn ? "IN NOW" : rows.length ? `${totalH.toFixed(1)}h` : "ABSENT"}
+                {stillIn
+                  ? "IN NOW"
+                  : rows.length
+                    ? `${fmtHours(regularH)}h${otH > 0 ? ` +${fmtHours(otH)} OT` : ""}`
+                    : "ABSENT"}
               </span>
             </li>
           );
@@ -209,8 +220,9 @@ async function TeamAttendance({ day }: { day?: string }) {
       <p className="mt-2 text-xs text-gray-400">
         🖥️ = office kiosk punch. AUTO = closed automatically at 5:00 PM —
         tap &ldquo;fix time&rdquo; to enter the actual clock-out reported by the
-        employee. Hours shown are raw clocked time; payroll applies the
-        8AM–5PM rules automatically.
+        employee. Hour totals are payable hours (counted from 8:00 AM, cut at
+        5:00 PM, lunch deducted; a full day is 8h). OT starts past 5:30 PM,
+        counted from 5:00 PM.
       </p>
     </div>
   );
