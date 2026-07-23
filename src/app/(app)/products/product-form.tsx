@@ -8,7 +8,7 @@ const inputClass =
 
 const CATEGORIES = [
   "Panels", "Inverters", "Batteries", "Cables", "Breakers",
-  "CCTV", "FDAS", "Pumps", "Accessories",
+  "CCTV", "FDAS", "Pumps", "Safety Device", "Accessories",
 ];
 
 export function ProductForm({
