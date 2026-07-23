@@ -40,6 +40,8 @@ function pesoShort(v: number): string {
 type Figures = {
   revenue: number;
   cogs: number;
+  cogsMaterials: number;
+  cogsOther: number;
   opex: number;
   collections: number;
   posSales: number;
@@ -68,8 +70,7 @@ async function figuresFor(
       .limit(5000),
     supabase
       .from("project_costs")
-      .select("amount")
-      .eq("type", "materials")
+      .select("amount, type")
       .gte("date", from)
       .lt("date", toExclusive),
     supabase
@@ -107,9 +108,18 @@ async function figuresFor(
     opexByCategory.set(e.category, (opexByCategory.get(e.category) ?? 0) + Number(e.amount));
   }
 
+  let cogsMaterials = 0;
+  let cogsOther = 0;
+  for (const c of materials.data ?? []) {
+    if (c.type === "materials") cogsMaterials += Number(c.amount);
+    else cogsOther += Number(c.amount);
+  }
+
   return {
     revenue: collections + posSales,
-    cogs: (materials.data ?? []).reduce((s, c) => s + Number(c.amount), 0),
+    cogs: cogsMaterials + cogsOther,
+    cogsMaterials,
+    cogsOther,
     opex: (expenses.data ?? []).reduce((s, e) => s + Number(e.amount), 0),
     collections,
     posSales,
@@ -220,7 +230,7 @@ export default async function PnlPage({
 
         <div className="grid grid-cols-2 gap-3 lg:col-span-full lg:grid-cols-4">
           <Kpi label="Revenue" value={cur.revenue} tone="green" />
-          <Kpi label="COGS (materials)" value={cur.cogs} tone="red" />
+          <Kpi label="Project costs" value={cur.cogs} tone="red" />
           <Kpi label="Expenses" value={cur.opex} tone="red" />
           <Kpi label="Net Income" value={net} tone="auto" />
         </div>
@@ -265,8 +275,13 @@ export default async function PnlPage({
           <Row label="POS sales" value={cur.posSales} />
           <Row label="Total revenue" value={cur.revenue} bold />
 
-          <p className="mt-3 text-xs font-bold uppercase text-gray-400">Cost of goods</p>
-          <Row label="Materials issued to projects" value={cur.cogs} negative />
+          <p className="mt-3 text-xs font-bold uppercase text-gray-400">Direct project costs</p>
+          <Row label="Materials issued to projects" value={cur.cogsMaterials} negative />
+          <Row
+            label="Other project costs (labor, travel, fuel, meals, etc.)"
+            value={cur.cogsOther}
+            negative
+          />
           <Row label="Gross profit" value={grossProfit} bold />
 
           <p className="mt-3 text-xs font-bold uppercase text-gray-400">Operating expenses</p>
