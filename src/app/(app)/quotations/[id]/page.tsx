@@ -140,7 +140,7 @@ export default async function QuotationDetailPage({
           />
         )}
 
-        {q.status !== "accepted" && !q.projects && (
+        {!q.projects && (
           <TrashButton quotationId={q.id} deleted={!!q.deleted_at} />
         )}
       </div>

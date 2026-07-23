@@ -252,8 +252,11 @@ export async function trashQuotation(id: string): Promise<{ error?: string }> {
     .eq("id", id)
     .single();
   if (!q) return { error: "Quotation not found." };
-  if (q.status === "accepted" || (q.projects && (Array.isArray(q.projects) ? q.projects.length : 1))) {
-    return { error: "This quotation was accepted and has a project — it cannot be moved to the Recycle Bin." };
+  // Only an existing project blocks the trash — an accepted quotation whose
+  // project was deleted (duplicate/superseded) can be binned like any other.
+  const hasProject = Array.isArray(q.projects) ? q.projects.length > 0 : !!q.projects;
+  if (hasProject) {
+    return { error: "This quotation has a project — delete the project first, then move the quotation to the Recycle Bin." };
   }
 
   const { error } = await supabase
