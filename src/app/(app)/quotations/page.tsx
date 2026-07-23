@@ -17,6 +17,7 @@ type QuotationRow = {
   total: number;
   created_at: string;
   customers: { name: string } | null;
+  projects: { id: string } | null;
 };
 
 export default async function QuotationsPage() {
@@ -26,7 +27,7 @@ export default async function QuotationsPage() {
   const [{ data: quotations }, { count: trashed }] = await Promise.all([
     supabase
       .from("quotations")
-      .select("id, quote_no, status, valid_until, total, created_at, customers (name)")
+      .select("id, quote_no, status, valid_until, total, created_at, customers (name), projects (id)")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(100)
@@ -66,13 +67,13 @@ export default async function QuotationsPage() {
 
         {quotations?.map((q) => (
           <div key={q.id} className="relative rounded-xl border border-gray-200 bg-white">
-            {q.status !== "accepted" && (
+            {!q.projects && (
               <ListTrashButton quotationId={q.id} quoteNo={q.quote_no} />
             )}
             <Link href={`/quotations/${q.id}`} className="block p-4">
               <div
                 className={`flex items-start justify-between gap-2 ${
-                  q.status !== "accepted" ? "pr-8" : ""
+                  !q.projects ? "pr-8" : ""
                 }`}
               >
                 <div>
