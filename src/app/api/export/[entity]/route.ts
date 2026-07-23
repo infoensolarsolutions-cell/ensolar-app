@@ -117,6 +117,38 @@ export async function GET(
         .join("; "),
       sold_by: name(s.profiles),
     }));
+  } else if (entity === "employees") {
+    // Personnel register — owner only (contains rates and personal data).
+    if (profile.role !== "owner") {
+      return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+    }
+    const { data } = await supabase
+      .from("employees")
+      .select(
+        "name, position, address, birth_date, gender, contact_no, email, emergency_name, emergency_relationship, emergency_contact_no, emergency_address, sss_no, philhealth_no, pagibig_no, hired_at, resigned_at, rate_type, rate, active",
+      )
+      .order("name");
+    rows = (data ?? []).map((e) => ({
+      name: e.name,
+      position: e.position,
+      address: e.address,
+      date_of_birth: e.birth_date,
+      gender: e.gender,
+      contact_no: e.contact_no,
+      email: e.email,
+      emergency_contact_name: e.emergency_name,
+      emergency_relationship: e.emergency_relationship,
+      emergency_contact_no: e.emergency_contact_no,
+      emergency_address: e.emergency_address,
+      sss_no: e.sss_no,
+      philhealth_no: e.philhealth_no,
+      pagibig_no: e.pagibig_no,
+      date_started: e.hired_at,
+      date_resigned: e.resigned_at,
+      rate_type: e.rate_type,
+      rate: e.rate,
+      status: e.active ? "active" : "inactive",
+    }));
   } else {
     return NextResponse.json({ error: "Unknown export" }, { status: 404 });
   }

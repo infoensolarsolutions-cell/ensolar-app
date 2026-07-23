@@ -58,12 +58,20 @@ export default async function EmployeesPage() {
     <>
       <TopBar title="Employees" backHref="/more" />
       <div className="space-y-3 p-4">
-        <Link
-          href="/employees/new"
-          className="block w-full rounded-xl bg-brand-green px-4 py-3.5 text-center text-base font-semibold text-white lg:w-auto lg:max-w-xs lg:px-6"
-        >
-          + Add Employee
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/employees/new"
+            className="rounded-xl bg-brand-green px-6 py-3.5 text-center text-base font-semibold text-white max-lg:flex-1"
+          >
+            + Add Employee
+          </Link>
+          <a
+            href="/api/export/employees"
+            className="rounded-xl border border-gray-300 bg-white px-4 py-3.5 text-sm font-semibold text-gray-700 active:bg-gray-50"
+          >
+            📥 Export CSV
+          </a>
+        </div>
         {!employees?.length && (
           <p className="pt-6 text-center text-sm text-gray-500">No employees yet.</p>
         )}
