@@ -37,6 +37,15 @@ export function EmployeeForm({
     hired_at: string | null;
     profile_id: string | null;
     active: boolean;
+    address: string | null;
+    birth_date: string | null;
+    gender: string | null;
+    contact_no: string | null;
+    email: string | null;
+    emergency_name: string | null;
+    emergency_relationship: string | null;
+    emergency_contact_no: string | null;
+    emergency_address: string | null;
   };
   linkableProfiles: { id: string; name: string; role: string }[];
 }) {
@@ -63,6 +72,60 @@ export function EmployeeForm({
             <option key={p} value={p} />
           ))}
         </datalist>
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500">Address</label>
+        <input name="address" defaultValue={employee?.address ?? ""} className={inputClass} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-xs text-gray-500">Date of birth</label>
+          <input name="birth_date" type="date" defaultValue={employee?.birth_date ?? ""} className={inputClass} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Gender</label>
+          <select name="gender" defaultValue={employee?.gender ?? ""} className={inputClass}>
+            <option value="">—</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Contact no.</label>
+          <input name="contact_no" type="tel" defaultValue={employee?.contact_no ?? ""} className={inputClass} />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500">Email address</label>
+        <input name="email" type="email" defaultValue={employee?.email ?? ""} className={inputClass} />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          Emergency contact person
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-gray-500">Name</label>
+            <input name="emergency_name" defaultValue={employee?.emergency_name ?? ""} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Relationship</label>
+            <input name="emergency_relationship" placeholder="e.g. Spouse" defaultValue={employee?.emergency_relationship ?? ""} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Contact no.</label>
+            <input name="emergency_contact_no" type="tel" defaultValue={employee?.emergency_contact_no ?? ""} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Address</label>
+            <input name="emergency_address" defaultValue={employee?.emergency_address ?? ""} className={inputClass} />
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

@@ -32,6 +32,10 @@ export async function saveEmployee(
     return { error: "Kiosk PIN must be 4–6 digits (numbers only)." };
   }
 
+  const text = (k: string, max = 200) =>
+    String(formData.get(k) ?? "").trim().slice(0, max) || null;
+  const birthDate = String(formData.get("birth_date") ?? "");
+
   const supabase = await createClient();
   const row: Record<string, unknown> = {
     name,
@@ -44,6 +48,15 @@ export async function saveEmployee(
     hired_at: hiredAt || null,
     profile_id: profileId || null,
     active,
+    address: text("address", 300),
+    birth_date: birthDate || null,
+    gender: text("gender", 30),
+    contact_no: text("contact_no", 40),
+    email: text("email", 200),
+    emergency_name: text("emergency_name"),
+    emergency_relationship: text("emergency_relationship", 60),
+    emergency_contact_no: text("emergency_contact_no", 40),
+    emergency_address: text("emergency_address", 300),
   };
   // Blank PIN leaves the existing one unchanged.
   if (pin) row.pin_hash = makePinHash(pin);
