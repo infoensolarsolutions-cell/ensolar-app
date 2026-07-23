@@ -70,3 +70,48 @@ export async function clockOut(): Promise<{ error?: string }> {
   revalidatePath("/attendance");
   return {};
 }
+
+export async function correctClockOut(
+  attendanceId: string,
+  time: string,
+  reason: string,
+): Promise<{ error?: string }> {
+  const profile = await getProfile();
+  if (!profile || !["owner", "office_staff"].includes(profile.role)) {
+    return { error: "Only office staff can correct clock-outs." };
+  }
+  if (!/^\d{2}:\d{2}$/.test(time)) return { error: "Pick the actual clock-out time." };
+
+  const supabase = await createClient();
+  const { data: entry } = await supabase
+    .from("attendance")
+    .select("id, clock_in, clock_out")
+    .eq("id", attendanceId)
+    .single();
+  if (!entry) return { error: "Attendance entry not found." };
+
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(entry.clock_in));
+  const newIso = new Date(`${day}T${time}:00+08:00`).toISOString();
+  if (newIso <= entry.clock_in) {
+    return { error: "Clock-out must be after the clock-in time." };
+  }
+
+  const { error } = await supabase
+    .from("attendance")
+    .update({ clock_out: newIso, auto_clocked_out: false })
+    .eq("id", attendanceId);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  await supabase.from("attendance_edits").insert({
+    attendance_id: attendanceId,
+    edited_by: profile.id,
+    before: { clock_out: entry.clock_out },
+    after: { clock_out: newIso },
+    reason: reason.trim() || "Clock-out corrected by office staff",
+  });
+
+  revalidatePath("/attendance");
+  return {};
+}
