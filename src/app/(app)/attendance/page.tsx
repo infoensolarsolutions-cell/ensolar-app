@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, todayManila } from "@/lib/format";
 import { ClockWidget } from "./clock-widget";
+import { FixClockOut } from "./fix-clockout";
 
 export const metadata: Metadata = { title: "Attendance" };
 
@@ -34,8 +35,9 @@ export default async function AttendancePage({
     .eq("profile_id", profile.id)
     .maybeSingle();
 
-  const teamPanel =
-    profile.role === "owner" ? await TeamAttendance({ day: d }) : null;
+  const teamPanel = ["owner", "office_staff"].includes(profile.role)
+    ? await TeamAttendance({ day: d })
+    : null;
 
   if (!employee) {
     return (
@@ -97,26 +99,24 @@ export default async function AttendancePage({
   );
 }
 
-// Owner-only day view of the whole team's punches.
+// Staff day view of the whole team's punches (names come from a
+// security-definer directory so employee rates stay owner-only).
 async function TeamAttendance({ day }: { day?: string }) {
   const date = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : todayManila();
   const startIso = new Date(`${date}T00:00:00+08:00`).toISOString();
   const endIso = new Date(new Date(startIso).getTime() + 86400000).toISOString();
 
   const supabase = await createClient();
-  const [{ data: employees }, { data: entries }] = await Promise.all([
-    supabase
-      .from("employees")
-      .select("id, name, position")
-      .eq("active", true)
-      .order("name"),
+  const [{ data: directory }, { data: entries }] = await Promise.all([
+    supabase.rpc("employee_directory"),
     supabase
       .from("attendance")
-      .select("id, employee_id, clock_in, clock_out, source")
+      .select("id, employee_id, clock_in, clock_out, source, auto_clocked_out")
       .gte("clock_in", startIso)
       .lt("clock_in", endIso)
       .order("clock_in"),
   ]);
+  const employees = (directory ?? []) as { id: string; name: string }[];
 
   const byEmployee = new Map<string, NonNullable<typeof entries>>();
   for (const e of entries ?? []) {
@@ -141,11 +141,11 @@ async function TeamAttendance({ day }: { day?: string }) {
           </button>
         </form>
       </div>
-      {!employees?.length && (
+      {!employees.length && (
         <p className="text-sm text-gray-500">No active employees yet.</p>
       )}
       <ul className="divide-y divide-gray-100">
-        {employees?.map((emp) => {
+        {employees.map((emp) => {
           const rows = byEmployee.get(emp.id) ?? [];
           const totalH = rows.reduce(
             (s, r) =>
@@ -161,16 +161,25 @@ async function TeamAttendance({ day }: { day?: string }) {
               <div>
                 <p className="text-sm font-semibold text-gray-800">{emp.name}</p>
                 <p className="text-xs text-gray-500">
-                  {rows.length === 0
-                    ? "No entry"
-                    : rows
-                        .map(
-                          (r) =>
-                            `${fmtTime(r.clock_in)}–${r.clock_out ? fmtTime(r.clock_out) : "…"}${
-                              r.source === "kiosk" ? " 🖥️" : ""
-                            }`,
-                        )
-                        .join(", ")}
+                  {rows.length === 0 && "No entry"}
+                  {rows.map((r, i) => (
+                    <span key={r.id}>
+                      {i > 0 && ", "}
+                      {fmtTime(r.clock_in)}–{r.clock_out ? fmtTime(r.clock_out) : "…"}
+                      {r.source === "kiosk" && " 🖥️"}
+                      {r.auto_clocked_out && (
+                        <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-800">
+                          AUTO
+                        </span>
+                      )}
+                      {r.clock_out && (
+                        <>
+                          {" "}
+                          <FixClockOut attendanceId={r.id} auto={r.auto_clocked_out} />
+                        </>
+                      )}
+                    </span>
+                  ))}
                 </p>
               </div>
               <span
@@ -189,8 +198,10 @@ async function TeamAttendance({ day }: { day?: string }) {
         })}
       </ul>
       <p className="mt-2 text-xs text-gray-400">
-        🖥️ = punched at the office kiosk. Hours shown are raw clocked time;
-        payroll applies the 8AM–5PM rules automatically.
+        🖥️ = office kiosk punch. AUTO = closed automatically at 5:00 PM —
+        tap &ldquo;fix time&rdquo; to enter the actual clock-out reported by the
+        employee. Hours shown are raw clocked time; payroll applies the
+        8AM–5PM rules automatically.
       </p>
     </div>
   );
