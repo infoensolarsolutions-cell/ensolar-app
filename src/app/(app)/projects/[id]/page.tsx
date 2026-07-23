@@ -321,7 +321,9 @@ export default async function ProjectDetailPage({
           )}
         </div>
 
-        <StatusActions projectId={project.id} status={project.status} isStaff={isStaff} />
+        {isStaff && (
+          <StatusActions projectId={project.id} status={project.status} isStaff={isStaff} />
+        )}
 
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="mb-2 font-semibold text-gray-900">Technicians</p>

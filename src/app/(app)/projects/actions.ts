@@ -16,12 +16,8 @@ export async function updateProjectStatus(
   projectId: string,
   status: ProjectStatus,
 ): Promise<{ error?: string }> {
-  const profile = await getProfile();
-  if (!profile) return { error: "Not signed in." };
-  const isStaff = ["owner", "office_staff"].includes(profile.role);
-  if (!isStaff && profile.role !== "technician") return { error: "Not allowed." };
-  // Closing a project is an office decision.
-  if (status === "closed" && !isStaff) return { error: "Only office staff can close projects." };
+  // Status changes are an office decision — technicians report, staff decide.
+  const profile = await requireRole("owner", "office_staff");
 
   const supabase = await createClient();
   const { data: project } = await supabase
