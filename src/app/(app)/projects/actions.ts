@@ -116,6 +116,50 @@ export async function revertProjectStatus(
   return {};
 }
 
+// Permanently remove a wrongly created project (e.g. superseded by a new
+// unified quotation). Payments, service tickets, and contracts are permanent
+// records, so a project that has any of them cannot be deleted.
+export async function deleteProject(
+  projectId: string,
+): Promise<{ error?: string }> {
+  await requireRole("owner");
+  const supabase = await createClient();
+
+  const [{ count: payments }, { count: tickets }, { count: contracts }] =
+    await Promise.all([
+      supabase.from("payments").select("id", { count: "exact", head: true }).eq("project_id", projectId),
+      supabase.from("service_tickets").select("id", { count: "exact", head: true }).eq("project_id", projectId),
+      supabase.from("contracts").select("id", { count: "exact", head: true }).eq("project_id", projectId),
+    ]);
+  const blockers = [
+    payments ? `${payments} payment(s)` : null,
+    tickets ? `${tickets} service ticket(s)` : null,
+    contracts ? `${contracts} contract(s)` : null,
+  ].filter(Boolean);
+  if (blockers.length) {
+    return {
+      error: `Cannot delete — this project has ${blockers.join(", ")} on record. Payments, tickets, and contracts are permanent records, so this project must stay.`,
+    };
+  }
+
+  // Photo files don't cascade with the DB rows — clear them from storage first.
+  const { data: photos } = await supabase
+    .from("project_photos")
+    .select("storage_path")
+    .eq("project_id", projectId);
+  if (photos?.length) {
+    await supabase.storage
+      .from("project-photos")
+      .remove(photos.map((p) => p.storage_path));
+  }
+
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) return { error: `Could not delete: ${error.message}` };
+
+  revalidatePath("/projects");
+  return {};
+}
+
 export async function assignTechnicians(
   projectId: string,
   userIds: string[],

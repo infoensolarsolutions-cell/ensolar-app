@@ -24,6 +24,7 @@ import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
 import { SiteAddressForm } from "./site-address-form";
 import { EditProjectForm } from "./edit-project-form";
+import { DeleteProjectButton } from "./delete-project-button";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -435,6 +436,14 @@ export default async function ProjectDetailPage({
             ))}
           </ul>
         </div>
+
+        {profile.role === "owner" && (
+          <DeleteProjectButton
+            projectId={project.id}
+            projectNo={project.project_no}
+            hasMaterialCosts={costRows.some((c) => c.from_inventory)}
+          />
+        )}
       </div>
     </>
   );
