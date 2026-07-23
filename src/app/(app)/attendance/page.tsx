@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { getProfile } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -128,7 +129,15 @@ async function TeamAttendance({ day }: { day?: string }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 lg:col-span-full">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-semibold text-gray-900">All employees</p>
+        <p className="font-semibold text-gray-900">
+          All employees{" "}
+          <Link
+            href="/attendance/week"
+            className="ml-1 text-xs font-medium text-brand-green-dark underline"
+          >
+            Weekly view →
+          </Link>
+        </p>
         <form action="/attendance" className="flex items-center gap-2">
           <input
             name="d"
