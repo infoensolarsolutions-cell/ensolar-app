@@ -23,7 +23,7 @@ export default async function NewContractPage({
     supabase
       .from("projects")
       .select(
-        "id, project_no, service_type, site_address, contract_amount, customers (name, address, barangay), quotations (quote_no, created_at, quotation_items (description, qty, sort_order)), payment_milestones (label, amount, sort_order)",
+        "id, project_no, service_type, site_address, contract_amount, customers (name, address, barangay), quotations (quote_no, created_at, quotation_items (description, qty, unit, sort_order)), payment_milestones (label, amount, sort_order)",
       )
       .eq("id", id)
       .single(),
@@ -52,7 +52,7 @@ export default async function NewContractPage({
 
   const equipment = (quotation?.quotation_items ?? [])
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((i) => `${i.description}\nQuantity: ${Number(i.qty)}`)
+    .map((i) => `${i.description}\nQuantity: ${Number(i.qty)}${i.unit ? ` ${i.unit}` : ""}`)
     .join("\n\n") || "(describe the equipment here)";
 
   const schedule = (project.payment_milestones ?? [])

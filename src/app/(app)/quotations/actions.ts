@@ -9,6 +9,7 @@ export type QuotationItemInput = {
   product_id: string | null;
   description: string;
   qty: number;
+  unit: string | null;
   unit_price: number;
 };
 
@@ -21,6 +22,7 @@ function parseItems(raw: string): QuotationItemInput[] | null {
         product_id: item.product_id || null,
         description: String(item.description ?? "").trim().slice(0, 500),
         qty: Number(item.qty),
+        unit: String(item.unit ?? "").trim().slice(0, 30) || null,
         unit_price: Number(item.unit_price),
       }))
       .filter((i) => i.description && i.qty > 0 && i.unit_price >= 0);
@@ -116,6 +118,7 @@ export async function saveQuotation(
       product_id: item.product_id,
       description: item.description,
       qty: item.qty,
+      unit: item.unit,
       unit_price: item.unit_price,
       line_total: item.qty * item.unit_price,
       sort_order: idx,
