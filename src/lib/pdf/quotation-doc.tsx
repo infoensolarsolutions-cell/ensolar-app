@@ -40,6 +40,7 @@ const styles = StyleSheet.create({
   td: { paddingVertical: 5, paddingHorizontal: 6 },
   cDesc: { flex: 5 },
   cQty: { flex: 1, textAlign: "right" },
+  cUnit: { flex: 1, textAlign: "center" },
   cPrice: { flex: 2, textAlign: "right" },
   cTotal: { flex: 2, textAlign: "right" },
   totals: { marginTop: 8, alignSelf: "flex-end", width: 220 },
@@ -68,7 +69,7 @@ export type QuotationPdfData = {
   created_at: string;
   valid_until: string | null;
   customer: { name: string; phone?: string | null; address?: string | null };
-  items: { description: string; qty: number; unit_price: number; line_total: number }[];
+  items: { description: string; qty: number; unit: string | null; unit_price: number; line_total: number }[];
   subtotal: number;
   discount: number;
   total: number;
@@ -142,6 +143,7 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
           <View style={[styles.tr, { borderTopWidth: 0 }]}>
             <Text style={[styles.th, styles.cDesc]}>Description</Text>
             <Text style={[styles.th, styles.cQty]}>Qty</Text>
+            <Text style={[styles.th, styles.cUnit]}>Unit</Text>
             <Text style={[styles.th, styles.cPrice]}>Unit Price</Text>
             <Text style={[styles.th, styles.cTotal]}>Amount</Text>
           </View>
@@ -149,6 +151,7 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
             <View key={i} style={styles.tr}>
               <Text style={[styles.td, styles.cDesc]}>{item.description}</Text>
               <Text style={[styles.td, styles.cQty]}>{item.qty}</Text>
+              <Text style={[styles.td, styles.cUnit]}>{item.unit ?? ""}</Text>
               <Text style={[styles.td, styles.cPrice]}>{peso(item.unit_price)}</Text>
               <Text style={[styles.td, styles.cTotal]}>{peso(item.line_total)}</Text>
             </View>

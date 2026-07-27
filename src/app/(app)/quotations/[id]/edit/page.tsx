@@ -20,7 +20,7 @@ export default async function EditQuotationPage({
     supabase
       .from("quotations")
       .select(
-        "id, quote_no, status, valid_until, terms, discount, quotation_items (product_id, description, qty, unit_price, sort_order)",
+        "id, quote_no, status, valid_until, terms, discount, quotation_items (product_id, description, qty, unit, unit_price, sort_order)",
       )
       .eq("id", id)
       .single(),
@@ -37,10 +37,11 @@ export default async function EditQuotationPage({
 
   const items = [...q.quotation_items]
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map(({ product_id, description, qty, unit_price }) => ({
+    .map(({ product_id, description, qty, unit, unit_price }) => ({
       product_id,
       description,
       qty,
+      unit,
       unit_price,
     }));
 

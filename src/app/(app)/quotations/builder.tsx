@@ -15,7 +15,7 @@ export type ProductOption = {
 export type QuotationTemplate = {
   id: string;
   name: string;
-  items: { product_id: string | null; description: string; qty: number; unit_price: number }[];
+  items: { product_id: string | null; description: string; qty: number; unit?: string | null; unit_price: number }[];
   terms: string | null;
 };
 
@@ -24,6 +24,7 @@ type Row = {
   product_id: string | null;
   description: string;
   qty: string;
+  unit: string;
   unit_price: string;
 };
 
@@ -55,7 +56,7 @@ export function QuotationBuilder({
     valid_until: string | null;
     terms: string | null;
     discount: number;
-    items: { product_id: string | null; description: string; qty: number; unit_price: number }[];
+    items: { product_id: string | null; description: string; qty: number; unit?: string | null; unit_price: number }[];
   };
   templates?: QuotationTemplate[];
 }) {
@@ -73,6 +74,7 @@ export function QuotationBuilder({
         product_id: i.product_id,
         description: i.description,
         qty: String(i.qty),
+        unit: i.unit ?? "",
         unit_price: String(i.unit_price),
       })),
     );
@@ -85,9 +87,10 @@ export function QuotationBuilder({
           product_id: i.product_id,
           description: i.description,
           qty: String(i.qty),
+          unit: i.unit ?? "",
           unit_price: String(i.unit_price),
         }))
-      : [{ key: nextKey++, product_id: null, description: "", qty: "1", unit_price: "" }],
+      : [{ key: nextKey++, product_id: null, description: "", qty: "1", unit: "", unit_price: "" }],
   );
   const [discount, setDiscount] = useState<string>(
     quotation ? String(quotation.discount || "") : "",
@@ -116,6 +119,7 @@ export function QuotationBuilder({
     update(key, {
       product_id: p.id,
       description: `${p.name} (${p.sku})`,
+      unit: p.unit || "",
       unit_price: String(p.selling_price),
     });
   }
@@ -125,6 +129,7 @@ export function QuotationBuilder({
       product_id: r.product_id,
       description: r.description,
       qty: Number(r.qty) || 0,
+      unit: r.unit.trim() || null,
       unit_price: Number(r.unit_price) || 0,
     })),
   );
@@ -190,13 +195,23 @@ export function QuotationBuilder({
               onChange={(e) => update(row.key, { description: e.target.value })}
               className={`${inputClass} mb-2`}
             />
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <div>
                 <label className="text-xs text-gray-500">Qty</label>
                 <input
                   type="number" min="0" step="any" inputMode="decimal"
                   value={row.qty}
                   onChange={(e) => update(row.key, { qty: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Unit</label>
+                <input
+                  list="quote-units"
+                  placeholder="pc"
+                  value={row.unit}
+                  onChange={(e) => update(row.key, { unit: e.target.value })}
                   className={inputClass}
                 />
               </div>
@@ -220,12 +235,18 @@ export function QuotationBuilder({
         ))}
       </div>
 
+      <datalist id="quote-units">
+        {["pc", "pcs", "set", "lot", "unit", "meter", "roll", "box", "pair", "kg"].map((u) => (
+          <option key={u} value={u} />
+        ))}
+      </datalist>
+
       <button
         type="button"
         onClick={() =>
           setRows((cur) => [
             ...cur,
-            { key: nextKey++, product_id: null, description: "", qty: "1", unit_price: "" },
+            { key: nextKey++, product_id: null, description: "", qty: "1", unit: "", unit_price: "" },
           ])
         }
         className="w-full rounded-xl border-2 border-dashed border-gray-300 px-4 py-3 text-sm font-semibold text-gray-600 active:bg-gray-50"

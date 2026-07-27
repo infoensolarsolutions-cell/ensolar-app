@@ -19,7 +19,7 @@ export async function GET(
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "quote_no, created_at, valid_until, subtotal, discount, total, terms, customers (name, phone, address, barangay), quotation_items (description, qty, unit_price, line_total, sort_order), profiles:created_by (name)",
+      "quote_no, created_at, valid_until, subtotal, discount, total, terms, customers (name, phone, address, barangay), quotation_items (description, qty, unit, unit_price, line_total, sort_order), profiles:created_by (name)",
     )
     .eq("id", id)
     .single();
@@ -40,8 +40,8 @@ export async function GET(
     },
     items: [...q.quotation_items]
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map(({ description, qty, unit_price, line_total }) => ({
-        description, qty, unit_price, line_total,
+      .map(({ description, qty, unit, unit_price, line_total }) => ({
+        description, qty, unit, unit_price, line_total,
       })),
     subtotal: q.subtotal,
     discount: q.discount,

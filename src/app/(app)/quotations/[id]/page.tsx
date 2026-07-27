@@ -27,6 +27,7 @@ type Detail = {
     id: string;
     description: string;
     qty: number;
+    unit: string | null;
     unit_price: number;
     line_total: number;
     sort_order: number;
@@ -46,7 +47,7 @@ export default async function QuotationDetailPage({
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "id, quote_no, status, valid_until, subtotal, discount, total, terms, created_at, deleted_at, customers (name, phone, address, barangay), quotation_items (id, description, qty, unit_price, line_total, sort_order), projects (id, project_no)",
+      "id, quote_no, status, valid_until, subtotal, discount, total, terms, created_at, deleted_at, customers (name, phone, address, barangay), quotation_items (id, description, qty, unit, unit_price, line_total, sort_order), projects (id, project_no)",
     )
     .eq("id", id)
     .single()
@@ -92,7 +93,7 @@ export default async function QuotationDetailPage({
                 <div>
                   <p className="text-sm text-gray-800">{item.description}</p>
                   <p className="text-xs text-gray-500">
-                    {item.qty} × {formatPeso(item.unit_price)}
+                    {item.qty}{item.unit ? ` ${item.unit}` : ""} × {formatPeso(item.unit_price)}
                   </p>
                 </div>
                 <p className="shrink-0 text-sm font-semibold">{formatPeso(item.line_total)}</p>
