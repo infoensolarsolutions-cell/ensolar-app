@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { todayManila } from "@/lib/format";
+import { addDays, figuresFor } from "@/lib/pnl";
 
 // CSV exports for backup/Excel (Spec §8): customers, projects, payments,
 // inventory, sales.
@@ -24,7 +26,7 @@ const name = (j: unknown): string => {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ entity: string }> },
 ) {
   const profile = await getProfile();
@@ -149,6 +151,44 @@ export async function GET(
       rate: e.rate,
       status: e.active ? "active" : "inactive",
     }));
+  } else if (entity === "pnl") {
+    // Profit & Loss statement — owner only, same math as the Reports page.
+    if (profile.role !== "owner") {
+      return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+    }
+    const search = new URL(request.url).searchParams;
+    const today = todayManila();
+    const isDate = (s: string | null): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+    let from = isDate(search.get("from")) ? search.get("from")! : `${today.slice(0, 8)}01`;
+    let to = isDate(search.get("to")) ? search.get("to")! : today;
+    if (to < from) [from, to] = [to, from];
+
+    const f = await figuresFor(supabase, from, addDays(to, 1));
+    const grossProfit = f.revenue - f.cogs;
+    const net = grossProfit - f.opex;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+
+    rows = [
+      { section: "PERIOD", line: `${from} to ${to} (cash basis)`, amount: "" },
+      { section: "REVENUE", line: "Project collections", amount: r2(f.collections) },
+      { section: "REVENUE", line: "POS sales", amount: r2(f.posSales) },
+      { section: "REVENUE", line: "TOTAL REVENUE", amount: r2(f.revenue) },
+      { section: "DIRECT PROJECT COSTS", line: "Materials issued to projects", amount: r2(-f.cogsMaterials) },
+      { section: "DIRECT PROJECT COSTS", line: "Other project costs (labor, travel, fuel, meals, etc.)", amount: r2(-f.cogsOther) },
+      { section: "GROSS PROFIT", line: "", amount: r2(grossProfit) },
+      ...[...f.opexByCategory.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([category, amount]) => ({
+          section: "OPERATING EXPENSES", line: category, amount: r2(-amount),
+        })),
+      { section: "OPERATING EXPENSES", line: "TOTAL EXPENSES", amount: r2(-f.opex) },
+      { section: "NET PROFIT", line: "", amount: r2(net) },
+      ...[...f.byMethod.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([method, amount]) => ({
+          section: "REVENUE BY PAYMENT METHOD", line: method, amount: r2(amount),
+        })),
+    ];
   } else {
     return NextResponse.json({ error: "Unknown export" }, { status: 404 });
   }
