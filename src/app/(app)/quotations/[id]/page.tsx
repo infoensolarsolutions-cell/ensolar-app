@@ -22,6 +22,11 @@ type Detail = {
   terms: string | null;
   created_at: string;
   deleted_at: string | null;
+  project_name: string | null;
+  owner_name: string | null;
+  site_location: string | null;
+  revision_no: number;
+  revision_date: string | null;
   customers: { name: string; phone: string | null; address: string | null; barangay: string | null } | null;
   quotation_items: {
     id: string;
@@ -47,7 +52,7 @@ export default async function QuotationDetailPage({
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "id, quote_no, status, valid_until, subtotal, discount, total, terms, created_at, deleted_at, customers (name, phone, address, barangay), quotation_items (id, description, qty, unit, unit_price, line_total, sort_order), projects (id, project_no)",
+      "id, quote_no, status, valid_until, subtotal, discount, total, terms, created_at, deleted_at, project_name, owner_name, site_location, revision_no, revision_date, customers (name, phone, address, barangay), quotation_items (id, description, qty, unit, unit_price, line_total, sort_order), projects (id, project_no)",
     )
     .eq("id", id)
     .single()
@@ -77,7 +82,16 @@ export default async function QuotationDetailPage({
           <p className="mt-1 text-xs text-gray-400">
             Created {formatDate(q.created_at)}
             {q.valid_until && <> · Valid until {formatDate(q.valid_until)}</>}
+            {" · "}Rev {q.revision_no}
+            {q.revision_date && <> ({formatDate(q.revision_date)})</>}
           </p>
+          {(q.project_name || q.owner_name || q.site_location) && (
+            <div className="mt-2 space-y-0.5 border-t border-gray-100 pt-2 text-sm text-gray-700">
+              {q.project_name && <p><span className="text-gray-500">Project:</span> <span className="font-medium">{q.project_name}</span></p>}
+              {q.owner_name && <p><span className="text-gray-500">Owner:</span> {q.owner_name}</p>}
+              {q.site_location && <p><span className="text-gray-500">Site:</span> {q.site_location}</p>}
+            </div>
+          )}
           {q.projects && (
             <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-medium text-green-800">
               ✓ Converted to project {q.projects.project_no}

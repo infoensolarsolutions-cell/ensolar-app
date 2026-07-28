@@ -41,6 +41,12 @@ function plus30(): string {
   }).format(d);
 }
 
+function today(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+}
+
 let nextKey = 1;
 
 export function QuotationBuilder({
@@ -48,6 +54,7 @@ export function QuotationBuilder({
   leadId,
   quotation,
   templates,
+  prefill,
 }: {
   products: ProductOption[];
   leadId?: string;
@@ -56,9 +63,15 @@ export function QuotationBuilder({
     valid_until: string | null;
     terms: string | null;
     discount: number;
+    project_name: string | null;
+    owner_name: string | null;
+    site_location: string | null;
+    revision_no: number;
+    revision_date: string | null;
     items: { product_id: string | null; description: string; qty: number; unit?: string | null; unit_price: number }[];
   };
   templates?: QuotationTemplate[];
+  prefill?: { ownerName?: string | null; siteLocation?: string | null };
 }) {
   const [state, formAction, pending] = useActionState(saveQuotation, null);
   const [terms, setTerms] = useState<string>(quotation?.terms ?? DEFAULT_TERMS);
@@ -139,6 +152,59 @@ export function QuotationBuilder({
       {quotation && <input type="hidden" name="quotation_id" value={quotation.id} />}
       {leadId && <input type="hidden" name="lead_id" value={leadId} />}
       <input type="hidden" name="items" value={itemsJson} />
+
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <p className="mb-2 text-sm font-semibold text-gray-700">Project details</p>
+        <div className="space-y-2">
+          <div>
+            <label className="text-xs text-gray-500">Project name</label>
+            <input
+              name="project_name"
+              placeholder="e.g. Hotel Essencia 74 kWp Solar PV Project"
+              defaultValue={quotation?.project_name ?? ""}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Owner&rsquo;s name</label>
+            <input
+              name="owner_name"
+              placeholder="Client / project owner"
+              defaultValue={quotation?.owner_name ?? prefill?.ownerName ?? ""}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Site location</label>
+            <input
+              name="site_location"
+              placeholder="Installation site address"
+              defaultValue={quotation?.site_location ?? prefill?.siteLocation ?? ""}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500">Revision No.</label>
+              <input
+                name="revision_no"
+                type="number" min="0" step="1" inputMode="numeric"
+                defaultValue={quotation?.revision_no ?? 0}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Revision date</label>
+              <input
+                name="revision_date"
+                type="date"
+                defaultValue={quotation?.revision_date ?? today()}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {!quotation && (templates?.length ?? 0) > 0 && (
         <select

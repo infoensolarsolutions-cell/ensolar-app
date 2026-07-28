@@ -45,6 +45,20 @@ export async function saveQuotation(
   const discount = Math.max(0, Number(formData.get("discount") ?? 0) || 0);
   const items = parseItems(String(formData.get("items") ?? ""));
 
+  const projectName = String(formData.get("project_name") ?? "").trim().slice(0, 200) || null;
+  const ownerName = String(formData.get("owner_name") ?? "").trim().slice(0, 200) || null;
+  const siteLocation = String(formData.get("site_location") ?? "").trim().slice(0, 300) || null;
+  const revisionNo = Math.max(0, Math.floor(Number(formData.get("revision_no") ?? 0) || 0));
+  const revisionDateRaw = String(formData.get("revision_date") ?? "");
+  const revisionDate = /^\d{4}-\d{2}-\d{2}$/.test(revisionDateRaw) ? revisionDateRaw : null;
+  const meta = {
+    project_name: projectName,
+    owner_name: ownerName,
+    site_location: siteLocation,
+    revision_no: revisionNo,
+    revision_date: revisionDate,
+  };
+
   if (!items) return { error: "Add at least one line item." };
 
   const subtotal = items.reduce((sum, i) => sum + i.qty * i.unit_price, 0);
@@ -67,7 +81,7 @@ export async function saveQuotation(
 
     const { error } = await supabase
       .from("quotations")
-      .update({ valid_until: validUntil || null, terms, discount, subtotal, total })
+      .update({ valid_until: validUntil || null, terms, discount, subtotal, total, ...meta })
       .eq("id", quotationId);
     if (error) return { error: "Could not save. Please try again." };
 
@@ -97,6 +111,7 @@ export async function saveQuotation(
         discount,
         subtotal,
         total,
+        ...meta,
         created_by: profile.id,
       })
       .select("id")
