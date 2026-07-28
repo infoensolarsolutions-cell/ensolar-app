@@ -157,3 +157,46 @@ export async function recordPayment(
   revalidatePath("/");
   return {};
 }
+
+// Owner-only correction of a payment's method (e.g. recorded cash instead of
+// check). Amounts stay immutable here; the change is noted on the project
+// timeline for the audit trail.
+const EDITABLE_METHODS = ["cash", "gcash", "maya", "bank_transfer", "check", "card"];
+
+export async function updatePaymentMethod(
+  paymentId: string,
+  method: string,
+): Promise<{ error?: string }> {
+  const profile = await requireRole("owner");
+  if (!EDITABLE_METHODS.includes(method)) {
+    return { error: "Invalid payment method." };
+  }
+
+  const supabase = await createClient();
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, or_no, method, project_id")
+    .eq("id", paymentId)
+    .single();
+  if (!payment) return { error: "Payment not found." };
+  if (payment.method === method) return {};
+
+  const { error } = await supabase
+    .from("payments")
+    .update({ method })
+    .eq("id", paymentId);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  if (payment.project_id) {
+    await supabase.from("project_events").insert({
+      project_id: payment.project_id,
+      user_id: profile.id,
+      event: "note",
+      detail: {
+        text: `corrected payment ${payment.or_no} method: ${payment.method} → ${method}`,
+      },
+    });
+    revalidatePath(`/projects/${payment.project_id}`);
+  }
+  return {};
+}
