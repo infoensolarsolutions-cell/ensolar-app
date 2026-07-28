@@ -3,32 +3,39 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { todayManila } from "@/lib/format";
 
 export async function addExpense(
-  _prev: { error?: string } | null,
+  _prev: { error?: string; saved?: boolean; month?: string } | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; saved?: boolean; month?: string }> {
   const profile = await requireRole("owner");
   const category = String(formData.get("category") ?? "").trim().slice(0, 100);
   const description = String(formData.get("description") ?? "").trim().slice(0, 300);
-  const amount = Number(formData.get("amount") ?? 0);
   const date = String(formData.get("date") ?? "");
+  const amount = Number(formData.get("amount") ?? 0);
 
   if (!category) return { error: "Category is required." };
   if (!(amount > 0)) return { error: "Enter the amount." };
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { error: "Invalid date." };
+  }
 
   const supabase = await createClient();
+  const savedDate = date || todayManila();
   const { error } = await supabase.from("expenses").insert({
     category,
     description: description || null,
     amount,
-    ...(date ? { date } : {}),
+    date: savedDate,
     created_by: profile.id,
   });
   if (error) return { error: `Could not save: ${error.message}` };
 
   revalidatePath("/expenses");
-  return {};
+  // The page shows one month at a time — hand the saved month back so the
+  // client can jump the view there when the expense is dated elsewhere.
+  return { saved: true, month: savedDate.slice(0, 7) };
 }
 
 export async function deleteExpense(expenseId: string): Promise<{ error?: string }> {
