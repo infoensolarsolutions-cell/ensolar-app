@@ -12,7 +12,7 @@ type PickerLead = {
   id: string;
   status: LeadStatus;
   service_type: ServiceType;
-  customers: { name: string } | null;
+  customers: { name: string; address?: string | null; barangay?: string | null } | null;
 };
 
 export default async function NewQuotationPage({
@@ -70,7 +70,7 @@ export default async function NewQuotationPage({
   const [{ data: lead }, { data: products }, { data: templates }] = await Promise.all([
     supabase
       .from("leads")
-      .select("id, service_type, customers (name)")
+      .select("id, service_type, customers (name, address, barangay)")
       .eq("id", leadId)
       .single()
       .overrideTypes<PickerLead>(),
@@ -107,6 +107,11 @@ export default async function NewQuotationPage({
         products={products ?? []}
         leadId={lead.id}
         templates={templates ?? []}
+        prefill={{
+          ownerName: lead.customers?.name ?? null,
+          siteLocation:
+            [lead.customers?.address, lead.customers?.barangay].filter(Boolean).join(", ") || null,
+        }}
       />
     </>
   );

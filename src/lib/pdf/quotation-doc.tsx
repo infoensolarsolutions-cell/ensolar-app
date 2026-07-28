@@ -68,6 +68,11 @@ export type QuotationPdfData = {
   quote_no: string;
   created_at: string;
   valid_until: string | null;
+  project_name: string | null;
+  owner_name: string | null;
+  site_location: string | null;
+  revision_no: number;
+  revision_date: string | null;
   customer: { name: string; phone?: string | null; address?: string | null };
   items: { description: string; qty: number; unit: string | null; unit_price: number; line_total: number }[];
   subtotal: number;
@@ -117,11 +122,29 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
         <Text style={styles.title}>QUOTATION</Text>
 
         <View style={styles.metaRow}>
-          <View>
+          <View style={{ maxWidth: 300 }}>
             <Text style={styles.label}>Quotation for:</Text>
             <Text style={styles.bold}>{data.customer.name}</Text>
             {data.customer.address ? <Text>{data.customer.address}</Text> : null}
             {data.customer.phone ? <Text>{data.customer.phone}</Text> : null}
+            {data.project_name ? (
+              <Text style={{ marginTop: 6 }}>
+                <Text style={styles.label}>Project: </Text>
+                <Text style={styles.bold}>{data.project_name}</Text>
+              </Text>
+            ) : null}
+            {data.owner_name ? (
+              <Text>
+                <Text style={styles.label}>Owner: </Text>
+                {data.owner_name}
+              </Text>
+            ) : null}
+            {data.site_location ? (
+              <Text>
+                <Text style={styles.label}>Site location: </Text>
+                {data.site_location}
+              </Text>
+            ) : null}
           </View>
           <View>
             <Text>
@@ -136,6 +159,16 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
               <Text style={styles.label}>Valid until: </Text>
               {d(data.valid_until)}
             </Text>
+            <Text>
+              <Text style={styles.label}>Revision No: </Text>
+              <Text style={styles.bold}>{String(data.revision_no ?? 0)}</Text>
+            </Text>
+            {data.revision_date ? (
+              <Text>
+                <Text style={styles.label}>Revision date: </Text>
+                {d(data.revision_date)}
+              </Text>
+            ) : null}
           </View>
         </View>
 
