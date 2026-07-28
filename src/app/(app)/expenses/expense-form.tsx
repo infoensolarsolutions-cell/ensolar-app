@@ -174,21 +174,22 @@ export function ExpenseItem({ expense }: { expense: Expense }) {
           <>
             <button
               onClick={() => setEditing(true)}
-              className="text-xs text-brand-green-dark underline"
+              className="rounded-lg border border-brand-green/60 px-2.5 py-1.5 text-xs font-semibold text-brand-green-dark active:bg-brand-green/5"
             >
-              edit
+              Edit
             </button>
             <button
               disabled={pending}
-              onClick={() =>
+              onClick={() => {
+                if (!confirm(`Remove this expense?\n\n${expense.category} — ${formatPeso(expense.amount)} (${formatDate(expense.date)})`)) return;
                 startTransition(async () => {
                   const res = await deleteExpense(expense.id);
                   if (res.error) setError(res.error);
-                })
-              }
-              className="text-xs text-gray-400 underline"
+                });
+              }}
+              className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 active:bg-red-50 disabled:opacity-60"
             >
-              remove
+              {pending ? "…" : "🗑 Remove"}
             </button>
           </>
         )}
@@ -197,20 +198,27 @@ export function ExpenseItem({ expense }: { expense: Expense }) {
   );
 }
 
-function DeleteButton({ id, onError }: { id: string; onError: (m: string) => void }) {
+function DeleteButton({
+  expense,
+  onError,
+}: {
+  expense: Expense;
+  onError: (m: string) => void;
+}) {
   const [pending, startTransition] = useTransition();
   return (
     <button
       disabled={pending}
-      onClick={() =>
+      onClick={() => {
+        if (!confirm(`Remove this expense?\n\n${expense.category} — ${formatPeso(expense.amount)} (${formatDate(expense.date)})`)) return;
         startTransition(async () => {
-          const res = await deleteExpense(id);
+          const res = await deleteExpense(expense.id);
           if (res.error) onError(res.error);
-        })
-      }
-      className="text-xs text-gray-400 underline"
+        });
+      }}
+      className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 active:bg-red-50 disabled:opacity-60"
     >
-      remove
+      {pending ? "…" : "🗑 Remove"}
     </button>
   );
 }
@@ -254,11 +262,11 @@ function ExpenseTableRow({
           <span className="flex items-center justify-end gap-2">
             <button
               onClick={() => setEditing(true)}
-              className="text-xs text-brand-green-dark underline"
+              className="rounded-lg border border-brand-green/60 px-2.5 py-1.5 text-xs font-semibold text-brand-green-dark active:bg-brand-green/5"
             >
-              edit
+              Edit
             </button>
-            <DeleteButton id={expense.id} onError={onError} />
+            <DeleteButton expense={expense} onError={onError} />
           </span>
         )}
       </td>
