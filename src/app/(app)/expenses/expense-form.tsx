@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { addExpense, deleteExpense, updateExpense } from "./actions";
 import { formatDate, formatPeso } from "@/lib/format";
 
@@ -67,18 +68,45 @@ const CATEGORIES = [
 const inputClass =
   "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-green focus:outline-none";
 
+function todayManilaClient(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+}
+
 export function ExpenseForm() {
   const [open, setOpen] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState(addExpense, null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // The page shows one month at a time. After a save, close the form and —
+  // when the expense is dated in another month — jump the view to that month
+  // so the new entry is always visible.
+  useEffect(() => {
+    if (!state?.saved) return;
+    setOpen(false);
+    const viewed = searchParams.get("month") ?? todayManilaClient().slice(0, 7);
+    if (state.month && state.month !== viewed) {
+      setSavedMsg(`Expense saved — showing ${state.month}, the month it is dated in.`);
+      router.push(`/expenses?month=${state.month}`);
+    } else {
+      setSavedMsg("Expense saved.");
+    }
+  }, [state, router, searchParams]);
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-white active:bg-brand-green-dark"
-      >
-        + New Expense
-      </button>
+      <div className="flex items-center gap-3">
+        {savedMsg && <p className="text-xs font-medium text-green-700">✓ {savedMsg}</p>}
+        <button
+          onClick={() => { setSavedMsg(null); setOpen(true); }}
+          className="rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-white active:bg-brand-green-dark"
+        >
+          + New Expense
+        </button>
+      </div>
     );
   }
 
@@ -97,8 +125,11 @@ export function ExpenseForm() {
       <input name="description" placeholder="Description (optional)" className={inputClass} />
       <div className="grid grid-cols-2 gap-2">
         <input name="amount" type="number" min="0.01" step="any" inputMode="decimal" placeholder="Amount ₱ *" required className={inputClass} />
-        <input name="date" type="date" className={inputClass} />
+        <input name="date" type="date" defaultValue={todayManilaClient()} className={inputClass} />
       </div>
+      <p className="text-[11px] text-gray-400">
+        The date decides which month the expense appears under.
+      </p>
       {state?.error && <p className="text-xs font-medium text-red-600">{state.error}</p>}
       <button disabled={pending} className="w-full rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
         {pending ? "Saving…" : "Save expense"}
