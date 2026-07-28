@@ -181,11 +181,16 @@ export async function updatePaymentMethod(
   if (!payment) return { error: "Payment not found." };
   if (payment.method === method) return {};
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("payments")
     .update({ method })
-    .eq("id", paymentId);
+    .eq("id", paymentId)
+    .select("id");
   if (error) return { error: `Could not save: ${error.message}` };
+  if (!updated?.length) {
+    // RLS matched no rows — the update policy is missing in the database.
+    return { error: "Blocked by database rules — run the payments update policy SQL (migration 0027) first." };
+  }
 
   if (payment.project_id) {
     await supabase.from("project_events").insert({
