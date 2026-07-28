@@ -6,6 +6,7 @@ import {
   addStandardSchedule,
   deleteMilestone,
   recordPayment,
+  updatePaymentMethod,
 } from "../payment-actions";
 import { formatDate, formatPeso } from "@/lib/format";
 
@@ -44,11 +45,13 @@ export function PaymentsPanel({
   milestones,
   payments,
   isStaff,
+  isOwner = false,
 }: {
   projectId: string;
   milestones: MilestoneRow[];
   payments: PaymentRow[];
   isStaff: boolean;
+  isOwner?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
@@ -145,7 +148,10 @@ export function PaymentsPanel({
             <div>
               <p className="text-sm font-medium text-gray-800">
                 {p.or_no}
-                <span className="ml-2 text-xs text-gray-500">{METHODS[p.method as keyof typeof METHODS] ?? p.method}</span>
+                <MethodBadge
+                  payment={p}
+                  editable={isOwner && p.method !== "online"}
+                />
               </p>
               <p className="text-xs text-gray-500">
                 {formatDate(p.received_at)}
@@ -189,6 +195,64 @@ export function PaymentsPanel({
         <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p>
       )}
     </div>
+  );
+}
+
+// Method label with an owner-only inline editor for correcting the mode of
+// payment (e.g. recorded cash instead of check). Online (PayMongo) payments
+// stay locked — their method is a fact from the provider.
+function MethodBadge({
+  payment,
+  editable,
+}: {
+  payment: PaymentRow;
+  editable: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  if (!editing) {
+    return (
+      <span className="ml-2 text-xs text-gray-500">
+        {METHODS[payment.method as keyof typeof METHODS] ?? payment.method}
+        {editable && (
+          <button
+            onClick={() => setEditing(true)}
+            className="ml-1.5 text-brand-green-dark underline"
+          >
+            edit
+          </button>
+        )}
+        {error && <span className="ml-1.5 font-medium text-red-600">{error}</span>}
+      </span>
+    );
+  }
+
+  return (
+    <span className="ml-2 inline-flex items-center gap-1.5">
+      <select
+        defaultValue={payment.method}
+        disabled={pending}
+        onChange={(e) => {
+          const method = e.target.value;
+          setError(null);
+          startTransition(async () => {
+            const res = await updatePaymentMethod(payment.id, method);
+            if (res.error) setError(res.error);
+            setEditing(false);
+          });
+        }}
+        className="rounded-lg border border-gray-300 px-2 py-1 text-xs focus:border-brand-green focus:outline-none"
+      >
+        {Object.entries(METHODS).map(([v, l]) => (
+          <option key={v} value={v}>{l}</option>
+        ))}
+      </select>
+      <button onClick={() => setEditing(false)} className="text-xs text-gray-400 underline">
+        cancel
+      </button>
+    </span>
   );
 }
 

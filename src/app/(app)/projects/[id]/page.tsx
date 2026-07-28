@@ -357,6 +357,7 @@ export default async function ProjectDetailPage({
           <PaymentsPanel
             projectId={project.id}
             isStaff={isStaff}
+            isOwner={profile.role === "owner"}
             milestones={milestoneRows}
             payments={paymentRows}
           />
