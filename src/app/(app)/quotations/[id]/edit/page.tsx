@@ -20,7 +20,7 @@ export default async function EditQuotationPage({
     supabase
       .from("quotations")
       .select(
-        "id, quote_no, status, valid_until, terms, discount, project_name, owner_name, site_location, revision_no, revision_date, quotation_items (product_id, description, qty, unit, unit_price, sort_order)",
+        "id, quote_no, status, valid_until, terms, discount, project_name, site_location, revision_no, revision_date, quotation_items (product_id, description, qty, unit, unit_price, sort_order)",
       )
       .eq("id", id)
       .single(),
@@ -56,7 +56,6 @@ export default async function EditQuotationPage({
           terms: q.terms,
           discount: q.discount,
           project_name: q.project_name,
-          owner_name: q.owner_name,
           site_location: q.site_location,
           revision_no: q.revision_no,
           revision_date: q.revision_date,
