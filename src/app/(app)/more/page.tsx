@@ -116,7 +116,9 @@ export default async function MorePage() {
                 ["payments", "Payments"],
                 ["inventory", "Inventory"],
                 ["sales", "POS Sales"],
-                ...(profile.role === "owner" ? [["employees", "Employees"]] : []),
+                ...(profile.role === "owner"
+                  ? [["employees", "Employees"], ["pnl", "Profit & Loss"]]
+                  : []),
               ].map(([entity, label]) => (
                 <a
                   key={entity}
