@@ -64,14 +64,13 @@ export function QuotationBuilder({
     terms: string | null;
     discount: number;
     project_name: string | null;
-    owner_name: string | null;
     site_location: string | null;
     revision_no: number;
     revision_date: string | null;
     items: { product_id: string | null; description: string; qty: number; unit?: string | null; unit_price: number }[];
   };
   templates?: QuotationTemplate[];
-  prefill?: { ownerName?: string | null; siteLocation?: string | null };
+  prefill?: { siteLocation?: string | null };
 }) {
   const [state, formAction, pending] = useActionState(saveQuotation, null);
   const [terms, setTerms] = useState<string>(quotation?.terms ?? DEFAULT_TERMS);
@@ -162,15 +161,6 @@ export function QuotationBuilder({
               name="project_name"
               placeholder="e.g. Hotel Essencia 74 kWp Solar PV Project"
               defaultValue={quotation?.project_name ?? ""}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Owner&rsquo;s name</label>
-            <input
-              name="owner_name"
-              placeholder="Client / project owner"
-              defaultValue={quotation?.owner_name ?? prefill?.ownerName ?? ""}
               className={inputClass}
             />
           </div>

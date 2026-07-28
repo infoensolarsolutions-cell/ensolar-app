@@ -19,7 +19,7 @@ export async function GET(
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "quote_no, created_at, valid_until, subtotal, discount, total, terms, project_name, owner_name, site_location, revision_no, revision_date, customers (name, phone, address, barangay), quotation_items (description, qty, unit, unit_price, line_total, sort_order), profiles:created_by (name)",
+      "quote_no, created_at, valid_until, subtotal, discount, total, terms, project_name, site_location, revision_no, revision_date, customers (name, phone, address, barangay), quotation_items (description, qty, unit, unit_price, line_total, sort_order), profiles:created_by (name)",
     )
     .eq("id", id)
     .single();
@@ -34,7 +34,6 @@ export async function GET(
     created_at: q.created_at,
     valid_until: q.valid_until,
     project_name: q.project_name,
-    owner_name: q.owner_name,
     site_location: q.site_location,
     revision_no: q.revision_no,
     revision_date: q.revision_date,

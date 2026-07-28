@@ -46,14 +46,12 @@ export async function saveQuotation(
   const items = parseItems(String(formData.get("items") ?? ""));
 
   const projectName = String(formData.get("project_name") ?? "").trim().slice(0, 200) || null;
-  const ownerName = String(formData.get("owner_name") ?? "").trim().slice(0, 200) || null;
   const siteLocation = String(formData.get("site_location") ?? "").trim().slice(0, 300) || null;
   const revisionNo = Math.max(0, Math.floor(Number(formData.get("revision_no") ?? 0) || 0));
   const revisionDateRaw = String(formData.get("revision_date") ?? "");
   const revisionDate = /^\d{4}-\d{2}-\d{2}$/.test(revisionDateRaw) ? revisionDateRaw : null;
   const meta = {
     project_name: projectName,
-    owner_name: ownerName,
     site_location: siteLocation,
     revision_no: revisionNo,
     revision_date: revisionDate,

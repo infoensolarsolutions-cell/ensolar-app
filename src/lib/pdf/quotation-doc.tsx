@@ -69,7 +69,6 @@ export type QuotationPdfData = {
   created_at: string;
   valid_until: string | null;
   project_name: string | null;
-  owner_name: string | null;
   site_location: string | null;
   revision_no: number;
   revision_date: string | null;
@@ -131,12 +130,6 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
               <Text style={{ marginTop: 6 }}>
                 <Text style={styles.label}>Project: </Text>
                 <Text style={styles.bold}>{data.project_name}</Text>
-              </Text>
-            ) : null}
-            {data.owner_name ? (
-              <Text>
-                <Text style={styles.label}>Owner: </Text>
-                {data.owner_name}
               </Text>
             ) : null}
             {data.site_location ? (

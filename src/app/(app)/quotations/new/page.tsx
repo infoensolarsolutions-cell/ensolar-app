@@ -108,7 +108,6 @@ export default async function NewQuotationPage({
         leadId={lead.id}
         templates={templates ?? []}
         prefill={{
-          ownerName: lead.customers?.name ?? null,
           siteLocation:
             [lead.customers?.address, lead.customers?.barangay].filter(Boolean).join(", ") || null,
         }}
