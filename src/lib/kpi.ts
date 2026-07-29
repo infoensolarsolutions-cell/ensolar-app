@@ -1,13 +1,19 @@
 // KPI criteria and scoring shared by server actions and client UI.
-// Weights sum to 100; a rating of 1–5 contributes weight × rating / 5.
+// Weights sum to 100; a rating of 1–10 contributes weight × rating / 10,
+// so a fully rated scorecard totals up to 100.
 
 export type KpiScore = {
   key: string;
   criterion: string;
   weight: number;
+  self: number | null;
   sup: number | null;
   mgr: number | null;
 };
+
+export const RATING_MIN = 1;
+export const RATING_MAX = 10;
+export const SCALE_NOTE = "1 = Poor · 10 = Very satisfactory";
 
 export const KPI_CRITERIA: { key: string; name: string; desc: string; weight: number }[] = [
   { key: "attendance", name: "Attendance & punctuality", weight: 10,
@@ -34,18 +40,20 @@ export const KPI_CRITERIA: { key: string; name: string; desc: string; weight: nu
 
 export function emptyScores(): KpiScore[] {
   return KPI_CRITERIA.map((c) => ({
-    key: c.key, criterion: c.name, weight: c.weight, sup: null, mgr: null,
+    key: c.key, criterion: c.name, weight: c.weight, self: null, sup: null, mgr: null,
   }));
 }
 
-export function totalFor(scores: KpiScore[], field: "sup" | "mgr"): number {
+export function totalFor(scores: KpiScore[], field: "self" | "sup" | "mgr"): number {
   let total = 0;
-  for (const s of scores) total += (s.weight * (s[field] ?? 0)) / 5;
+  for (const s of scores) total += (s.weight * (s[field] ?? 0)) / RATING_MAX;
   return Math.round(total * 10) / 10;
 }
 
-export function isComplete(scores: KpiScore[], field: "sup" | "mgr"): boolean {
-  return scores.every((s) => s[field] !== null && s[field]! >= 1 && s[field]! <= 5);
+export function isComplete(scores: KpiScore[], field: "self" | "sup" | "mgr"): boolean {
+  return scores.every(
+    (s) => s[field] !== null && s[field]! >= RATING_MIN && s[field]! <= RATING_MAX,
+  );
 }
 
 export function band(total: number): string {
@@ -55,11 +63,3 @@ export function band(total: number): string {
   if (total >= 60) return "Needs Improvement";
   return "Unsatisfactory";
 }
-
-export const RATING_LABELS: Record<number, string> = {
-  5: "5 — Outstanding",
-  4: "4 — Very Good",
-  3: "3 — Meets expectations",
-  2: "2 — Needs improvement",
-  1: "1 — Unsatisfactory",
-};

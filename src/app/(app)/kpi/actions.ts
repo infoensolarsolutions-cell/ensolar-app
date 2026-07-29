@@ -2,9 +2,15 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth";
+import { getProfile, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { emptyScores, isComplete, type KpiScore } from "@/lib/kpi";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { emptyScores, isComplete, RATING_MAX, RATING_MIN, type KpiScore } from "@/lib/kpi";
+
+function clampRating(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= RATING_MIN && n <= RATING_MAX ? n : null;
+}
 
 export async function createEvaluation(
   _prev: { error?: string } | null,
@@ -53,16 +59,83 @@ function mergeScores(
   );
   return current.map((s) => {
     const inc = byKey.get(s.key);
-    const clamp = (v: unknown): number | null => {
-      const n = Number(v);
-      return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
-    };
     return {
       ...s,
-      sup: inc && "sup" in inc ? clamp(inc.sup) : s.sup,
-      mgr: isOwner && inc && "mgr" in inc ? clamp(inc.mgr) : s.mgr,
+      self: s.self ?? null,
+      sup: inc && "sup" in inc ? clampRating(inc.sup) : s.sup,
+      mgr: isOwner && inc && "mgr" in inc ? clampRating(inc.mgr) : s.mgr,
     };
   });
+}
+
+// The employee's own step: rate the Self column and self comments on their
+// evaluation. Identity is verified against employees.profile_id via the
+// admin client (office staff cannot read the employees table directly).
+export async function saveSelfEvaluation(
+  _prev: { error?: string; saved?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; saved?: boolean }> {
+  const profile = await getProfile();
+  if (!profile) return { error: "Not signed in." };
+  const evaluationId = String(formData.get("evaluation_id") ?? "");
+  const intent = String(formData.get("intent") ?? "save"); // save | submit_self
+
+  const supabase = await createClient();
+  const { data: ev } = await supabase
+    .from("kpi_evaluations")
+    .select("id, status, scores, employee_id")
+    .eq("id", evaluationId)
+    .single();
+  if (!ev) return { error: "Evaluation not found." };
+  if (ev.status === "final") {
+    return { error: "This evaluation is finalized — the self-evaluation is closed." };
+  }
+
+  const admin = createAdminClient();
+  const { data: employee } = await admin
+    .from("employees")
+    .select("profile_id")
+    .eq("id", ev.employee_id)
+    .single();
+  if (!employee || employee.profile_id !== profile.id) {
+    return { error: "Only the evaluated employee can fill in the self-evaluation." };
+  }
+
+  let incoming: unknown;
+  try {
+    incoming = JSON.parse(String(formData.get("scores") ?? "[]"));
+  } catch {
+    return { error: "Invalid scores." };
+  }
+  if (!Array.isArray(incoming)) return { error: "Invalid scores." };
+  const byKey = new Map(
+    incoming.map((s: { key?: string; self?: unknown }) => [String(s.key), s]),
+  );
+  const scores = (ev.scores as KpiScore[]).map((s) => {
+    const inc = byKey.get(s.key);
+    return { ...s, self: inc && "self" in inc ? clampRating(inc.self) : (s.self ?? null) };
+  });
+
+  const updates: Record<string, unknown> = {
+    scores,
+    self_comments: String(formData.get("self_comments") ?? "").trim().slice(0, 2000) || null,
+  };
+  if (intent === "submit_self") {
+    if (!isComplete(scores, "self")) {
+      return { error: "Rate all 10 criteria first." };
+    }
+    updates.self_submitted_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase
+    .from("kpi_evaluations")
+    .update(updates)
+    .eq("id", evaluationId);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  revalidatePath(`/kpi/${evaluationId}`);
+  revalidatePath("/kpi");
+  return { saved: true };
 }
 
 export async function saveEvaluation(
