@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { saveEvaluation, saveSelfEvaluation, deleteEvaluation } from "../actions";
 import {
-  KPI_CRITERIA, SCALE_NOTE, band, totalFor, type KpiScore,
+  KPI_CRITERIA, RATING_WORDS, SCALE_NOTE, band, totalFor, type KpiScore,
 } from "@/lib/kpi";
 
 const inputClass =
@@ -26,7 +26,7 @@ type Evaluation = {
 
 export type Viewer = "owner" | "staff" | "employee";
 
-// Tick boxes 1–10: tap to rate, tap the same number again to clear.
+// Tick boxes 1–5: tap to rate, tap the same number again to clear.
 function RatingTicks({
   value,
   disabled,
@@ -37,8 +37,8 @@ function RatingTicks({
   onChange: (v: number | null) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1">
-      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
+    <div className="flex flex-wrap items-center gap-1.5">
+      {[1, 2, 3, 4, 5].map((n) => {
         const selected = value === n;
         const reached = value !== null && n <= value;
         return (
@@ -47,7 +47,7 @@ function RatingTicks({
             key={n}
             disabled={disabled}
             onClick={() => onChange(selected ? null : n)}
-            className={`h-8 w-8 rounded-full border text-xs font-bold transition-colors ${
+            className={`h-9 w-9 rounded-full border text-sm font-bold transition-colors ${
               selected
                 ? "border-brand-green bg-brand-green text-white"
                 : reached
@@ -59,6 +59,9 @@ function RatingTicks({
           </button>
         );
       })}
+      <span className="ml-1 text-xs font-medium text-gray-500">
+        {value ? RATING_WORDS[value] : ""}
+      </span>
     </div>
   );
 }
@@ -197,7 +200,7 @@ export function Scorecard({
                     />
                   ) : (
                     s.self !== null && (
-                      <p className="text-sm font-bold text-gray-700">{s.self} / 10</p>
+                      <p className="text-sm font-bold text-gray-700">{s.self} / 5</p>
                     )
                   )}
                 </div>
@@ -206,7 +209,7 @@ export function Scorecard({
                     <div>
                       <label className="text-[11px] font-semibold text-gray-500">Supervisor</label>
                       {isEmployee ? (
-                        <p className="text-sm font-bold text-gray-700">{s.sup ?? "—"} / 10</p>
+                        <p className="text-sm font-bold text-gray-700">{s.sup ?? "—"} / 5</p>
                       ) : (
                         <RatingTicks
                           value={s.sup}
@@ -225,7 +228,7 @@ export function Scorecard({
                         />
                       ) : (
                         <p className="text-sm font-bold text-gray-700">
-                          {s.mgr !== null ? `${s.mgr} / 10` : isEmployee ? "—" : "— owner only"}
+                          {s.mgr !== null ? `${s.mgr} / 5` : isEmployee ? "—" : "— owner only"}
                         </p>
                       )}
                     </div>

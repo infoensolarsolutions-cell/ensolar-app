@@ -150,10 +150,24 @@ export async function saveEvaluation(
   const supabase = await createClient();
   const { data: ev } = await supabase
     .from("kpi_evaluations")
-    .select("id, status, scores")
+    .select("id, status, scores, employee_id")
     .eq("id", evaluationId)
     .single();
   if (!ev) return { error: "Evaluation not found." };
+
+  // Nobody rates their own supervisor/manager columns: staff who are the
+  // evaluated employee must use the self-evaluation view instead.
+  if (!isOwner) {
+    const admin = createAdminClient();
+    const { data: employee } = await admin
+      .from("employees")
+      .select("profile_id")
+      .eq("id", ev.employee_id)
+      .single();
+    if (employee?.profile_id === profile.id) {
+      return { error: "This is your own evaluation — use the self-evaluation view. Supervisor ratings must come from someone else." };
+    }
+  }
 
   if (intent === "reopen") {
     if (!isOwner) return { error: "Only the owner can reopen a finalized evaluation." };
