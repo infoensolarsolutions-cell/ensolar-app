@@ -1,5 +1,5 @@
 // KPI criteria and scoring shared by server actions and client UI.
-// Weights sum to 100; a rating of 1–10 contributes weight × rating / 10,
+// Weights sum to 100; a rating of 1–5 contributes weight × rating / 5,
 // so a fully rated scorecard totals up to 100.
 
 export type KpiScore = {
@@ -12,8 +12,16 @@ export type KpiScore = {
 };
 
 export const RATING_MIN = 1;
-export const RATING_MAX = 10;
-export const SCALE_NOTE = "1 = Poor · 10 = Very satisfactory";
+export const RATING_MAX = 5;
+export const RATING_WORDS: Record<number, string> = {
+  1: "Poor",
+  2: "Below average",
+  3: "Average",
+  4: "Satisfactory",
+  5: "Excellent",
+};
+export const SCALE_NOTE =
+  "1 Poor · 2 Below average · 3 Average · 4 Satisfactory · 5 Excellent";
 
 export const KPI_CRITERIA: { key: string; name: string; desc: string; weight: number }[] = [
   { key: "attendance", name: "Attendance & punctuality", weight: 10,

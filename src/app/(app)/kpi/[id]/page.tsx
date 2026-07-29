@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { KpiScore } from "@/lib/kpi";
 import { Scorecard, type Viewer } from "./scorecard";
 
@@ -15,8 +16,6 @@ export default async function KpiDetailPage({
 }) {
   const profile = await getProfile();
   if (!profile || profile.role === "customer") redirect("/login");
-  const viewer: Viewer =
-    profile.role === "owner" ? "owner" : profile.role === "office_staff" ? "staff" : "employee";
 
   const { id } = await params;
   const supabase = await createClient();
@@ -25,11 +24,29 @@ export default async function KpiDetailPage({
   const { data: ev } = await supabase
     .from("kpi_evaluations")
     .select(
-      "id, employee_name, employee_position, period, supervisor_name, status, scores, supervisor_comments, manager_comments, development_plan, self_comments, self_submitted_at",
+      "id, employee_id, employee_name, employee_position, period, supervisor_name, status, scores, supervisor_comments, manager_comments, development_plan, self_comments, self_submitted_at",
     )
     .eq("id", id)
     .single();
   if (!ev) notFound();
+
+  // Whoever the evaluation is ABOUT gets the self-evaluation view, even if
+  // they are office staff — nobody rates their own supervisor column. (The
+  // admin client is needed because office staff cannot read employees.)
+  const admin = createAdminClient();
+  const { data: employee } = await admin
+    .from("employees")
+    .select("profile_id")
+    .eq("id", ev.employee_id)
+    .single();
+  const isSelf = !!employee?.profile_id && employee.profile_id === profile.id;
+  const viewer: Viewer = isSelf && profile.role !== "owner"
+    ? "employee"
+    : profile.role === "owner"
+      ? "owner"
+      : profile.role === "office_staff"
+        ? "staff"
+        : "employee";
 
   // Older rows may predate the self column in the scores JSON.
   const scores = (ev.scores as KpiScore[]).map((s) => ({ ...s, self: s.self ?? null }));
