@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
-import { requireRole } from "@/lib/auth";
+import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { band, totalFor, type KpiScore } from "@/lib/kpi";
@@ -27,7 +28,9 @@ type EvalRow = {
 };
 
 export default async function KpiListPage() {
-  await requireRole("owner", "office_staff");
+  const profile = await getProfile();
+  if (!profile || profile.role === "customer") redirect("/login");
+  const isStaff = ["owner", "office_staff"].includes(profile.role);
   const supabase = await createClient();
 
   const [{ data: evaluations }, { data: employees }] = await Promise.all([
@@ -42,15 +45,19 @@ export default async function KpiListPage() {
 
   return (
     <>
-      <TopBar title="KPI Evaluations" backHref="/more" />
+      <TopBar title={isStaff ? "KPI Evaluations" : "My KPI Evaluations"} backHref="/more" />
       <div className="space-y-4 p-4">
-        <NewEvaluationForm
-          employees={(employees ?? []) as { id: string; name: string; employee_position: string | null }[]}
-        />
+        {isStaff && (
+          <NewEvaluationForm
+            employees={(employees ?? []) as { id: string; name: string; employee_position: string | null }[]}
+          />
+        )}
 
         {!evaluations?.length && (
           <p className="pt-6 text-center text-sm text-gray-500">
-            No evaluations yet. Start one above.
+            {isStaff
+              ? "No evaluations yet. Start one above."
+              : "No evaluation has been opened for you yet."}
           </p>
         )}
 

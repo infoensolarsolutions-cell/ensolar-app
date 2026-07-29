@@ -53,6 +53,12 @@ export default async function MorePage() {
             <span className="font-medium text-gray-800">🕐 My Attendance</span>
             <span className="text-gray-400">›</span>
           </Link>
+          {profile.role === "technician" && (
+            <Link href="/kpi" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">📈 My KPI Self-Evaluation</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+          )}
           {["owner", "office_staff"].includes(profile.role) && (
             <>
               <Link href="/kiosk" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">

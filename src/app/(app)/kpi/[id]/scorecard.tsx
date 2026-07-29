@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { saveEvaluation, deleteEvaluation } from "../actions";
+import { saveEvaluation, saveSelfEvaluation, deleteEvaluation } from "../actions";
 import {
-  KPI_CRITERIA, RATING_LABELS, band, totalFor, type KpiScore,
+  KPI_CRITERIA, SCALE_NOTE, band, totalFor, type KpiScore,
 } from "@/lib/kpi";
 
 const inputClass =
@@ -20,9 +20,14 @@ type Evaluation = {
   supervisor_comments: string | null;
   manager_comments: string | null;
   development_plan: string | null;
+  self_comments: string | null;
+  self_submitted_at: string | null;
 };
 
-function RatingSelect({
+export type Viewer = "owner" | "staff" | "employee";
+
+// Tick boxes 1–10: tap to rate, tap the same number again to clear.
+function RatingTicks({
   value,
   disabled,
   onChange,
@@ -32,42 +37,80 @@ function RatingSelect({
   onChange: (v: number | null) => void;
 }) {
   return (
-    <select
-      value={value ?? ""}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-      className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-brand-green focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
-    >
-      <option value="">—</option>
-      {[5, 4, 3, 2, 1].map((n) => (
-        <option key={n} value={n}>{RATING_LABELS[n]}</option>
-      ))}
-    </select>
+    <div className="flex flex-wrap gap-1">
+      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
+        const selected = value === n;
+        const reached = value !== null && n <= value;
+        return (
+          <button
+            type="button"
+            key={n}
+            disabled={disabled}
+            onClick={() => onChange(selected ? null : n)}
+            className={`h-8 w-8 rounded-full border text-xs font-bold transition-colors ${
+              selected
+                ? "border-brand-green bg-brand-green text-white"
+                : reached
+                  ? "border-brand-green/40 bg-brand-green/15 text-brand-green-dark"
+                  : "border-gray-300 bg-white text-gray-500"
+            } disabled:opacity-50`}
+          >
+            {n}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ScoreTile({ label, total, highlight }: { label: string; total: number; highlight?: boolean }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+      <p className={`text-xl font-extrabold ${highlight ? "text-brand-green-dark" : "text-gray-900"}`}>
+        {total}
+      </p>
+      <p className="text-xs font-medium text-gray-500">{band(total)}</p>
+    </div>
   );
 }
 
 export function Scorecard({
   evaluation,
-  isOwner,
+  viewer,
 }: {
   evaluation: Evaluation;
-  isOwner: boolean;
+  viewer: Viewer;
 }) {
   const locked = evaluation.status === "final";
+  const isEmployee = viewer === "employee";
+  const isOwner = viewer === "owner";
+  // The employee sees supervisor/manager results only after finalization.
+  const showStaffColumns = !isEmployee || locked;
+
   const [scores, setScores] = useState<KpiScore[]>(evaluation.scores);
-  const [state, formAction, pending] = useActionState(saveEvaluation, null);
+  const [state, formAction, pending] = useActionState(
+    isEmployee ? saveSelfEvaluation : saveEvaluation,
+    null,
+  );
   const [delError, setDelError] = useState<string | null>(null);
   const [delPending, startDelete] = useTransition();
 
+  const selfTotal = totalFor(scores, "self");
   const supTotal = totalFor(scores, "sup");
   const mgrTotal = totalFor(scores, "mgr");
 
-  function setRating(key: string, field: "sup" | "mgr", v: number | null) {
+  function setRating(key: string, field: "self" | "sup" | "mgr", v: number | null) {
     setScores((cur) => cur.map((s) => (s.key === key ? { ...s, [field]: v } : s)));
   }
 
-  const statusNote =
-    evaluation.status === "draft"
+  const statusNote = isEmployee
+    ? locked
+      ? "Finalized — your supervisor's and manager's ratings are now visible below."
+      : evaluation.self_submitted_at
+        ? "Self-evaluation submitted. You can still adjust it until the evaluation is finalized."
+        : "Rate yourself on each item, then submit. Your supervisor's ratings stay hidden until the manager finalizes."
+    : evaluation.status === "draft"
       ? "Draft — supervisor ratings in progress."
       : evaluation.status === "supervisor_done"
         ? "Supervisor ratings submitted — awaiting the manager's final evaluation."
@@ -99,31 +142,29 @@ export function Scorecard({
           </span>
         </div>
         <p className="mt-1 text-xs text-gray-500">{statusNote}</p>
-        <div className="mt-2">
-          <label className="text-xs text-gray-500">Assigned supervisor</label>
-          <input
-            name="supervisor_name"
-            defaultValue={evaluation.supervisor_name ?? ""}
-            disabled={locked}
-            placeholder="Supervisor's name"
-            className={`${inputClass} disabled:bg-gray-50`}
-          />
-        </div>
+        {!isEmployee && (
+          <div className="mt-2">
+            <label className="text-xs text-gray-500">Assigned supervisor</label>
+            <input
+              name="supervisor_name"
+              defaultValue={evaluation.supervisor_name ?? ""}
+              disabled={locked}
+              placeholder="Supervisor's name"
+              className={`${inputClass} disabled:bg-gray-50`}
+            />
+          </div>
+        )}
       </div>
 
       {/* Score totals */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Supervisor score</p>
-          <p className="text-xl font-extrabold text-gray-900">{supTotal}</p>
-          <p className="text-xs font-medium text-gray-500">{band(supTotal)}</p>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Manager final score</p>
-          <p className="text-xl font-extrabold text-brand-green-dark">{mgrTotal}</p>
-          <p className="text-xs font-medium text-gray-500">{band(mgrTotal)}</p>
-        </div>
+      <div className={`grid gap-3 ${showStaffColumns ? "grid-cols-3" : "grid-cols-1"}`}>
+        <ScoreTile label="Self score" total={selfTotal} />
+        {showStaffColumns && <ScoreTile label="Supervisor score" total={supTotal} />}
+        {showStaffColumns && <ScoreTile label="Manager final" total={mgrTotal} highlight />}
       </div>
+      <p className="-mt-2 text-center text-xs text-gray-400">
+        Rating scale per item: {SCALE_NOTE}. Scores are weighted out of 100.
+      </p>
 
       {/* Criteria */}
       <div className="space-y-3">
@@ -140,29 +181,56 @@ export function Scorecard({
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-gray-500">{c.desc}</p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="mt-2 space-y-2">
                 <div>
-                  <label className="text-[11px] text-gray-500">Supervisor</label>
-                  <RatingSelect
-                    value={s.sup}
-                    disabled={locked}
-                    onChange={(v) => setRating(c.key, "sup", v)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] text-gray-500">Manager (final)</label>
-                  {isOwner ? (
-                    <RatingSelect
-                      value={s.mgr}
+                  <label className="text-[11px] font-semibold text-gray-500">
+                    {isEmployee ? "My rating" : "Self-evaluation"}
+                    {!isEmployee && s.self === null && (
+                      <span className="ml-1 font-normal text-gray-400">— not yet rated</span>
+                    )}
+                  </label>
+                  {isEmployee ? (
+                    <RatingTicks
+                      value={s.self}
                       disabled={locked}
-                      onChange={(v) => setRating(c.key, "mgr", v)}
+                      onChange={(v) => setRating(c.key, "self", v)}
                     />
                   ) : (
-                    <p className="rounded-lg bg-gray-50 px-2 py-2 text-sm text-gray-500">
-                      {s.mgr ? RATING_LABELS[s.mgr] : "— owner only"}
-                    </p>
+                    s.self !== null && (
+                      <p className="text-sm font-bold text-gray-700">{s.self} / 10</p>
+                    )
                   )}
                 </div>
+                {showStaffColumns && (
+                  <>
+                    <div>
+                      <label className="text-[11px] font-semibold text-gray-500">Supervisor</label>
+                      {isEmployee ? (
+                        <p className="text-sm font-bold text-gray-700">{s.sup ?? "—"} / 10</p>
+                      ) : (
+                        <RatingTicks
+                          value={s.sup}
+                          disabled={locked}
+                          onChange={(v) => setRating(c.key, "sup", v)}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-gray-500">Manager (final)</label>
+                      {isOwner ? (
+                        <RatingTicks
+                          value={s.mgr}
+                          disabled={locked}
+                          onChange={(v) => setRating(c.key, "mgr", v)}
+                        />
+                      ) : (
+                        <p className="text-sm font-bold text-gray-700">
+                          {s.mgr !== null ? `${s.mgr} / 10` : isEmployee ? "—" : "— owner only"}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           );
@@ -172,35 +240,81 @@ export function Scorecard({
       {/* Comments */}
       <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4">
         <div>
-          <label className="text-xs text-gray-500">Supervisor&rsquo;s comments</label>
-          <textarea
-            name="supervisor_comments"
-            rows={2}
-            defaultValue={evaluation.supervisor_comments ?? ""}
-            disabled={locked}
-            className={`${inputClass} disabled:bg-gray-50`}
-          />
+          <label className="text-xs text-gray-500">
+            {isEmployee ? "My comments (optional)" : "Employee's self-evaluation comments"}
+          </label>
+          {isEmployee ? (
+            <textarea
+              name="self_comments"
+              rows={2}
+              defaultValue={evaluation.self_comments ?? ""}
+              disabled={locked}
+              className={`${inputClass} disabled:bg-gray-50`}
+            />
+          ) : (
+            <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
+              {evaluation.self_comments || "—"}
+            </p>
+          )}
         </div>
-        <div>
-          <label className="text-xs text-gray-500">Manager&rsquo;s final remarks {isOwner ? "" : "(owner only)"}</label>
-          <textarea
-            name="manager_comments"
-            rows={2}
-            defaultValue={evaluation.manager_comments ?? ""}
-            disabled={locked || !isOwner}
-            className={`${inputClass} disabled:bg-gray-50`}
-          />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">Development plan / targets for next period {isOwner ? "" : "(owner only)"}</label>
-          <textarea
-            name="development_plan"
-            rows={2}
-            defaultValue={evaluation.development_plan ?? ""}
-            disabled={locked || !isOwner}
-            className={`${inputClass} disabled:bg-gray-50`}
-          />
-        </div>
+        {!isEmployee && (
+          <>
+            <div>
+              <label className="text-xs text-gray-500">Supervisor&rsquo;s comments</label>
+              <textarea
+                name="supervisor_comments"
+                rows={2}
+                defaultValue={evaluation.supervisor_comments ?? ""}
+                disabled={locked}
+                className={`${inputClass} disabled:bg-gray-50`}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">
+                Manager&rsquo;s final remarks {isOwner ? "" : "(owner only)"}
+              </label>
+              <textarea
+                name="manager_comments"
+                rows={2}
+                defaultValue={evaluation.manager_comments ?? ""}
+                disabled={locked || !isOwner}
+                className={`${inputClass} disabled:bg-gray-50`}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">
+                Development plan / targets for next period {isOwner ? "" : "(owner only)"}
+              </label>
+              <textarea
+                name="development_plan"
+                rows={2}
+                defaultValue={evaluation.development_plan ?? ""}
+                disabled={locked || !isOwner}
+                className={`${inputClass} disabled:bg-gray-50`}
+              />
+            </div>
+          </>
+        )}
+        {isEmployee && locked && (evaluation.manager_comments || evaluation.development_plan) && (
+          <>
+            {evaluation.manager_comments && (
+              <div>
+                <label className="text-xs text-gray-500">Manager&rsquo;s remarks</label>
+                <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                  {evaluation.manager_comments}
+                </p>
+              </div>
+            )}
+            {evaluation.development_plan && (
+              <div>
+                <label className="text-xs text-gray-500">Development plan</label>
+                <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                  {evaluation.development_plan}
+                </p>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {state?.error && (
@@ -214,7 +328,28 @@ export function Scorecard({
       )}
 
       {/* Actions */}
-      {!locked ? (
+      {isEmployee ? (
+        !locked && (
+          <div className="space-y-2">
+            <button
+              name="intent"
+              value="save"
+              disabled={pending}
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 active:bg-gray-50 disabled:opacity-60"
+            >
+              {pending ? "Saving…" : "Save progress"}
+            </button>
+            <button
+              name="intent"
+              value="submit_self"
+              disabled={pending}
+              className="w-full rounded-xl bg-brand-green px-4 py-3 text-sm font-semibold text-white active:bg-brand-green-dark disabled:opacity-60"
+            >
+              Submit my self-evaluation
+            </button>
+          </div>
+        )
+      ) : !locked ? (
         <div className="space-y-2">
           <button
             name="intent"
