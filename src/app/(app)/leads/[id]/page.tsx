@@ -35,6 +35,7 @@ type LeadDetail = {
     address: string | null;
     barangay: string | null;
     referred_by: string | null;
+    messenger_name: string | null;
   } | null;
 };
 
@@ -58,7 +59,7 @@ export default async function LeadDetailPage({
   const { data: lead } = await supabase
     .from("leads")
     .select(
-      "id, status, service_type, next_followup_at, lost_reason, notes, assigned_to, created_at, customer_id, customers (name, phone, email, address, barangay, referred_by)",
+      "id, status, service_type, next_followup_at, lost_reason, notes, assigned_to, created_at, customer_id, customers (name, phone, email, address, barangay, referred_by, messenger_name)",
     )
     .eq("id", id)
     .single()
@@ -100,6 +101,23 @@ export default async function LeadDetailPage({
     ? `mailto:${c.email}?subject=${encodeURIComponent("Re: Your solar inquiry — Ensolar Solutions")}&body=${encodeURIComponent(
         replyText + (inquiryMessage ? `\n\nYour inquiry:\n"${inquiryMessage}"` : ""),
       )}`
+    : null;
+  // WhatsApp wants the number in international digits (PH: 0 → 63).
+  const waDigits = (() => {
+    const d = (c?.phone ?? "").replace(/\D/g, "");
+    if (!d) return null;
+    if (d.startsWith("63")) return d;
+    if (d.startsWith("0")) return `63${d.slice(1)}`;
+    return d.length >= 10 ? d : null;
+  })();
+  const waHref = waDigits
+    ? `https://wa.me/${waDigits}?text=${encodeURIComponent(replyText)}`
+    : null;
+  // m.me only works with an exact username; a display name gets a search link.
+  const messengerHref = c?.messenger_name
+    ? /^[A-Za-z0-9.]+$/.test(c.messenger_name)
+      ? `https://m.me/${c.messenger_name}`
+      : `https://www.facebook.com/search/top?q=${encodeURIComponent(c.messenger_name)}`
     : null;
 
   return (
@@ -169,19 +187,38 @@ export default async function LeadDetailPage({
                   💬 SMS
                 </a>
               )}
-              {mailHref ? (
+              {waHref && (
+                <a
+                  href={waHref}
+                  target="_blank"
+                  className="rounded-lg border border-green-500 px-3 py-2.5 text-center text-sm font-semibold text-green-700 active:bg-green-50"
+                >
+                  🟢 WhatsApp
+                </a>
+              )}
+              {messengerHref && (
+                <a
+                  href={messengerHref}
+                  target="_blank"
+                  className="rounded-lg border border-blue-400 px-3 py-2.5 text-center text-sm font-semibold text-blue-700 active:bg-blue-50"
+                >
+                  🔵 Messenger
+                </a>
+              )}
+              {mailHref && (
                 <a
                   href={mailHref}
                   className="rounded-lg border border-gray-300 px-3 py-2.5 text-center text-sm font-semibold text-gray-700 active:bg-gray-50"
                 >
                   ✉️ Email
                 </a>
-              ) : (
-                <span className="rounded-lg border border-gray-200 px-3 py-2.5 text-center text-sm text-gray-300">
-                  ✉️ No email
-                </span>
               )}
             </div>
+            {c?.messenger_name && (
+              <p className="mt-2 text-xs text-gray-500">
+                Messenger name given: <span className="font-medium">{c.messenger_name}</span>
+              </p>
+            )}
             <p className="mt-2 text-xs text-gray-400">
               Opens your phone&rsquo;s call, SMS, or email app with a ready-made
               greeting — edit the message before sending.

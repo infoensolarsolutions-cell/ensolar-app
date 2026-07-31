@@ -20,6 +20,7 @@ export function ContactEditForm({
     address: string | null;
     barangay: string | null;
     referred_by: string | null;
+    messenger_name: string | null;
   };
 }) {
   const [open, setOpen] = useState(false);
@@ -53,6 +54,10 @@ export function ContactEditForm({
           <label className="text-xs text-gray-500">Email</label>
           <input name="email" type="email" defaultValue={contact.email ?? ""} className={inputClass} />
         </div>
+      </div>
+      <div>
+        <label className="text-xs text-gray-500">Facebook / Messenger name</label>
+        <input name="messenger_name" defaultValue={contact.messenger_name ?? ""} className={inputClass} />
       </div>
       <div>
         <label className="text-xs text-gray-500">Address</label>

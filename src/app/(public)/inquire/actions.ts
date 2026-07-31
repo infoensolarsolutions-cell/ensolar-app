@@ -22,6 +22,7 @@ export async function submitInquiry(
   const source = String(formData.get("source") ?? "facebook");
   const referredBy = String(formData.get("referred_by") ?? "").trim().slice(0, MAX);
   const message = String(formData.get("message") ?? "").trim().slice(0, 1000);
+  const messengerName = String(formData.get("messenger_name") ?? "").trim().slice(0, 120);
   const campaignIdRaw = String(formData.get("campaign_id") ?? "").trim();
 
   if (!name || !phone) {
@@ -47,6 +48,7 @@ export async function submitInquiry(
       name,
       phone,
       email: email || null,
+      messenger_name: messengerName || null,
       barangay: barangay || null,
       source,
       referred_by: source === "referral" && referredBy ? referredBy : null,

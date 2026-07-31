@@ -68,6 +68,18 @@ export function InquiryForm({ campaignId }: { campaignId: string | null }) {
       </div>
 
       <div>
+        <label htmlFor="messenger_name" className="mb-1 block text-sm font-medium text-gray-700">
+          Facebook / Messenger name (optional)
+        </label>
+        <input
+          id="messenger_name"
+          name="messenger_name"
+          placeholder="So we can reply to you on Messenger"
+          className={inputClass}
+        />
+      </div>
+
+      <div>
         <label htmlFor="barangay" className="mb-1 block text-sm font-medium text-gray-700">
           Barangay / City
         </label>
