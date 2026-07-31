@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { ChecklistItem } from "@/lib/checklists";
+import { normalizeItems, type ChecklistItem, type Equipment } from "@/lib/checklists";
 import { ChecklistView } from "./checklist-view";
 
 export const metadata: Metadata = { title: "Checklist" };
@@ -21,7 +21,7 @@ export default async function ChecklistPage({
 
   const { data: checklist } = await supabase
     .from("project_checklists")
-    .select("id, project_id, title, items, remarks, completed_at, projects (project_no)")
+    .select("id, project_id, title, items, equipment, remarks, completed_at, projects (project_no)")
     .eq("id", checklistId)
     .single();
   if (!checklist || checklist.project_id !== projectId) notFound();
@@ -41,7 +41,8 @@ export default async function ChecklistPage({
           id: checklist.id,
           projectId,
           title: checklist.title,
-          items: checklist.items as ChecklistItem[],
+          items: normalizeItems(checklist.items as ChecklistItem[]),
+          equipment: (checklist.equipment as Equipment | null) ?? null,
           remarks: checklist.remarks,
           completed_at: checklist.completed_at,
         }}

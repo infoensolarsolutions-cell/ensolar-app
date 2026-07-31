@@ -26,7 +26,7 @@ import { SiteAddressForm } from "./site-address-form";
 import { EditProjectForm } from "./edit-project-form";
 import { DeleteProjectButton } from "./delete-project-button";
 import { ChecklistsPanel, type ChecklistSummary } from "./checklists-panel";
-import type { ChecklistItem } from "@/lib/checklists";
+import { normalizeItems, type ChecklistItem } from "@/lib/checklists";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -387,12 +387,13 @@ export default async function ProjectDetailPage({
         <ChecklistsPanel
           projectId={project.id}
           checklists={(checklists ?? []).map((c): ChecklistSummary => {
-            const items = c.items as ChecklistItem[];
+            const items = normalizeItems(c.items as ChecklistItem[]);
             return {
               id: c.id,
               title: c.title,
-              done: items.filter((i) => i.done).length,
+              marked: items.filter((i) => i.status !== null).length,
               total: items.length,
+              fails: items.filter((i) => i.status === "fail").length,
               completed: !!c.completed_at,
             };
           })}
