@@ -25,6 +25,8 @@ import { DatesForm } from "./dates-form";
 import { SiteAddressForm } from "./site-address-form";
 import { EditProjectForm } from "./edit-project-form";
 import { DeleteProjectButton } from "./delete-project-button";
+import { ChecklistsPanel, type ChecklistSummary } from "./checklists-panel";
+import type { ChecklistItem } from "@/lib/checklists";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -90,6 +92,7 @@ export default async function ProjectDetailPage({
     { data: photos },
     { data: tickets },
     { data: contracts },
+    { data: checklists },
   ] = await Promise.all([
       isStaff
         ? supabase
@@ -137,6 +140,11 @@ export default async function ProjectDetailPage({
         .select("id, contract_no, created_at")
         .eq("project_id", id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("project_checklists")
+        .select("id, title, items, completed_at")
+        .eq("project_id", id)
+        .order("created_at"),
     ]);
 
   const paid = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
@@ -375,6 +383,20 @@ export default async function ProjectDetailPage({
             <IssueForm projectId={project.id} products={issueProducts} />
           </>
         )}
+
+        <ChecklistsPanel
+          projectId={project.id}
+          checklists={(checklists ?? []).map((c): ChecklistSummary => {
+            const items = c.items as ChecklistItem[];
+            return {
+              id: c.id,
+              title: c.title,
+              done: items.filter((i) => i.done).length,
+              total: items.length,
+              completed: !!c.completed_at,
+            };
+          })}
+        />
 
         <PhotosPanel
           projectId={project.id}
