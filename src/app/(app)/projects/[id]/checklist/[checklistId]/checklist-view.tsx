@@ -109,6 +109,13 @@ export function ChecklistView({
           Mark each item Comply / Not comply / N/A — your name and date are
           recorded. 💬 adds a comment.
         </p>
+        <a
+          href={`/api/checklists/${checklist.id}/pdf`}
+          target="_blank"
+          className="mt-3 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
+        >
+          🖨 Print form (PDF) — blank boxes for site use, marks included once accomplished
+        </a>
       </div>
 
       {error && (
