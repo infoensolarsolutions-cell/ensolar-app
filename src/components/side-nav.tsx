@@ -45,6 +45,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/expenses", label: "🧾 Expenses" },
         { href: "/reports/pnl", label: "📊 Profit & Loss" },
         { href: "/reports/receivables", label: "⏰ Receivables" },
+        { href: "/reports/crm", label: "📈 CRM Report" },
       ],
     },
     {

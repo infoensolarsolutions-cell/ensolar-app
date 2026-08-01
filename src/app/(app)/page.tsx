@@ -68,7 +68,7 @@ export default async function DashboardPage() {
         .select(
           "id, next_followup_at, customers (name), profiles:assigned_to (name)",
         )
-        .lt("next_followup_at", today)
+        .lte("next_followup_at", today)
         .not("status", "in", "(won,lost)")
         .order("next_followup_at", { ascending: true })
         .limit(25)
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
     assignee_name: lead.profiles?.name || null,
     next_followup_at: lead.next_followup_at,
     days_overdue: Math.max(
-      1,
+      0,
       Math.round(
         (new Date(today).getTime() - new Date(lead.next_followup_at).getTime()) /
           dayMs,
