@@ -65,6 +65,64 @@ export default async function QuotationsPage() {
           </p>
         )}
 
+        {(() => {
+          // Sent quotations awaiting a customer decision, soonest expiry first.
+          const awaiting = (quotations ?? [])
+            .filter((q) => q.status === "sent")
+            .sort((a, b) => (a.valid_until ?? "9999") < (b.valid_until ?? "9999") ? -1 : 1);
+          if (!awaiting.length) return null;
+          const days = (d: string) =>
+            Math.round((new Date(d).getTime() - new Date(today).getTime()) / 86400000);
+          return (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 lg:col-span-full">
+              <p className="mb-2 text-sm font-bold text-amber-900">
+                ⏳ Awaiting customer response ({awaiting.length}) — follow up before they expire
+              </p>
+              <ul className="divide-y divide-amber-100">
+                {awaiting.map((q) => {
+                  const d = q.valid_until ? days(q.valid_until) : null;
+                  return (
+                    <li key={q.id}>
+                      <Link
+                        href={`/quotations/${q.id}`}
+                        className="flex items-center justify-between gap-2 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-gray-900">
+                            {q.quote_no} · {q.customers?.name}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {formatPeso(q.total)} · sent {formatDate(q.created_at)}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                            d === null
+                              ? "bg-gray-100 text-gray-600"
+                              : d < 0
+                                ? "bg-red-100 text-red-700"
+                                : d <= 7
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {d === null
+                            ? "no expiry"
+                            : d < 0
+                              ? `expired ${-d}d ago`
+                              : d === 0
+                                ? "expires today"
+                                : `expires in ${d}d`}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })()}
+
         {quotations?.map((q) => (
           <div key={q.id} className="relative rounded-xl border border-gray-200 bg-white">
             {!q.projects && (

@@ -160,7 +160,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
         <div className="mb-2 flex items-center justify-between">
-          <p className="font-semibold text-gray-900">Overdue follow-ups</p>
+          <p className="font-semibold text-gray-900">Follow-ups due</p>
           {data.overdue.length > 0 && (
             <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700">
               {data.overdue.length}
@@ -170,7 +170,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
 
         {data.overdue.length === 0 ? (
           <p className="text-sm text-gray-500">
-            🎉 Nothing overdue. All inquiries are being attended to.
+            🎉 Nothing due. All inquiries are being attended to.
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">
@@ -183,8 +183,14 @@ export function DashboardView({ data }: { data: DashboardData }) {
                       {lead.assignee_name ?? "Unassigned"} · due {formatDate(lead.next_followup_at)}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
-                    {lead.days_overdue}d late
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                      lead.days_overdue > 0
+                        ? "bg-red-50 text-red-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {lead.days_overdue > 0 ? `${lead.days_overdue}d late` : "due today"}
                   </span>
                 </Link>
               </li>
