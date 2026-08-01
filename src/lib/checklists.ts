@@ -21,6 +21,9 @@ export type Equipment = {
   kw: number;
   voltage: number;
   phases: 1 | 3;
+  // Battery checklists: capacity per unit and number of units in the bank.
+  ah?: number | null;
+  qty?: number | null;
 };
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -187,6 +190,82 @@ const METAL_ROOF_ITEMS: ItemSpec[] = [
     req: () => "Photos of L-foot sealing, grounding points, and the finished array uploaded to the project; test sheet values entered" },
 ];
 
+// Battery bank helpers: energy from nominal voltage × capacity; sustained
+// current from the inverter/charger kW at the bank voltage.
+function unitKwh(eq: Equipment): string {
+  return eq.ah ? ` (≈ ${r1((eq.voltage * eq.ah) / 1000)} kWh per unit)` : "";
+}
+function bankLabel(eq: Equipment): string {
+  const q = eq.qty && eq.qty > 0 ? eq.qty : 1;
+  const cap = eq.ah ? `${eq.ah} Ah` : "rated capacity";
+  return q > 1 ? `${q} × ${cap} units in parallel` : `single ${cap} unit`;
+}
+function bankAmps(eq: Equipment): number {
+  return r1((eq.kw * 1000) / eq.voltage);
+}
+
+const BATTERY_ITEMS: ItemSpec[] = [
+  // A — Planning and safety preparation
+  { label: "Manual and ratings confirmed",
+    req: (eq) => `${eq.brand} ${eq.model} manual on hand; nominal ${eq.voltage} V LiFePO4, ${eq.ah ? `${eq.ah} Ah` : "capacity"} per unit${unitKwh(eq)}; bank configuration: ${bankLabel(eq)}` },
+  { label: "Installation location",
+    req: () => "Indoor or rated enclosure — dry, ventilated, shaded; not in a bedroom, escape route, or beside heat/ignition sources; ambient within the datasheet charge window (typically 0–45 °C)" },
+  { label: "Floor / rack load capacity",
+    req: (eq) => `Rack or floor rated for the full bank weight with margin (verify unit weight on the ${eq.brand} datasheet — larger 51.2 V units can exceed 40–90 kg each); rack anchored against tipping` },
+  { label: "Clearances and ventilation",
+    req: () => "Minimum 100 mm side clearance or per manual; vents unobstructed; no stacking beyond the manual's limit" },
+  { label: "Fire safety provisions",
+    req: () => "Dry chemical (Class ABC) or CO₂ extinguisher within reach — never water on a battery fire; no flammable materials stored around the bank; smoke detection recommended in the battery room" },
+  { label: "PPE and insulated tools",
+    req: () => "Insulated tools only; metal jewelry, watches, and lanyards removed; gloves and eye protection when working on terminals — a 51.2 V bank can deliver thousands of amps into a short" },
+  { label: "Safe manual handling",
+    req: () => "Two-person lift or trolley for units above 25 kg; no dropping or impact; damaged, swollen, or dented units quarantined and never installed" },
+
+  // B — Electrical installation
+  { label: "No mixing rule",
+    req: () => "All units in one bank are the same brand, model, capacity (100/200/300/314/392 Ah never mixed), and similar age/cycle count" },
+  { label: "Voltage/SOC matching before paralleling",
+    req: (eq) => `Every unit's open-circuit voltage measured and recorded; difference between units ≤ 0.5 V (or per manual) before interconnection${(eq.qty ?? 1) > 1 ? " — charge units individually to matching SOC first if needed" : " (single unit: record its voltage)"}` },
+  { label: "DC breaker / fuse protection",
+    req: (eq) => `DC-rated breaker or Class T/NH fuse on the bank (and per unit where the manual requires): rated ≥ ${r1(bankAmps(eq) * 1.25)} A continuous (125% of ≈ ${bankAmps(eq)} A at ${eq.kw} kW / ${eq.voltage} V), with DC breaking capacity per the battery's short-circuit rating` },
+  { label: "Cable sizing",
+    req: (eq) => `Battery cables rated ≥ ${r1(bankAmps(eq) * 1.25)} A after derating; kept as short as practical; voltage drop ≤ 1–2% at ≈ ${bankAmps(eq)} A sustained` },
+  { label: "Equal-length parallel cabling",
+    req: (eq) => (eq.qty ?? 1) > 1
+      ? "Each unit connected with equal length and equal cross-section cables (or via a bus bar per manual) so current shares evenly; diagonal (first-positive, last-negative) takeoff from the bank"
+      : "Single unit — mark N/A" },
+  { label: "Polarity verified before every connection",
+    req: () => "Polarity checked with a meter at each termination before landing; terminals torqued per manual and marked; insulating covers/boots fitted on all live terminals" },
+  { label: "Short-circuit prevention discipline",
+    req: () => "Only one insulated tool on terminals at a time; never lay tools, cables, or metal parts on top of batteries; terminal covers stay on until the moment of connection" },
+  { label: "BMS communication",
+    req: (eq) => `${(eq.qty ?? 1) > 1 ? "Comm cables daisy-chained and master/slave DIP addresses set per manual; " : ""}BMS-to-inverter communication cable connected, protocol selected per the inverter brand, and the bank recognized with correct unit count` },
+  { label: "Earthing / bonding",
+    req: () => "Battery rack or enclosure bonded to the earth bar; system DC grounding only as the design specifies — never ground battery terminals arbitrarily" },
+  { label: "Cable routing and protection",
+    req: () => "Power and communication cables separated; cables protected from abrasion and sharp edges; no cables resting on terminals; entries into enclosures glanded" },
+
+  // C — Commissioning and verification
+  { label: "Energization sequence",
+    req: (eq) => `Per the ${eq.brand} manual — unit breakers switched on one at a time, each unit's LEDs/SOC verified before the next; bank breaker last; inverter recognizes total capacity${eq.ah && (eq.qty ?? 1) > 0 ? ` (${r1(((eq.voltage * eq.ah) / 1000) * (eq.qty ?? 1))} kWh)` : ""}` },
+  { label: "Inverter battery profile",
+    req: () => "LiFePO4 profile set per the battery manual — charge/absorb and float voltages and low-SOC cutoff exactly as specified; never a generic lead-acid profile; settings recorded" },
+  { label: "Charge test and current sharing",
+    req: (eq) => `Bank charges normally with no BMS alarms${(eq.qty ?? 1) > 1 ? "; per-unit currents within ~10% of each other (clamp meter on each unit's cable)" : ""}` },
+  { label: "Discharge / backup test",
+    req: () => "Bank supplies the load; SOC reporting is sensible and consistent across units; no unit trips early" },
+  { label: "Temperature check under load",
+    req: () => "After ≥ 30 minutes of charging/discharging: no terminal, lug, or cable noticeably hot (IR thermometer or careful touch check); hot joints re-torqued and re-tested" },
+  { label: "Protections verified",
+    req: () => "BMS alarms visible on the inverter/monitoring; low-SOC cutoff and recovery behave as configured; emergency shutdown procedure tested once" },
+  { label: "Labels and signage",
+    req: (eq) => `Bank labeled with voltage and capacity (${eq.voltage} V, ${bankLabel(eq)}); emergency shutdown steps posted; no-smoking / no-open-flame signage at the battery area` },
+  { label: "Housekeeping and documentation",
+    req: () => "Packaging and offcuts cleared; photos of terminations, torque marks, unit voltages, and BMS/inverter settings uploaded to the project" },
+  { label: "Client briefing",
+    req: () => "Owner briefed: keep the area dry and ventilated, never cover the units, what alarms look like, and the emergency shutdown steps" },
+];
+
 export const CHECKLIST_TEMPLATES: {
   key: string;
   title: string;
@@ -195,6 +274,7 @@ export const CHECKLIST_TEMPLATES: {
   { key: "inverter_installation", title: "Inverter Installation", items: INSTALL_ITEMS },
   { key: "hybrid_precommissioning", title: "Pre-Energization, Testing & Commissioning — Hybrid Inverter", items: TC_ITEMS },
   { key: "metal_roof_panel_installation", title: "Solar Panel Installation — Metal Roof (with Safety)", items: METAL_ROOF_ITEMS },
+  { key: "lifepo4_battery_installation", title: "LiFePO4 Battery Installation (51.2 V)", items: BATTERY_ITEMS },
 ];
 
 export function newChecklistItems(

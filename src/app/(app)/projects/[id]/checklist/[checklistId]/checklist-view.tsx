@@ -92,6 +92,15 @@ export function ChecklistView({
             <p><span className="text-gray-400">Rating:</span> <span className="font-semibold">{eq.kw} kW</span></p>
             <p><span className="text-gray-400">System:</span> <span className="font-semibold">{eq.voltage} V {eq.phases === 3 ? "3Ф" : "1Ф"}</span></p>
             <p><span className="text-gray-400">Full-load:</span> <span className="font-semibold">≈ {fullLoadAmps(eq)} A</span></p>
+            {!!eq.ah && (
+              <p className="col-span-2 sm:col-span-4">
+                <span className="text-gray-400">Battery bank:</span>{" "}
+                <span className="font-semibold">
+                  {eq.qty && eq.qty > 1 ? `${eq.qty} × ` : ""}{eq.ah} Ah @ {eq.voltage} V
+                  {" "}(≈ {Math.round(((eq.voltage * eq.ah) / 1000) * (eq.qty || 1) * 10) / 10} kWh total)
+                </span>
+              </p>
+            )}
           </div>
         )}
         <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">

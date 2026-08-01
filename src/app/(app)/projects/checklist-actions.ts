@@ -28,12 +28,18 @@ export async function addProjectChecklist(
   const voltage = Number(formData.get("voltage") ?? 0);
   const phases = Number(formData.get("phases") ?? 0);
 
-  if (!brand || !model) return { error: "Enter the inverter brand and model." };
+  if (!brand || !model) return { error: "Enter the equipment brand and model." };
   if (!(kw > 0)) return { error: "Enter the kW rating." };
   if (!(voltage > 0)) return { error: "Enter the voltage rating." };
   if (phases !== 1 && phases !== 3) return { error: "Pick single-phase or three-phase." };
 
-  const equipment: Equipment = { brand, model, kw, voltage, phases };
+  const ah = Number(formData.get("ah") ?? 0);
+  const qty = Math.floor(Number(formData.get("qty") ?? 0));
+  const equipment: Equipment = {
+    brand, model, kw, voltage, phases,
+    ah: ah > 0 ? ah : null,
+    qty: qty > 0 ? qty : null,
+  };
   const items = newChecklistItems(templateKey, equipment);
   if (!items) return { error: "Unknown checklist." };
 

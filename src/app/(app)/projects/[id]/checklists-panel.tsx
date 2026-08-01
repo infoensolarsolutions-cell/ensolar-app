@@ -124,6 +124,18 @@ export function ChecklistsPanel({
                 <option value="3">Three-phase</option>
               </select>
             </div>
+            {templateKey === "lifepo4_battery_installation" && (
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  name="ah" type="number" min="1" step="any" inputMode="numeric"
+                  placeholder="Capacity per unit (Ah)" className={inputClass}
+                />
+                <input
+                  name="qty" type="number" min="1" step="1" inputMode="numeric"
+                  placeholder="No. of battery units" className={inputClass}
+                />
+              </div>
+            )}
             {state?.error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
                 {state.error}
