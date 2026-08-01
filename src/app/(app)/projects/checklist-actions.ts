@@ -22,11 +22,13 @@ export async function addProjectChecklist(
   const template = CHECKLIST_TEMPLATES.find((t) => t.key === templateKey);
   if (!projectId || !template) return { error: "Unknown checklist." };
 
+  const isBattery = templateKey === "lifepo4_battery_installation";
   const brand = String(formData.get("brand") ?? "").trim().slice(0, 60);
   const model = String(formData.get("model") ?? "").trim().slice(0, 80);
   const kw = Number(formData.get("kw") ?? 0);
-  const voltage = Number(formData.get("voltage") ?? 0);
-  const phases = Number(formData.get("phases") ?? 0);
+  // A LiFePO4 bank is always 51.2 V DC — never the AC system voltage.
+  const voltage = isBattery ? 51.2 : Number(formData.get("voltage") ?? 0);
+  const phases = isBattery ? 1 : Number(formData.get("phases") ?? 0);
 
   if (!brand || !model) return { error: "Enter the equipment brand and model." };
   if (!(kw > 0)) return { error: "Enter the kW rating." };

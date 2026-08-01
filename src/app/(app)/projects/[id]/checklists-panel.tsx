@@ -109,31 +109,41 @@ export function ChecklistsPanel({
               <input name="brand" placeholder="Brand (e.g. Growatt, Canadian Solar) *" required className={inputClass} />
               <input name="model" placeholder="Model *" required className={inputClass} />
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <input
-                name="kw" type="number" min="0.1" step="any" inputMode="decimal"
-                placeholder="kW *" required className={inputClass}
-              />
-              <input
-                name="voltage" type="number" min="1" step="any" inputMode="numeric"
-                placeholder="Voltage *" required className={inputClass}
-              />
-              <select name="phases" required defaultValue="" className={inputClass}>
-                <option value="" disabled>Phase *</option>
-                <option value="1">Single-phase</option>
-                <option value="3">Three-phase</option>
-              </select>
-            </div>
-            {templateKey === "lifepo4_battery_installation" && (
-              <div className="grid grid-cols-2 gap-2">
+            {templateKey === "lifepo4_battery_installation" ? (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    name="kw" type="number" min="0.1" step="any" inputMode="decimal"
+                    placeholder="Inverter kW *" required className={inputClass}
+                  />
+                  <input
+                    name="ah" type="number" min="1" step="any" inputMode="numeric"
+                    placeholder="Ah per unit" className={inputClass}
+                  />
+                  <input
+                    name="qty" type="number" min="1" step="1" inputMode="numeric"
+                    placeholder="No. of units" className={inputClass}
+                  />
+                </div>
+                <p className="text-xs text-gray-400">
+                  Battery bank voltage is fixed at 51.2 V DC.
+                </p>
+              </>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
                 <input
-                  name="ah" type="number" min="1" step="any" inputMode="numeric"
-                  placeholder="Capacity per unit (Ah)" className={inputClass}
+                  name="kw" type="number" min="0.1" step="any" inputMode="decimal"
+                  placeholder="kW *" required className={inputClass}
                 />
                 <input
-                  name="qty" type="number" min="1" step="1" inputMode="numeric"
-                  placeholder="No. of battery units" className={inputClass}
+                  name="voltage" type="number" min="1" step="any" inputMode="numeric"
+                  placeholder="Voltage *" required className={inputClass}
                 />
+                <select name="phases" required defaultValue="" className={inputClass}>
+                  <option value="" disabled>Phase *</option>
+                  <option value="1">Single-phase</option>
+                  <option value="3">Three-phase</option>
+                </select>
               </div>
             )}
             {state?.error && (
