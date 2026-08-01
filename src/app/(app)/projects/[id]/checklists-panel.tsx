@@ -101,10 +101,12 @@ export function ChecklistsPanel({
               </button>
             </div>
             <p className="text-xs text-gray-500">
-              Enter the inverter details — requirements are computed from them.
+              Enter the equipment details (inverter — or panel brand/model and
+              total array kW for panel installation) — requirements are
+              computed from them.
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <input name="brand" placeholder="Brand (e.g. Growatt) *" required className={inputClass} />
+              <input name="brand" placeholder="Brand (e.g. Growatt, Canadian Solar) *" required className={inputClass} />
               <input name="model" placeholder="Model *" required className={inputClass} />
             </div>
             <div className="grid grid-cols-3 gap-2">
