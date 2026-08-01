@@ -151,6 +151,12 @@ export function ChecklistPdf({ data }: { data: ChecklistPdfData }) {
                   <Text style={styles.label}>Rating: </Text>
                   {eq.kw} kW · {eq.voltage} V {eq.phases === 3 ? "three-phase" : "single-phase"} · full-load ≈ {fullLoadAmps(eq)} A
                 </Text>
+                {eq.ah ? (
+                  <Text style={styles.metaCell}>
+                    <Text style={styles.label}>Battery bank: </Text>
+                    {eq.qty && eq.qty > 1 ? `${eq.qty} × ` : ""}{eq.ah} Ah @ {eq.voltage} V
+                  </Text>
+                ) : null}
               </>
             )}
           </View>
