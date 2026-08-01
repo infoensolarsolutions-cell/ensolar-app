@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/format";
 import { LeadEditForm } from "./edit-form";
 import { ContactEditForm } from "./contact-edit-form";
 import { DeleteLeadButton } from "./delete-lead-button";
+import { QuickLog } from "./quick-log";
 
 export const metadata: Metadata = { title: "Lead" };
 
@@ -251,6 +252,7 @@ export default async function LeadDetailPage({
 
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="mb-2 font-semibold text-gray-900">Activity</p>
+          <QuickLog leadId={lead.id} />
           {!events?.length && (
             <p className="text-sm text-gray-500">No activity yet.</p>
           )}
