@@ -29,20 +29,42 @@ export default async function MorePage() {
         </div>
         {["owner", "office_staff"].includes(profile.role) && (
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <p className="border-b border-gray-100 px-4 pb-1.5 pt-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+              CRM
+            </p>
+            <Link href="/leads" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">🧲 Leads</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+            <Link href="/quotations" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">📄 Quotations</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+            <Link href="/settings/quotation-templates" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">📋 Quotation Templates</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+            <Link href="/campaigns" className="flex items-center justify-between px-4 py-3.5">
+              <span className="font-medium text-gray-800">📣 Marketing</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+            {profile.role === "owner" && (
+              <Link href="/reports/crm" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+                <span className="font-medium text-gray-800">📈 CRM Report</span>
+                <span className="text-gray-400">›</span>
+              </Link>
+            )}
+          </div>
+        )}
+
+        {["owner", "office_staff"].includes(profile.role) && (
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
             <Link href="/products" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
               <span className="font-medium text-gray-800">📦 Products & Stock</span>
               <span className="text-gray-400">›</span>
             </Link>
-            <Link href="/pos" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+            <Link href="/pos" className="flex items-center justify-between px-4 py-3.5">
               <span className="font-medium text-gray-800">🛒 POS (walk-in sales)</span>
-              <span className="text-gray-400">›</span>
-            </Link>
-            <Link href="/campaigns" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
-              <span className="font-medium text-gray-800">📣 Marketing</span>
-              <span className="text-gray-400">›</span>
-            </Link>
-            <Link href="/settings/quotation-templates" className="flex items-center justify-between px-4 py-3.5">
-              <span className="font-medium text-gray-800">📋 Quotation Templates</span>
               <span className="text-gray-400">›</span>
             </Link>
           </div>
@@ -101,10 +123,6 @@ export default async function MorePage() {
             </Link>
             <Link href="/reports/receivables" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
               <span className="font-medium text-gray-800">⏰ Receivables Aging</span>
-              <span className="text-gray-400">›</span>
-            </Link>
-            <Link href="/reports/crm" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
-              <span className="font-medium text-gray-800">📈 CRM Report</span>
               <span className="text-gray-400">›</span>
             </Link>
             <Link href="/settings/contract-template" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">

@@ -11,15 +11,21 @@ type Group = { title: string; items: Item[] };
 const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
   owner: [
     {
-      title: "Sales",
+      title: "Work",
       items: [
         { href: "/", label: "🏠 Dashboard" },
         { href: "/messages", label: "💬 Messages" },
+        { href: "/projects", label: "🏗️ Projects" },
+      ],
+    },
+    {
+      title: "CRM",
+      items: [
         { href: "/leads", label: "🧲 Leads" },
         { href: "/quotations", label: "📄 Quotations" },
         { href: "/settings/quotation-templates", label: "📋 Quotation Templates" },
-        { href: "/projects", label: "🏗️ Projects" },
         { href: "/campaigns", label: "📣 Marketing" },
+        { href: "/reports/crm", label: "📈 CRM Report" },
       ],
     },
     {
@@ -45,7 +51,6 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/expenses", label: "🧾 Expenses" },
         { href: "/reports/pnl", label: "📊 Profit & Loss" },
         { href: "/reports/receivables", label: "⏰ Receivables" },
-        { href: "/reports/crm", label: "📈 CRM Report" },
       ],
     },
     {
@@ -61,14 +66,19 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
   ],
   office_staff: [
     {
-      title: "Sales",
+      title: "Work",
       items: [
         { href: "/", label: "🏠 Dashboard" },
         { href: "/messages", label: "💬 Messages" },
+        { href: "/projects", label: "🏗️ Projects" },
+      ],
+    },
+    {
+      title: "CRM",
+      items: [
         { href: "/leads", label: "🧲 Leads" },
         { href: "/quotations", label: "📄 Quotations" },
         { href: "/settings/quotation-templates", label: "📋 Quotation Templates" },
-        { href: "/projects", label: "🏗️ Projects" },
         { href: "/campaigns", label: "📣 Marketing" },
       ],
     },
