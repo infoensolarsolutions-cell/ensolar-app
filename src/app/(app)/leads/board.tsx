@@ -28,8 +28,10 @@ export type BoardLead = {
   service_type: ServiceType;
   next_followup_at: string | null;
   customer_name: string;
+  phone: string | null;
   assignee_name: string | null;
   overdue: boolean;
+  needsFollowup: boolean; // active lead with no follow-up date set
 };
 
 const STATUS_KEYS = Object.keys(LEAD_STATUSES) as LeadStatus[];
@@ -62,7 +64,7 @@ function LeadCard({ lead }: { lead: BoardLead }) {
         <span className="truncate text-gray-500">
           {lead.assignee_name ?? "Unassigned"}
         </span>
-        {lead.next_followup_at && (
+        {lead.next_followup_at ? (
           <span
             className={
               lead.overdue ? "shrink-0 font-semibold text-red-600" : "shrink-0 text-gray-500"
@@ -70,7 +72,11 @@ function LeadCard({ lead }: { lead: BoardLead }) {
           >
             {formatDate(lead.next_followup_at)}
           </span>
-        )}
+        ) : lead.needsFollowup ? (
+          <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-800">
+            no follow-up
+          </span>
+        ) : null}
       </div>
     </div>
   );

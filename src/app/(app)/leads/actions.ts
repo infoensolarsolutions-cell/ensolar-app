@@ -213,3 +213,57 @@ export async function deleteLead(leadId: string): Promise<{ error?: string }> {
   revalidatePath("/leads");
   redirect("/leads");
 }
+
+// One-tap call/outcome logging with optional automatic follow-up scheduling.
+export async function logLeadActivity(
+  leadId: string,
+  kind: "no_answer" | "talked" | "followup_3d" | "note",
+  noteText?: string,
+): Promise<{ error?: string }> {
+  const profile = await requireRole("owner", "office_staff");
+  if (!leadId) return { error: "Missing lead." };
+
+  const manilaToday = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+  const plusDays = (days: number) => {
+    const d = new Date(`${manilaToday}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+
+  let text: string;
+  let followup: string | null = null;
+  if (kind === "no_answer") {
+    text = "Called — no answer (follow-up set for tomorrow)";
+    followup = plusDays(1);
+  } else if (kind === "talked") {
+    text = "Called — talked with the customer";
+  } else if (kind === "followup_3d") {
+    text = "Scheduled a follow-up in 3 days";
+    followup = plusDays(3);
+  } else {
+    text = String(noteText ?? "").trim().slice(0, 500);
+    if (!text) return { error: "Note is empty." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("lead_events").insert({
+    lead_id: leadId,
+    user_id: profile.id,
+    event: "note",
+    detail: { text },
+  });
+  if (error) return { error: `Could not log: ${error.message}` };
+
+  if (followup) {
+    await supabase
+      .from("leads")
+      .update({ next_followup_at: followup })
+      .eq("id", leadId);
+  }
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+  return {};
+}
