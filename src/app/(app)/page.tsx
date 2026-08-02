@@ -169,7 +169,7 @@ export default async function DashboardPage() {
         .limit(50),
       supabase
         .from("appointments")
-        .select("id, title, date, time")
+        .select("id, title, date, time, attendees, location, purpose, method")
         .gte("date", today)
         .lte("date", plus14)
         .limit(50),
@@ -244,7 +244,16 @@ export default async function DashboardPage() {
       icon: "🗓",
       label: `${t12 ? `${t12} · ` : ""}${m.title}`,
       href: "",
-      meetingId: m.id as string,
+      meeting: {
+        id: m.id as string,
+        title: m.title as string,
+        date: m.date as string,
+        time: t,
+        attendees: (m.attendees as string | null) ?? null,
+        location: (m.location as string | null) ?? null,
+        purpose: (m.purpose as string | null) ?? null,
+        method: (m.method as string | null) ?? null,
+      },
       sortTime: t ?? "12:00",
     });
   }
