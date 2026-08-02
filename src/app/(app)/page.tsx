@@ -131,7 +131,7 @@ export default async function DashboardPage() {
     ]);
 
   // ── Agenda: everything scheduled in the next 14 days ───────────────────────
-  const [upFollowups, upStarts, upTargets, upMilestones, upQuotes] =
+  const [upFollowups, upStarts, upTargets, upMilestones, upQuotes, upMeetings] =
     await Promise.all([
       supabase
         .from("leads")
@@ -166,6 +166,12 @@ export default async function DashboardPage() {
         .is("deleted_at", null)
         .gte("valid_until", today)
         .lte("valid_until", plus14)
+        .limit(50),
+      supabase
+        .from("appointments")
+        .select("id, title, date, time")
+        .gte("date", today)
+        .lte("date", plus14)
         .limit(50),
     ]);
 
@@ -227,7 +233,26 @@ export default async function DashboardPage() {
       });
     }
   }
-  agenda.sort((a, b) => (a.date < b.date ? -1 : 1));
+  for (const m of upMeetings.data ?? []) {
+    const t = (m.time as string | null) ?? null;
+    const t12 = t
+      ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit" })
+          .format(new Date(`2000-01-01T${t}:00`))
+      : null;
+    agenda.push({
+      date: m.date as string,
+      icon: "🗓",
+      label: `${t12 ? `${t12} · ` : ""}${m.title}`,
+      href: "",
+      meetingId: m.id as string,
+      sortTime: t ?? "12:00",
+    });
+  }
+  agenda.sort((a, b) =>
+    a.date !== b.date
+      ? a.date < b.date ? -1 : 1
+      : (a.sortTime ?? "12:00") < (b.sortTime ?? "12:00") ? -1 : 1,
+  );
 
   const dayMs = 24 * 60 * 60 * 1000;
   const overdue = (overdueRes.data ?? []).map((lead) => ({

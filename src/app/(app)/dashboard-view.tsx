@@ -3,6 +3,7 @@ import { LEAD_SOURCES, type LeadSource } from "@/lib/crm";
 import { formatDate, formatPeso } from "@/lib/format";
 import { BarRows, MonthlyBars } from "@/components/charts";
 import { MaintenanceItem } from "./maintenance-item";
+import { AddMeetingForm, MeetingDelete } from "./agenda-meeting";
 
 // Compact peso for chart labels: ₱1.2M / ₱850k / ₱950.
 function pesoShort(v: number): string {
@@ -12,7 +13,14 @@ function pesoShort(v: number): string {
 }
 
 export type DashboardData = {
-  agenda: { date: string; icon: string; label: string; href: string }[];
+  agenda: {
+    date: string;
+    icon: string;
+    label: string;
+    href: string;
+    meetingId?: string;
+    sortTime?: string;
+  }[];
   overdue: {
     id: string;
     customer_name: string;
@@ -181,15 +189,24 @@ export function DashboardView({ data }: { data: DashboardData }) {
                       {formatDate(a.date)}
                     </p>
                   )}
-                  <Link href={a.href} className="flex items-center gap-2 py-2">
-                    <span className="shrink-0">{a.icon}</span>
-                    <span className="min-w-0 truncate text-sm text-gray-800">{a.label}</span>
-                  </Link>
+                  {a.meetingId ? (
+                    <div className="flex items-center gap-2 py-2">
+                      <span className="shrink-0">{a.icon}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">{a.label}</span>
+                      <MeetingDelete id={a.meetingId} />
+                    </div>
+                  ) : (
+                    <Link href={a.href} className="flex items-center gap-2 py-2">
+                      <span className="shrink-0">{a.icon}</span>
+                      <span className="min-w-0 truncate text-sm text-gray-800">{a.label}</span>
+                    </Link>
+                  )}
                 </li>
               );
             })}
           </ul>
         )}
+        <AddMeetingForm />
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
