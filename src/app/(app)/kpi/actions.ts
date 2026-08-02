@@ -42,6 +42,22 @@ export async function createEvaluation(
     .single();
   if (error || !created) return { error: `Could not create: ${error?.message}` };
 
+  // Tell the member their self-evaluation is ready, via in-app chat.
+  // (Admin client: office staff cannot read the employees table directly.)
+  const admin = createAdminClient();
+  const { data: employee } = await admin
+    .from("employees")
+    .select("profile_id")
+    .eq("id", employeeId)
+    .single();
+  if (employee?.profile_id && employee.profile_id !== profile.id) {
+    await supabase.from("messages").insert({
+      sender_id: profile.id,
+      recipient_id: employee.profile_id,
+      body: `📈 Your KPI self-evaluation for ${period} is ready. Please open "My KPI" in the app menu and rate yourself on the 10 items, then press "Submit my self-evaluation". Thank you!`,
+    });
+  }
+
   revalidatePath("/kpi");
   redirect(`/kpi/${created.id}`);
 }
