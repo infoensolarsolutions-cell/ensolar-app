@@ -53,7 +53,16 @@ export function NewEvaluationForm({
       <input type="hidden" name="employee_name" value={selected?.name ?? ""} />
       <input type="hidden" name="employee_position" value={selected?.employee_position ?? ""} />
       <input name="period" placeholder="Evaluation period (e.g. Q3 2026) *" required className={inputClass} />
-      <input name="supervisor_name" placeholder="Assigned supervisor (name)" className={inputClass} />
+      <select name="supervisor_name" defaultValue="" className={inputClass}>
+        <option value="">Assigned supervisor — pick a name…</option>
+        {employees
+          .filter((e) => e.id !== employeeId)
+          .map((e) => (
+            <option key={e.id} value={e.name}>
+              {e.name}{e.employee_position ? ` — ${e.employee_position}` : ""}
+            </option>
+          ))}
+      </select>
       {state?.error && <p className="text-xs font-medium text-red-600">{state.error}</p>}
       <button
         disabled={pending}
