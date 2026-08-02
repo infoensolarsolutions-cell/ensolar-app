@@ -111,8 +111,11 @@ export default async function LeadDetailPage({
     if (d.startsWith("0")) return `63${d.slice(1)}`;
     return d.length >= 10 ? d : null;
   })();
+  // api.whatsapp.com rather than wa.me: the shortener domain is a frequent
+  // victim of antivirus HTTPS-scanning cert errors; the API host opens the
+  // WhatsApp app directly.
   const waHref = waDigits
-    ? `https://wa.me/${waDigits}?text=${encodeURIComponent(replyText)}`
+    ? `https://api.whatsapp.com/send?phone=${waDigits}&text=${encodeURIComponent(replyText)}`
     : null;
   // m.me only works with an exact username; a display name gets a search link.
   const messengerHref = c?.messenger_name
