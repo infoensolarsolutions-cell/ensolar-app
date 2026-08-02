@@ -25,6 +25,7 @@ type Row = {
   completed_date: string | null;
   created_at: string;
   contract_amount: number;
+  system_kwp: number | null;
   customers: { name: string } | null;
 };
 
@@ -40,7 +41,7 @@ export default async function ArchivePage({
   const { data: projects } = await supabase
     .from("projects")
     .select(
-      "id, project_no, status, service_type, completed_date, created_at, contract_amount, customers (name)",
+      "id, project_no, status, service_type, completed_date, created_at, contract_amount, system_kwp, customers (name)",
     )
     .in("status", ["completed", "closed"])
     .order("completed_date", { ascending: false, nullsFirst: false })
@@ -127,6 +128,7 @@ export default async function ArchivePage({
                         <p className="text-xs text-gray-500">
                           {p.project_no}
                           {p.service_type && ` · ${SERVICE_TYPES[p.service_type]}`}
+                          {p.system_kwp && ` · ${p.system_kwp} kWp`}
                         </p>
                       </div>
                       <span className="shrink-0 text-xs text-gray-400">

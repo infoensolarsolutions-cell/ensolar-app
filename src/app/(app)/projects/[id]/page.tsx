@@ -54,6 +54,18 @@ type ProjectDetail = {
   } | null;
   quotations: { id: string; quote_no: string } | null;
   project_assignments: { user_id: string; profiles: { name: string } | null }[];
+  system_kwp: number | null;
+  system_specs: SystemSpecs | null;
+};
+
+type SystemSpecs = {
+  package?: string;
+  inverter?: { brand?: string; total_kw?: number; kw?: number; qty?: number; supplier?: string };
+  panels?: { brand?: string; type?: string; watts?: number; qty?: number; kwp?: number; supplier?: string };
+  battery?: { brand?: string; type?: string; ah?: number; v?: number; qty?: number; supplier?: string };
+  warranty_years?: number;
+  remarks?: string;
+  installed_note?: string;
 };
 
 type EventRow = {
@@ -79,7 +91,7 @@ export default async function ProjectDetailPage({
   const { data: project } = await supabase
     .from("projects")
     .select(
-      "id, project_no, status, service_type, site_address, contract_amount, start_date, target_date, completed_date, created_at, customer_id, deye_station_id, deye_station_name, customers (name, phone, email, profile_id), quotations (id, quote_no), project_assignments (user_id, profiles (name))",
+      "id, project_no, status, service_type, site_address, contract_amount, start_date, target_date, completed_date, created_at, customer_id, deye_station_id, deye_station_name, system_kwp, system_specs, customers (name, phone, email, profile_id), quotations (id, quote_no), project_assignments (user_id, profiles (name))",
     )
     .eq("id", id)
     .single()
@@ -333,6 +345,78 @@ export default async function ProjectDetailPage({
             </div>
           )}
         </div>
+
+        {(project.system_specs || project.system_kwp) && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold text-gray-900">🔧 Installed System</p>
+              <span className="shrink-0 rounded-full bg-brand-green/10 px-3 py-1 text-xs font-bold text-brand-green-dark">
+                {project.system_specs?.package ?? "System"}
+                {project.system_kwp ? ` · ${project.system_kwp} kWp` : ""}
+              </span>
+            </div>
+            <div className="mt-2 space-y-1.5 text-sm text-gray-700">
+              {project.system_specs?.inverter && (
+                <p>
+                  <span className="text-gray-500">Inverter: </span>
+                  {[
+                    project.system_specs.inverter.brand,
+                    project.system_specs.inverter.kw && `${project.system_specs.inverter.kw} kW`,
+                    project.system_specs.inverter.qty && project.system_specs.inverter.qty > 1 && `× ${project.system_specs.inverter.qty}`,
+                    project.system_specs.inverter.total_kw && project.system_specs.inverter.qty && project.system_specs.inverter.qty > 1 && `(${project.system_specs.inverter.total_kw} kW total)`,
+                  ].filter(Boolean).join(" ")}
+                  {project.system_specs.inverter.supplier && (
+                    <span className="text-xs text-gray-400"> · {project.system_specs.inverter.supplier}</span>
+                  )}
+                </p>
+              )}
+              {project.system_specs?.panels && (
+                <p>
+                  <span className="text-gray-500">Panels: </span>
+                  {[
+                    project.system_specs.panels.brand,
+                    project.system_specs.panels.type,
+                    project.system_specs.panels.watts && `${project.system_specs.panels.watts} W`,
+                    project.system_specs.panels.qty && `× ${project.system_specs.panels.qty}`,
+                    project.system_specs.panels.kwp && `= ${project.system_specs.panels.kwp} kWp`,
+                  ].filter(Boolean).join(" ")}
+                  {project.system_specs.panels.supplier && (
+                    <span className="text-xs text-gray-400"> · {project.system_specs.panels.supplier}</span>
+                  )}
+                </p>
+              )}
+              {project.system_specs?.battery && (
+                <p>
+                  <span className="text-gray-500">Battery: </span>
+                  {[
+                    project.system_specs.battery.brand,
+                    project.system_specs.battery.type,
+                    project.system_specs.battery.ah && `${project.system_specs.battery.ah} Ah`,
+                    project.system_specs.battery.v && `${project.system_specs.battery.v} V`,
+                    project.system_specs.battery.qty && `× ${project.system_specs.battery.qty}`,
+                  ].filter(Boolean).join(" ")}
+                  {project.system_specs.battery.supplier && (
+                    <span className="text-xs text-gray-400"> · {project.system_specs.battery.supplier}</span>
+                  )}
+                </p>
+              )}
+              {project.system_specs?.warranty_years && (
+                <p>
+                  <span className="text-gray-500">Warranty: </span>
+                  {project.system_specs.warranty_years} year{project.system_specs.warranty_years === 1 ? "" : "s"}
+                </p>
+              )}
+              {project.system_specs?.remarks && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  {project.system_specs.remarks}
+                </p>
+              )}
+              {project.system_specs?.installed_note && (
+                <p className="text-xs text-gray-400">{project.system_specs.installed_note}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {isStaff && (
           <StatusActions projectId={project.id} status={project.status} isStaff={isStaff} />
