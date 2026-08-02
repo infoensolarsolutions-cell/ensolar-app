@@ -180,11 +180,14 @@ export async function listStations(): Promise<DeyeStation[]> {
     return stations.map((s) => ({ id: s.id, name: s.name }));
   }
   const all: DeyeStation[] = [];
+  const seen = new Set<string>();
   for (const org of orgs) {
     try {
       const stations = await stationsForOrg(org.id);
       console.error(`[deye] org ${org.id} (${org.name}): ${stations.length} stations`);
       for (const s of stations) {
+        if (seen.has(s.id)) continue;
+        seen.add(s.id);
         all.push({
           id: `${org.id}:${s.id}`,
           name: orgs.length > 1 ? `${org.name} · ${s.name}` : s.name,
@@ -195,6 +198,19 @@ export async function listStations(): Promise<DeyeStation[]> {
       // in the logs.
       console.error(`[deye] org ${org.id} (${org.name}) station list failed:`, e instanceof Error ? e.message : e);
     }
+  }
+  // The account's personal/end-user scope is separate from its companies —
+  // plants shared to the account directly live here.
+  try {
+    const personal = await stationsForOrg("");
+    console.error(`[deye] personal scope: ${personal.length} stations`);
+    for (const s of personal) {
+      if (seen.has(s.id)) continue;
+      seen.add(s.id);
+      all.push({ id: s.id, name: `Personal · ${s.name}` });
+    }
+  } catch (e) {
+    console.error("[deye] personal scope station list failed:", e instanceof Error ? e.message : e);
   }
   return all;
 }
