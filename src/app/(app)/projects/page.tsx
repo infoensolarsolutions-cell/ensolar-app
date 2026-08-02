@@ -41,6 +41,17 @@ export default async function ProjectsPage() {
     <>
       <TopBar title="Projects" />
       <div className="space-y-3 p-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0 xl:grid-cols-3">
+        {isStaff && (
+          <Link
+            href="/projects/archive"
+            className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 lg:col-span-full"
+          >
+            <span className="text-sm font-semibold text-gray-700">
+              📁 Completed Projects Archive — by year & category
+            </span>
+            <span className="text-gray-400">›</span>
+          </Link>
+        )}
         {!projects?.length && (
           <p className="pt-8 text-center text-sm text-gray-500 lg:col-span-full">
             No projects yet. Projects are created when a quotation is accepted.
