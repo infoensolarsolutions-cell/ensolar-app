@@ -194,7 +194,8 @@ export function EmployeeForm({
 
       <div>
         <label className="text-xs text-gray-500">
-          App login (links their account for clock in/out)
+          App login — links their account for clock in/out, KPI
+          self-evaluation, and chat notifications
         </label>
         <select name="profile_id" defaultValue={employee?.profile_id ?? ""} className={inputClass}>
           <option value="">No app login</option>
