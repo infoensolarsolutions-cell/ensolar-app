@@ -120,12 +120,29 @@ type DeyeOrg = { id: string; name: string };
 
 async function listOrgs(): Promise<DeyeOrg[]> {
   const json = await withToken("", (t) => fetchJson("/account/info", {}, t));
-  const raw = (json.orgInfoList as unknown[]) ?? (json.orgList as unknown[]) ?? [];
+  const raw =
+    (json.orgInfoList as unknown[]) ??
+    (json.orgList as unknown[]) ??
+    (json.companyList as unknown[]) ??
+    [];
+  if (raw.length === 0) {
+    console.error("[deye] /account/info returned no organizations; keys:", Object.keys(json));
+  }
   return raw
     .map((o) => {
-      const x = o as { companyId?: number | string; orgId?: number | string; name?: string; orgName?: string };
-      const id = x.companyId ?? x.orgId ?? "";
-      return { id: String(id), name: x.name ?? x.orgName ?? `Profile ${id}` };
+      const x = o as {
+        companyId?: number | string;
+        orgId?: number | string;
+        id?: number | string;
+        companyName?: string;
+        name?: string;
+        orgName?: string;
+      };
+      const id = x.companyId ?? x.orgId ?? x.id ?? "";
+      return {
+        id: String(id),
+        name: x.companyName ?? x.name ?? x.orgName ?? `Profile ${id}`,
+      };
     })
     .filter((o) => o.id !== "");
 }
@@ -153,7 +170,11 @@ async function stationsForOrg(orgId: string): Promise<{ id: string; name: string
 // All stations across every organization (profile) on the account, each
 // labeled with its profile name and referenced as "orgId:stationId".
 export async function listStations(): Promise<DeyeStation[]> {
-  const orgs = await listOrgs().catch(() => [] as DeyeOrg[]);
+  const orgs = await listOrgs().catch((e) => {
+    console.error("[deye] listing organizations failed:", e instanceof Error ? e.message : e);
+    return [] as DeyeOrg[];
+  });
+  console.error(`[deye] organizations found: ${orgs.map((o) => `${o.id}=${o.name}`).join(", ") || "none"}`);
   if (orgs.length === 0) {
     const stations = await stationsForOrg("");
     return stations.map((s) => ({ id: s.id, name: s.name }));
@@ -162,14 +183,17 @@ export async function listStations(): Promise<DeyeStation[]> {
   for (const org of orgs) {
     try {
       const stations = await stationsForOrg(org.id);
+      console.error(`[deye] org ${org.id} (${org.name}): ${stations.length} stations`);
       for (const s of stations) {
         all.push({
           id: `${org.id}:${s.id}`,
           name: orgs.length > 1 ? `${org.name} · ${s.name}` : s.name,
         });
       }
-    } catch {
-      // One profile failing shouldn't hide the other's stations.
+    } catch (e) {
+      // One profile failing shouldn't hide the other's stations — but say so
+      // in the logs.
+      console.error(`[deye] org ${org.id} (${org.name}) station list failed:`, e instanceof Error ? e.message : e);
     }
   }
   return all;
