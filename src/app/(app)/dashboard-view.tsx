@@ -12,6 +12,7 @@ function pesoShort(v: number): string {
 }
 
 export type DashboardData = {
+  agenda: { date: string; icon: string; label: string; href: string }[];
   overdue: {
     id: string;
     customer_name: string;
@@ -154,6 +155,39 @@ export function DashboardView({ data }: { data: DashboardData }) {
                 </div>
               </li>
             ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-4 lg:p-3 lg:max-h-80 lg:overflow-y-auto">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="font-semibold text-gray-900">📅 Next 2 weeks</p>
+          {data.agenda.length > 0 && (
+            <span className="rounded-full bg-brand-green/10 px-2.5 py-0.5 text-xs font-bold text-brand-green-dark">
+              {data.agenda.length}
+            </span>
+          )}
+        </div>
+        {data.agenda.length === 0 ? (
+          <p className="text-sm text-gray-500">Nothing scheduled in the next 14 days.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {data.agenda.map((a, i) => {
+              const showDate = i === 0 || data.agenda[i - 1].date !== a.date;
+              return (
+                <li key={`${a.href}-${a.label}-${i}`}>
+                  {showDate && (
+                    <p className="pt-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                      {formatDate(a.date)}
+                    </p>
+                  )}
+                  <Link href={a.href} className="flex items-center gap-2 py-2">
+                    <span className="shrink-0">{a.icon}</span>
+                    <span className="min-w-0 truncate text-sm text-gray-800">{a.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
