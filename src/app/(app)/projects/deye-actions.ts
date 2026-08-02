@@ -5,10 +5,12 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   deyeEnabled,
+  getCachedDetail,
   getCachedHistory,
   getCachedStation,
   refreshHistory,
   refreshStation,
+  refreshStationDetail,
 } from "@/lib/deye";
 
 export async function linkDeyeStation(
@@ -75,6 +77,30 @@ export async function refreshDeyeData(
   }
 
   revalidatePath(`/projects/${projectId}`);
+  return {};
+}
+
+// Refresh the full station detail (devices, alarms, year history).
+export async function refreshDeyeDetail(
+  projectId: string,
+): Promise<{ error?: string }> {
+  await requireRole("owner", "office_staff", "technician");
+  if (!deyeEnabled()) return { error: "Deye is not configured." };
+
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("deye_station_id")
+    .eq("id", projectId)
+    .single();
+  if (!project?.deye_station_id) return { error: "No Deye station linked." };
+
+  await refreshStation(project.deye_station_id);
+  const detail = await getCachedDetail(project.deye_station_id);
+  if (!detail || detail.stale) {
+    await refreshStationDetail(project.deye_station_id);
+  }
+  revalidatePath(`/monitoring/${projectId}`);
   return {};
 }
 

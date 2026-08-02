@@ -164,6 +164,13 @@ export function DeyePanel({
             </div>
           )}
 
+          <a
+            href={`/monitoring/${projectId}`}
+            className="mt-3 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
+          >
+            📊 Full station details — devices, alarms, monthly charts
+          </a>
+
           {allReadings.length > 0 && (
             <details className="mt-2">
               <summary className="cursor-pointer text-xs font-medium text-gray-500">
