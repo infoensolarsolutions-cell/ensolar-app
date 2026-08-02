@@ -220,3 +220,82 @@ export async function getCachedStation(
     stale: Date.now() - new Date(data.fetched_at).getTime() > CACHE_FRESH_MS,
   };
 }
+
+// ── Daily generation history (kWh per day) ──────────────────────────────────
+
+export type DeyeDaily = { date: string; kwh: number };
+
+const HISTORY_FRESH_MS = 60 * 60 * 1000; // energy bars only move hourly-ish
+
+const historyKey = (ref: string) => `${ref}#history`;
+
+function manilaDate(offsetDays = 0): string {
+  const d = new Date(Date.now() + offsetDays * 86400000);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(d);
+}
+
+export async function refreshHistory(
+  stationRef: string,
+  days = 30,
+): Promise<{ items?: DeyeDaily[]; error?: string }> {
+  try {
+    const { orgId, stationId } = parseStationRef(stationRef);
+    const json = await withToken(orgId, (t) =>
+      fetchJson(
+        "/station/history",
+        {
+          stationId: Number(stationId),
+          startAt: manilaDate(-(days - 1)),
+          endAt: manilaDate(0),
+          granularity: 2, // daily items
+        },
+        t,
+      ),
+    );
+    const raw = ((json.stationDataItems ??
+      json.items ??
+      json.dataList ??
+      []) as Record<string, unknown>[]);
+    const items: DeyeDaily[] = raw
+      .map((r) => {
+        const y = r.year, m = r.month, dd = r.day;
+        const date =
+          typeof y === "number" && typeof m === "number" && typeof dd === "number"
+            ? `${y}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`
+            : String(r.date ?? r.time ?? "");
+        const kwhRaw = r.generationValue ?? r.energy ?? r.dayEnergy ?? r.value;
+        const kwh = typeof kwhRaw === "number" ? kwhRaw : Number(kwhRaw) || 0;
+        return { date, kwh: Math.round(kwh * 100) / 100 };
+      })
+      .filter((i) => /^\d{4}-\d{2}-\d{2}/.test(i.date))
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+    const admin = createAdminClient();
+    await admin.from("deye_cache").upsert({
+      station_id: historyKey(stationRef),
+      data: { items },
+      fetched_at: new Date().toISOString(),
+    });
+    return { items };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Deye history error" };
+  }
+}
+
+export async function getCachedHistory(
+  stationRef: string,
+): Promise<{ items: DeyeDaily[]; stale: boolean } | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("deye_cache")
+    .select("data, fetched_at")
+    .eq("station_id", historyKey(stationRef))
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    items: ((data.data as { items?: DeyeDaily[] }).items ?? []),
+    stale: Date.now() - new Date(data.fetched_at).getTime() > HISTORY_FRESH_MS,
+  };
+}

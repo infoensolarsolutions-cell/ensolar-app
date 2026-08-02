@@ -7,6 +7,7 @@ import {
   unlinkDeyeStation,
   refreshDeyeData,
 } from "../deye-actions";
+import { MonthlyBars } from "@/components/charts";
 
 type Metric = { label: string; value: string };
 
@@ -18,6 +19,9 @@ export function DeyePanel({
   stations,
   stationsError,
   metrics,
+  energy,
+  chart,
+  allReadings,
   asOf,
   stale,
 }: {
@@ -28,6 +32,9 @@ export function DeyePanel({
   stations: { id: string; name: string }[];
   stationsError: string | null;
   metrics: Metric[];
+  energy: Metric[];
+  chart: { label: string; value: number }[];
+  allReadings: Metric[];
   asOf: string | null;
   stale: boolean;
 }) {
@@ -133,6 +140,44 @@ export function DeyePanel({
                 </div>
               ))}
             </div>
+          )}
+
+          {energy.length > 0 && (
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {energy.map((m) => (
+                <div key={m.label} className="rounded-lg border border-brand-green/20 bg-brand-green/5 p-2.5 text-center">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    {m.label}
+                  </p>
+                  <p className="text-base font-extrabold text-brand-green-dark">{m.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {chart.length > 1 && (
+            <div className="mt-3">
+              <p className="mb-1 text-xs font-semibold text-gray-500">
+                Daily generation — last {chart.length} days (kWh)
+              </p>
+              <MonthlyBars data={chart} format={(v) => `${Math.round(v * 10) / 10}`} />
+            </div>
+          )}
+
+          {allReadings.length > 0 && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs font-medium text-gray-500">
+                All measurements ({allReadings.length})
+              </summary>
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+                {allReadings.map((r) => (
+                  <p key={r.label} className="flex justify-between gap-2 border-b border-gray-50 py-0.5">
+                    <span className="text-gray-500">{r.label}</span>
+                    <span className="font-semibold text-gray-800">{r.value}</span>
+                  </p>
+                ))}
+              </div>
+            </details>
           )}
           {isOwner && (
             <button

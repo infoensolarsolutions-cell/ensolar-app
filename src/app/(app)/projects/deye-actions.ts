@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { deyeEnabled, refreshStation } from "@/lib/deye";
+import {
+  deyeEnabled,
+  getCachedHistory,
+  getCachedStation,
+  refreshHistory,
+  refreshStation,
+} from "@/lib/deye";
 
 export async function linkDeyeStation(
   projectId: string,
@@ -61,6 +67,38 @@ export async function refreshDeyeData(
 
   const res = await refreshStation(project.deye_station_id);
   if (res.error) return { error: res.error };
+
+  // Refresh the daily energy history too when its cache has gone stale.
+  const history = await getCachedHistory(project.deye_station_id);
+  if (!history || history.stale) {
+    await refreshHistory(project.deye_station_id);
+  }
+
   revalidatePath(`/projects/${projectId}`);
   return {};
+}
+
+// Refresh every linked station whose reading has gone stale (fleet page).
+export async function refreshFleet(): Promise<{ error?: string; refreshed?: number }> {
+  await requireRole("owner", "office_staff");
+  if (!deyeEnabled()) return { error: "Deye is not configured." };
+
+  const supabase = await createClient();
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("deye_station_id")
+    .not("deye_station_id", "is", null)
+    .limit(20);
+
+  let refreshed = 0;
+  for (const p of projects ?? []) {
+    const ref = p.deye_station_id as string;
+    const cached = await getCachedStation(ref);
+    if (!cached || cached.stale) {
+      const res = await refreshStation(ref);
+      if (!res.error) refreshed++;
+    }
+  }
+  revalidatePath("/monitoring");
+  return { refreshed };
 }

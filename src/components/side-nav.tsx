@@ -16,6 +16,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/", label: "🏠 Dashboard" },
         { href: "/messages", label: "💬 Messages" },
         { href: "/projects", label: "🏗️ Projects" },
+        { href: "/monitoring", label: "☀️ Monitoring" },
       ],
     },
     {
@@ -71,6 +72,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/", label: "🏠 Dashboard" },
         { href: "/messages", label: "💬 Messages" },
         { href: "/projects", label: "🏗️ Projects" },
+        { href: "/monitoring", label: "☀️ Monitoring" },
       ],
     },
     {

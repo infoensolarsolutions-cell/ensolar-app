@@ -27,7 +27,7 @@ import { EditProjectForm } from "./edit-project-form";
 import { DeleteProjectButton } from "./delete-project-button";
 import { ChecklistsPanel, type ChecklistSummary } from "./checklists-panel";
 import { normalizeItems, type ChecklistItem } from "@/lib/checklists";
-import { deyeEnabled, getCachedStation, listStations } from "@/lib/deye";
+import { deyeEnabled, getCachedHistory, getCachedStation, listStations } from "@/lib/deye";
 import { DeyePanel } from "./deye-panel";
 
 export const metadata: Metadata = { title: "Project" };
@@ -509,6 +509,9 @@ async function deyePanelProps(
   }
 
   let metrics: { label: string; value: string }[] = [];
+  let allReadings: { label: string; value: string }[] = [];
+  let energy: { label: string; value: string }[] = [];
+  let chart: { label: string; value: number }[] = [];
   let asOf: string | null = null;
   let stale = false;
   if (stationId) {
@@ -533,8 +536,47 @@ async function deyePanelProps(
         timeZone: "Asia/Manila", month: "short", day: "numeric",
         hour: "numeric", minute: "2-digit",
       }).format(t);
+
+      // Everything numeric the station reports, for the expandable detail view.
+      allReadings = Object.entries(d)
+        .filter(([k, v]) => typeof v === "number" && k !== "lastUpdateTime")
+        .map(([k, v]) => ({
+          label: k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()),
+          value: String(Math.round((v as number) * 100) / 100),
+        }));
+
+      // Lifetime total straight from the latest reading when the API sends it.
+      const totalRaw = d.totalEnergy ?? d.generationTotal ?? d.totalGeneration;
+      if (typeof totalRaw === "number") {
+        energy.push({ label: "Lifetime", value: `${Math.round(totalRaw)} kWh` });
+      }
     } else {
       stale = true; // no cache yet — the panel will fetch on mount
+    }
+
+    const history = await getCachedHistory(stationId);
+    if (history) {
+      if (history.stale) stale = true;
+      const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date());
+      const todayKwh = history.items.find((i) => i.date === today)?.kwh;
+      const monthKwh = history.items
+        .filter((i) => i.date.slice(0, 7) === today.slice(0, 7))
+        .reduce((s, i) => s + i.kwh, 0);
+      energy = [
+        ...(todayKwh !== undefined
+          ? [{ label: "Today", value: `${todayKwh} kWh` }]
+          : []),
+        { label: "This month", value: `${Math.round(monthKwh * 10) / 10} kWh` },
+        ...energy,
+      ];
+      chart = history.items.map((i) => ({
+        label: i.date.slice(5).replace("-", "/"),
+        value: i.kwh,
+      }));
+    } else {
+      stale = true; // history not fetched yet
     }
   }
 
@@ -544,6 +586,9 @@ async function deyePanelProps(
     stations,
     stationsError,
     metrics,
+    energy,
+    chart,
+    allReadings,
     asOf,
     stale,
   };
