@@ -27,6 +27,8 @@ import { EditProjectForm } from "./edit-project-form";
 import { DeleteProjectButton } from "./delete-project-button";
 import { ChecklistsPanel, type ChecklistSummary } from "./checklists-panel";
 import { normalizeItems, type ChecklistItem } from "@/lib/checklists";
+import { deyeEnabled, getCachedStation, listStations } from "@/lib/deye";
+import { DeyePanel } from "./deye-panel";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -42,6 +44,8 @@ type ProjectDetail = {
   completed_date: string | null;
   created_at: string;
   customer_id: string;
+  deye_station_id: string | null;
+  deye_station_name: string | null;
   customers: {
     name: string;
     phone: string | null;
@@ -75,7 +79,7 @@ export default async function ProjectDetailPage({
   const { data: project } = await supabase
     .from("projects")
     .select(
-      "id, project_no, status, service_type, site_address, contract_amount, start_date, target_date, completed_date, created_at, customer_id, customers (name, phone, email, profile_id), quotations (id, quote_no), project_assignments (user_id, profiles (name))",
+      "id, project_no, status, service_type, site_address, contract_amount, start_date, target_date, completed_date, created_at, customer_id, deye_station_id, deye_station_name, customers (name, phone, email, profile_id), quotations (id, quote_no), project_assignments (user_id, profiles (name))",
     )
     .eq("id", id)
     .single()
@@ -384,6 +388,14 @@ export default async function ProjectDetailPage({
           </>
         )}
 
+        {deyeEnabled() && (project.deye_station_id || profile.role === "owner") && (
+          <DeyePanel
+            projectId={project.id}
+            isOwner={profile.role === "owner"}
+            {...(await deyePanelProps(project.deye_station_id, project.deye_station_name, profile.role === "owner"))}
+          />
+        )}
+
         <ChecklistsPanel
           projectId={project.id}
           checklists={(checklists ?? []).map((c): ChecklistSummary => {
@@ -471,6 +483,70 @@ export default async function ProjectDetailPage({
       </div>
     </>
   );
+}
+
+// Cached Deye reading → display props. Never calls the Deye API during page
+// render for linked stations (the client panel refreshes stale data in the
+// background); the station list for linking is fetched only for the owner.
+async function deyePanelProps(
+  stationId: string | null,
+  stationName: string | null,
+  isOwner: boolean,
+) {
+  const kW = (w: unknown): string | null =>
+    typeof w === "number" && Number.isFinite(w)
+      ? `${Math.round((w / 1000) * 100) / 100} kW`
+      : null;
+
+  let stations: { id: string; name: string }[] = [];
+  let stationsError: string | null = null;
+  if (!stationId && isOwner) {
+    try {
+      stations = (await listStations()).map((s) => ({ id: String(s.id), name: s.name }));
+    } catch (e) {
+      stationsError = e instanceof Error ? e.message : "connection failed";
+    }
+  }
+
+  let metrics: { label: string; value: string }[] = [];
+  let asOf: string | null = null;
+  let stale = false;
+  if (stationId) {
+    const cached = await getCachedStation(stationId);
+    if (cached) {
+      stale = cached.stale;
+      const d = cached.data;
+      const candidates: [string, string | null][] = [
+        ["Solar now", kW(d.generationPower)],
+        ["Battery", typeof d.batterySOC === "number" ? `${d.batterySOC}%` : null],
+        ["Grid", kW(d.gridPower ?? d.wirePower)],
+        ["Load", kW(d.consumptionPower)],
+      ];
+      metrics = candidates
+        .filter((c): c is [string, string] => c[1] !== null)
+        .map(([label, value]) => ({ label, value }));
+      const t =
+        typeof d.lastUpdateTime === "number"
+          ? new Date(d.lastUpdateTime * 1000)
+          : new Date(cached.fetchedAt);
+      asOf = new Intl.DateTimeFormat("en-PH", {
+        timeZone: "Asia/Manila", month: "short", day: "numeric",
+        hour: "numeric", minute: "2-digit",
+      }).format(t);
+    } else {
+      stale = true; // no cache yet — the panel will fetch on mount
+    }
+  }
+
+  return {
+    stationName,
+    linked: !!stationId,
+    stations,
+    stationsError,
+    metrics,
+    asOf,
+    stale,
+  };
 }
 
 function describeEvent(ev: EventRow): string {
