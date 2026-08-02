@@ -263,7 +263,31 @@ export async function getCachedStation(
 
 // ── Daily generation history (kWh per day) ──────────────────────────────────
 
-export type DeyeDaily = { date: string; kwh: number };
+export type DeyeDaily = {
+  date: string;
+  kwh: number; // production
+  discharge?: number;
+  purchased?: number;
+  charge?: number;
+  feedIn?: number;
+  consumption?: number;
+};
+
+const r2n = (v: unknown): number => {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+};
+
+// Energy breakdown fields as DeyeCloud names them (with fallbacks).
+function breakdownOf(r: Record<string, unknown>) {
+  return {
+    discharge: r2n(r.dischargeValue ?? r.batteryDischargeValue),
+    purchased: r2n(r.buyValue ?? r.purchaseValue ?? r.gridBuyValue),
+    charge: r2n(r.chargeValue ?? r.batteryChargeValue),
+    feedIn: r2n(r.sellValue ?? r.gridSellValue ?? r.feedInValue),
+    consumption: r2n(r.consumptionValue ?? r.useValue ?? r.consumeValue),
+  };
+}
 
 const HISTORY_FRESH_MS = 60 * 60 * 1000; // energy bars only move hourly-ish
 
@@ -298,6 +322,7 @@ export async function refreshHistory(
       json.items ??
       json.dataList ??
       []) as Record<string, unknown>[]);
+    if (raw[0]) console.error("[deye] daily item keys:", Object.keys(raw[0]).join(","));
     const items: DeyeDaily[] = raw
       .map((r) => {
         const y = r.year, m = r.month, dd = r.day;
@@ -307,7 +332,7 @@ export async function refreshHistory(
             : String(r.date ?? r.time ?? "");
         const kwhRaw = r.generationValue ?? r.energy ?? r.dayEnergy ?? r.value;
         const kwh = typeof kwhRaw === "number" ? kwhRaw : Number(kwhRaw) || 0;
-        return { date, kwh: Math.round(kwh * 100) / 100 };
+        return { date, kwh: Math.round(kwh * 100) / 100, ...breakdownOf(r) };
       })
       .filter((i) => /^\d{4}-\d{2}-\d{2}/.test(i.date))
       .sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -344,10 +369,20 @@ export async function getCachedHistory(
 
 export type DeyePoint = { key: string; name: string; value: string; unit: string };
 export type DeyeDevice = { sn: string; type: string; state: string | null; points: DeyePoint[] };
+export type DeyeMonthly = {
+  month: string; // "YYYY-MM"
+  kwh: number;
+  discharge?: number;
+  purchased?: number;
+  charge?: number;
+  feedIn?: number;
+  consumption?: number;
+};
+
 export type DeyeDetail = {
   devices: DeyeDevice[];
-  monthly: { month: string; kwh: number }[]; // "YYYY-MM", last 12 months
-  yearly: { year: string; kwh: number }[];   // since 2018
+  monthly: DeyeMonthly[]; // last 12 months
+  yearly: { year: string; kwh: number }[]; // since 2018
   errors: Record<string, string>;
 };
 
@@ -431,6 +466,7 @@ export async function refreshStationDetail(stationRef: string): Promise<DeyeDeta
             ? `${r.year}-${String(r.month).padStart(2, "0")}`
             : String(r.month ?? ""),
         kwh: kwhOf(r),
+        ...breakdownOf(r),
       }))
       .filter((m) => /^\d{4}-\d{2}$/.test(m.month))
       .sort((a, b) => (a.month < b.month ? -1 : 1));

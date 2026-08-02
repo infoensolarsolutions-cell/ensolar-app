@@ -10,6 +10,7 @@ import {
   getCachedStation,
 } from "@/lib/deye";
 import { MonthlyBars } from "@/components/charts";
+import { DeyeEnergyChart, type EnergyBar } from "@/components/deye-energy-chart";
 import { StationDetailRefresher } from "./refresher";
 
 export const metadata: Metadata = { title: "Station Detail" };
@@ -121,25 +122,65 @@ export default async function StationDetailPage({
           ))}
         </div>
 
-        {last30.length > 1 && (
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="mb-2 font-semibold text-gray-900">Daily generation — last 30 days (kWh)</p>
-            <MonthlyBars
-              data={last30.map((i) => ({ label: i.date.slice(5).replace("-", "/"), value: i.kwh }))}
-              format={(v) => `${Math.round(v * 10) / 10}`}
-            />
-          </div>
-        )}
+        {last30.length > 1 && (() => {
+          const bars: EnergyBar[] = last30.map((i) => ({
+            label: i.date.slice(5).replace("-", "/"),
+            production: i.kwh,
+            discharge: i.discharge ?? 0,
+            purchased: i.purchased ?? 0,
+            charge: i.charge ?? 0,
+            feedIn: i.feedIn ?? 0,
+            consumption: i.consumption ?? 0,
+          }));
+          const hasBreakdown = bars.some(
+            (b) => b.discharge || b.purchased || b.charge || b.feedIn || b.consumption,
+          );
+          return (
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <p className="mb-2 font-semibold text-gray-900">
+                Generation &amp; usage — last 30 days (kWh)
+              </p>
+              {hasBreakdown ? (
+                <DeyeEnergyChart data={bars} />
+              ) : (
+                <MonthlyBars
+                  data={bars.map((b) => ({ label: b.label, value: b.production }))}
+                  format={(v) => `${Math.round(v * 10) / 10}`}
+                />
+              )}
+            </div>
+          );
+        })()}
 
-        {monthly.length > 1 && (
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="mb-2 font-semibold text-gray-900">Monthly generation — last 12 months (kWh)</p>
-            <MonthlyBars
-              data={monthly.map((m) => ({ label: m.month.slice(2).replace("-", "/"), value: m.kwh }))}
-              format={(v) => `${Math.round(v)}`}
-            />
-          </div>
-        )}
+        {monthly.length > 1 && (() => {
+          const bars: EnergyBar[] = monthly.map((m) => ({
+            label: m.month.slice(2).replace("-", "/"),
+            production: m.kwh,
+            discharge: m.discharge ?? 0,
+            purchased: m.purchased ?? 0,
+            charge: m.charge ?? 0,
+            feedIn: m.feedIn ?? 0,
+            consumption: m.consumption ?? 0,
+          }));
+          const hasBreakdown = bars.some(
+            (b) => b.discharge || b.purchased || b.charge || b.feedIn || b.consumption,
+          );
+          return (
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <p className="mb-2 font-semibold text-gray-900">
+                Generation &amp; usage — last 12 months (kWh)
+              </p>
+              {hasBreakdown ? (
+                <DeyeEnergyChart data={bars} />
+              ) : (
+                <MonthlyBars
+                  data={bars.map((b) => ({ label: b.label, value: b.production }))}
+                  format={(v) => `${Math.round(v)}`}
+                />
+              )}
+            </div>
+          );
+        })()}
 
         {yearly.length > 1 && (
           <div className="rounded-xl border border-gray-200 bg-white p-4">

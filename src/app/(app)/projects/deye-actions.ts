@@ -100,6 +100,12 @@ export async function refreshDeyeDetail(
   if (!detail || detail.stale) {
     await refreshStationDetail(project.deye_station_id);
   }
+  // Re-fetch daily history when stale or cached before the energy-breakdown
+  // fields existed (old shape has no consumption key).
+  const history = await getCachedHistory(project.deye_station_id);
+  if (!history || history.stale || history.items[0]?.consumption === undefined) {
+    await refreshHistory(project.deye_station_id);
+  }
   revalidatePath(`/monitoring/${projectId}`);
   return {};
 }
