@@ -8,23 +8,11 @@ import {
   getCachedDetail,
   getCachedHistory,
   getCachedStation,
-  type DeyeDaily,
 } from "@/lib/deye";
 import { MonthlyBars } from "@/components/charts";
 import { StationDetailRefresher } from "./refresher";
 
 export const metadata: Metadata = { title: "Station Detail" };
-
-function monthlyFrom(daily: DeyeDaily[]): { label: string; value: number }[] {
-  const byMonth = new Map<string, number>();
-  for (const d of daily) {
-    const m = d.date.slice(0, 7);
-    byMonth.set(m, (byMonth.get(m) ?? 0) + d.kwh);
-  }
-  return [...byMonth.entries()]
-    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    .map(([m, v]) => ({ label: m.slice(2).replace("-", "/"), value: Math.round(v * 10) / 10 }));
-}
 
 export default async function StationDetailPage({
   params,
@@ -62,19 +50,38 @@ export default async function StationDetailPage({
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
-  const daily365 = detail?.daily365 ?? [];
-  const year = today.slice(0, 4);
-  const sumWhere = (fn: (dd: DeyeDaily) => boolean) =>
-    Math.round(daily365.filter(fn).reduce((s, i) => s + i.kwh, 0) * 10) / 10;
+  const monthly = detail?.monthly ?? [];
+  const yearly = detail?.yearly ?? [];
+  const last30 = history?.items ?? [];
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+
+  const todayKwh = last30.find((i) => i.date === today)?.kwh ?? 0;
+  const monthKwh =
+    monthly.find((m) => m.month === today.slice(0, 7))?.kwh ??
+    r1(last30.filter((i) => i.date.slice(0, 7) === today.slice(0, 7)).reduce((s, i) => s + i.kwh, 0));
+  const yearKwh =
+    yearly.find((y) => y.year === today.slice(0, 4))?.kwh ??
+    r1(monthly.filter((m) => m.month.slice(0, 4) === today.slice(0, 4)).reduce((s, m) => s + m.kwh, 0));
+  const lifetimeKwh = r1(yearly.reduce((s, y) => s + y.kwh, 0));
+
   const energyTiles = [
-    { label: "Today", value: `${daily365.find((i) => i.date === today)?.kwh ?? history?.items.find((i) => i.date === today)?.kwh ?? 0} kWh` },
-    { label: "This month", value: `${sumWhere((i) => i.date.slice(0, 7) === today.slice(0, 7))} kWh` },
-    { label: `Year ${year}`, value: `${sumWhere((i) => i.date.slice(0, 4) === year)} kWh` },
-    { label: "Last 365 days", value: `${sumWhere(() => true)} kWh` },
+    { label: "Today", value: `${todayKwh} kWh` },
+    { label: "This month", value: `${r1(monthKwh)} kWh` },
+    { label: `Year ${today.slice(0, 4)}`, value: `${r1(yearKwh)} kWh` },
+    { label: "Lifetime", value: `${lifetimeKwh} kWh` },
   ];
 
-  const monthly = monthlyFrom(daily365);
-  const last30 = history?.items ?? [];
+  // Device state → chip. Deye reports connect status codes/strings.
+  const stateChip = (state: string | null) => {
+    const s = (state ?? "").toLowerCase();
+    if (["1", "online", "normal", "on"].includes(s))
+      return { label: "● Online", cls: "bg-green-100 text-green-800" };
+    if (["2", "alarm", "warn", "fault"].includes(s))
+      return { label: "⚠ Alert", cls: "bg-red-100 text-red-700" };
+    if (["0", "offline", "off"].includes(s))
+      return { label: "○ Offline", cls: "bg-gray-200 text-gray-600" };
+    return state ? { label: state, cls: "bg-gray-100 text-gray-600" } : null;
+  };
 
   return (
     <>
@@ -114,24 +121,6 @@ export default async function StationDetailPage({
           ))}
         </div>
 
-        {(detail?.alarms?.length ?? 0) > 0 && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="mb-2 font-semibold text-red-800">⚠ Alarms</p>
-            <ul className="space-y-1 text-sm text-red-900">
-              {detail!.alarms.slice(0, 10).map((a, i) => (
-                <li key={i}>
-                  {String(a.alarmName ?? a.name ?? a.showName ?? a.content ?? JSON.stringify(a)).slice(0, 200)}
-                  {typeof a.startTime === "number" && (
-                    <span className="ml-1 text-xs text-red-600">
-                      · {new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric" }).format(new Date(a.startTime * 1000))}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         {last30.length > 1 && (
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="mb-2 font-semibold text-gray-900">Daily generation — last 30 days (kWh)</p>
@@ -145,37 +134,60 @@ export default async function StationDetailPage({
         {monthly.length > 1 && (
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="mb-2 font-semibold text-gray-900">Monthly generation — last 12 months (kWh)</p>
-            <MonthlyBars data={monthly} format={(v) => `${Math.round(v)}`} />
+            <MonthlyBars
+              data={monthly.map((m) => ({ label: m.month.slice(2).replace("-", "/"), value: m.kwh }))}
+              format={(v) => `${Math.round(v)}`}
+            />
+          </div>
+        )}
+
+        {yearly.length > 1 && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 font-semibold text-gray-900">Generation by year (kWh)</p>
+            <MonthlyBars
+              data={yearly.map((y) => ({ label: y.year, value: y.kwh }))}
+              format={(v) => `${Math.round(v)}`}
+            />
           </div>
         )}
 
         {(detail?.devices?.length ?? 0) > 0 ? (
-          detail!.devices.map((dev) => (
-            <div key={dev.sn} className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="font-semibold text-gray-900">
-                🔌 {dev.type} <span className="text-xs font-normal text-gray-400">SN {dev.sn}</span>
-              </p>
-              {dev.points.length === 0 ? (
-                <p className="mt-1 text-sm text-gray-500">No live measure points returned.</p>
-              ) : (
-                <details className="mt-1" open={detail!.devices.length === 1}>
-                  <summary className="cursor-pointer text-xs font-medium text-gray-500">
-                    {dev.points.length} measure points
-                  </summary>
-                  <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-0.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
-                    {dev.points.map((p) => (
-                      <p key={p.key} className="flex justify-between gap-2 border-b border-gray-50 py-1">
-                        <span className="min-w-0 truncate text-gray-500">{p.name || p.key}</span>
-                        <span className="shrink-0 font-semibold text-gray-800">
-                          {p.value}{p.unit && ` ${p.unit}`}
-                        </span>
-                      </p>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          ))
+          detail!.devices.map((dev) => {
+            const chip = stateChip(dev.state);
+            return (
+              <div key={dev.sn} className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-gray-900">
+                    🔌 {dev.type} <span className="text-xs font-normal text-gray-400">SN {dev.sn}</span>
+                  </p>
+                  {chip && (
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${chip.cls}`}>
+                      {chip.label}
+                    </span>
+                  )}
+                </div>
+                {dev.points.length === 0 ? (
+                  <p className="mt-1 text-sm text-gray-500">No live measure points returned.</p>
+                ) : (
+                  <details className="mt-1" open={detail!.devices.length === 1}>
+                    <summary className="cursor-pointer text-xs font-medium text-gray-500">
+                      {dev.points.length} measure points
+                    </summary>
+                    <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-0.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                      {dev.points.map((p) => (
+                        <p key={p.key} className="flex justify-between gap-2 border-b border-gray-50 py-1">
+                          <span className="min-w-0 truncate text-gray-500">{p.name || p.key}</span>
+                          <span className="shrink-0 font-semibold text-gray-800">
+                            {p.value}{p.unit && ` ${p.unit}`}
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            );
+          })
         ) : (
           <p className="text-center text-xs text-gray-400">
             {detail?.errors?.devices
@@ -184,8 +196,10 @@ export default async function StationDetailPage({
           </p>
         )}
 
-        {detail?.errors?.alarms && (
-          <p className="text-center text-xs text-gray-400">Alarms unavailable: {detail.errors.alarms}</p>
+        {(detail?.errors?.monthly || detail?.errors?.yearly) && (
+          <p className="text-center text-xs text-gray-400">
+            Some history unavailable: {detail?.errors?.monthly ?? detail?.errors?.yearly}
+          </p>
         )}
       </div>
     </>
