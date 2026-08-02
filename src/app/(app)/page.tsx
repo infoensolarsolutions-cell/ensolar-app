@@ -12,7 +12,7 @@ import {
   type ProjectStatus,
   type ServiceType,
 } from "@/lib/crm";
-import { todayManila, TIMEZONE } from "@/lib/format";
+import { formatPeso, todayManila, TIMEZONE } from "@/lib/format";
 import { BarRows } from "@/components/charts";
 import { DashboardView, type DashboardData } from "./dashboard-view";
 
@@ -48,6 +48,7 @@ export default async function DashboardPage() {
   const monthAhead = new Date(Date.now() + 30 * 86400000)
     .toISOString()
     .slice(0, 10);
+  const plus14 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 
   const [
     overdueRes,
@@ -128,6 +129,105 @@ export default async function DashboardPage() {
       supabase.from("leads").select("status").limit(2000),
       supabase.from("projects").select("status").limit(2000),
     ]);
+
+  // ── Agenda: everything scheduled in the next 14 days ───────────────────────
+  const [upFollowups, upStarts, upTargets, upMilestones, upQuotes] =
+    await Promise.all([
+      supabase
+        .from("leads")
+        .select("id, next_followup_at, customers (name)")
+        .gte("next_followup_at", today)
+        .lte("next_followup_at", plus14)
+        .not("status", "in", "(won,lost)")
+        .limit(50),
+      supabase
+        .from("projects")
+        .select("id, project_no, start_date, customers (name)")
+        .gte("start_date", today)
+        .lte("start_date", plus14)
+        .limit(50),
+      supabase
+        .from("projects")
+        .select("id, project_no, target_date, customers (name)")
+        .gte("target_date", today)
+        .lte("target_date", plus14)
+        .not("status", "in", "(completed,closed)")
+        .limit(50),
+      supabase
+        .from("payment_milestones")
+        .select("id, label, amount, due_date, projects (id, project_no, customers (name)), payments (amount)")
+        .gte("due_date", today)
+        .lte("due_date", plus14)
+        .limit(50),
+      supabase
+        .from("quotations")
+        .select("id, quote_no, valid_until, customers (name)")
+        .eq("status", "sent")
+        .is("deleted_at", null)
+        .gte("valid_until", today)
+        .lte("valid_until", plus14)
+        .limit(50),
+    ]);
+
+  const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
+  const agenda: DashboardData["agenda"] = [];
+  for (const l of upFollowups.data ?? []) {
+    agenda.push({
+      date: l.next_followup_at as string,
+      icon: "📞",
+      label: `Follow up — ${one(l.customers)?.name ?? "lead"}`,
+      href: `/leads/${l.id}`,
+    });
+  }
+  for (const p of upStarts.data ?? []) {
+    agenda.push({
+      date: p.start_date as string,
+      icon: "🏗️",
+      label: `Project start — ${p.project_no} · ${one(p.customers)?.name ?? ""}`,
+      href: `/projects/${p.id}`,
+    });
+  }
+  for (const p of upTargets.data ?? []) {
+    agenda.push({
+      date: p.target_date as string,
+      icon: "🎯",
+      label: `Target completion — ${p.project_no} · ${one(p.customers)?.name ?? ""}`,
+      href: `/projects/${p.id}`,
+    });
+  }
+  for (const m of upMilestones.data ?? []) {
+    const proj = one(m.projects);
+    const paid = ((m.payments ?? []) as { amount: number }[]).reduce(
+      (s, x) => s + Number(x.amount), 0);
+    const remaining = Number(m.amount) - paid;
+    if (remaining <= 0.005 || !proj) continue;
+    agenda.push({
+      date: m.due_date as string,
+      icon: "💰",
+      label: `${m.label} due — ${(proj as { project_no?: string }).project_no} · ${formatPeso(remaining)}`,
+      href: `/projects/${(proj as { id?: string }).id}`,
+    });
+  }
+  for (const q of upQuotes.data ?? []) {
+    agenda.push({
+      date: q.valid_until as string,
+      icon: "⏳",
+      label: `Quotation expires — ${q.quote_no} · ${one(q.customers)?.name ?? ""}`,
+      href: `/quotations/${q.id}`,
+    });
+  }
+  for (const m of maintenanceRes.data ?? []) {
+    if (m.due_date >= today && m.due_date <= plus14) {
+      const proj = one(m.projects);
+      agenda.push({
+        date: m.due_date as string,
+        icon: "🔧",
+        label: `Maintenance — ${(proj as { project_no?: string } | null)?.project_no ?? ""}`,
+        href: `/projects/${(proj as { id?: string } | null)?.id ?? ""}`,
+      });
+    }
+  }
+  agenda.sort((a, b) => (a.date < b.date ? -1 : 1));
 
   const dayMs = 24 * 60 * 60 * 1000;
   const overdue = (overdueRes.data ?? []).map((lead) => ({
@@ -317,6 +417,7 @@ export default async function DashboardPage() {
   );
 
   const data: DashboardData = {
+    agenda,
     overdue,
     receivables,
     openTickets,
