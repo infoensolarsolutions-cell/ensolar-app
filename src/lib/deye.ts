@@ -55,10 +55,16 @@ async function fetchJson(
   return json;
 }
 
-const TOKEN_KEY = "deye_token";
 const TOKEN_MAX_AGE_MS = 50 * 24 * 3600 * 1000; // tokens last ~60 days; refresh at 50
 
-async function obtainToken(): Promise<string> {
+// A Deye account can hold several organizations ("profiles"); each needs its
+// own token. Station references are stored as "orgId:stationId" so the right
+// token is used later ("" org = the account's default/personal scope).
+function tokenKey(orgId: string): string {
+  return orgId ? `deye_token:${orgId}` : "deye_token";
+}
+
+async function obtainToken(orgId: string): Promise<string> {
   const passwordSha = crypto
     .createHash("sha256")
     .update(process.env.DEYE_PASSWORD!)
@@ -67,50 +73,67 @@ async function obtainToken(): Promise<string> {
     appSecret: process.env.DEYE_APP_SECRET,
     email: process.env.DEYE_EMAIL,
     password: passwordSha,
+    ...(orgId ? { companyId: Number(orgId) } : {}),
   });
   const token = String(json.accessToken ?? "");
   if (!token) throw new Error("Deye login failed — check credentials and region (DEYE_BASE_URL).");
   const admin = createAdminClient();
   await admin.from("app_kv").upsert({
-    key: TOKEN_KEY,
+    key: tokenKey(orgId),
     value: { accessToken: token, obtainedAt: Date.now() },
     updated_at: new Date().toISOString(),
   });
   return token;
 }
 
-async function getToken(forceNew = false): Promise<string> {
+async function getToken(orgId: string, forceNew = false): Promise<string> {
   if (!forceNew) {
     const admin = createAdminClient();
     const { data } = await admin
       .from("app_kv")
       .select("value")
-      .eq("key", TOKEN_KEY)
+      .eq("key", tokenKey(orgId))
       .maybeSingle();
     const v = data?.value as { accessToken?: string; obtainedAt?: number } | undefined;
     if (v?.accessToken && v.obtainedAt && Date.now() - v.obtainedAt < TOKEN_MAX_AGE_MS) {
       return v.accessToken;
     }
   }
-  return obtainToken();
+  return obtainToken(orgId);
 }
 
 // Run a call; on an auth-ish failure retry once with a fresh token.
-async function withToken<T>(fn: (token: string) => Promise<T>): Promise<T> {
-  const token = await getToken();
+async function withToken<T>(orgId: string, fn: (token: string) => Promise<T>): Promise<T> {
+  const token = await getToken(orgId);
   try {
     return await fn(token);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (/401|token|auth/i.test(msg)) {
-      return fn(await getToken(true));
+      return fn(await getToken(orgId, true));
     }
     throw e;
   }
 }
 
-export async function listStations(): Promise<DeyeStation[]> {
-  const json = await withToken((t) => fetchJson("/station/list", { page: 1, size: 100 }, t));
+type DeyeOrg = { id: string; name: string };
+
+async function listOrgs(): Promise<DeyeOrg[]> {
+  const json = await withToken("", (t) => fetchJson("/account/info", {}, t));
+  const raw = (json.orgInfoList as unknown[]) ?? (json.orgList as unknown[]) ?? [];
+  return raw
+    .map((o) => {
+      const x = o as { companyId?: number | string; orgId?: number | string; name?: string; orgName?: string };
+      const id = x.companyId ?? x.orgId ?? "";
+      return { id: String(id), name: x.name ?? x.orgName ?? `Profile ${id}` };
+    })
+    .filter((o) => o.id !== "");
+}
+
+async function stationsForOrg(orgId: string): Promise<{ id: string; name: string }[]> {
+  const json = await withToken(orgId, (t) =>
+    fetchJson("/station/list", { page: 1, size: 100 }, t),
+  );
   const raw =
     (json.stationList as unknown[]) ??
     (json.stations as unknown[]) ??
@@ -119,21 +142,57 @@ export async function listStations(): Promise<DeyeStation[]> {
   return raw
     .map((s) => {
       const o = s as { id?: number | string; name?: string; stationName?: string };
-      return { id: o.id ?? "", name: o.name ?? o.stationName ?? `Station ${o.id}` };
+      return {
+        id: o.id !== undefined ? String(o.id) : "",
+        name: o.name ?? o.stationName ?? `Station ${o.id}`,
+      };
     })
     .filter((s) => s.id !== "");
 }
 
+// All stations across every organization (profile) on the account, each
+// labeled with its profile name and referenced as "orgId:stationId".
+export async function listStations(): Promise<DeyeStation[]> {
+  const orgs = await listOrgs().catch(() => [] as DeyeOrg[]);
+  if (orgs.length === 0) {
+    const stations = await stationsForOrg("");
+    return stations.map((s) => ({ id: s.id, name: s.name }));
+  }
+  const all: DeyeStation[] = [];
+  for (const org of orgs) {
+    try {
+      const stations = await stationsForOrg(org.id);
+      for (const s of stations) {
+        all.push({
+          id: `${org.id}:${s.id}`,
+          name: orgs.length > 1 ? `${org.name} · ${s.name}` : s.name,
+        });
+      }
+    } catch {
+      // One profile failing shouldn't hide the other's stations.
+    }
+  }
+  return all;
+}
+
+function parseStationRef(ref: string): { orgId: string; stationId: string } {
+  const i = ref.indexOf(":");
+  return i === -1
+    ? { orgId: "", stationId: ref }
+    : { orgId: ref.slice(0, i), stationId: ref.slice(i + 1) };
+}
+
 export async function refreshStation(
-  stationId: string,
+  stationRef: string,
 ): Promise<{ data?: DeyeLatest; error?: string }> {
   try {
-    const json = await withToken((t) =>
+    const { orgId, stationId } = parseStationRef(stationRef);
+    const json = await withToken(orgId, (t) =>
       fetchJson("/station/latest", { stationId: Number(stationId) }, t),
     );
     const admin = createAdminClient();
     await admin.from("deye_cache").upsert({
-      station_id: stationId,
+      station_id: stationRef,
       data: json,
       fetched_at: new Date().toISOString(),
     });
