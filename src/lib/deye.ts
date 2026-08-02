@@ -339,3 +339,130 @@ export async function getCachedHistory(
     stale: Date.now() - new Date(data.fetched_at).getTime() > HISTORY_FRESH_MS,
   };
 }
+
+// ── Full station detail: devices, measure points, alarms, long history ──────
+
+export type DeyePoint = { key: string; name: string; value: string; unit: string };
+export type DeyeDevice = { sn: string; type: string; points: DeyePoint[] };
+export type DeyeAlarm = Record<string, unknown>;
+export type DeyeDetail = {
+  devices: DeyeDevice[];
+  alarms: DeyeAlarm[];
+  daily365: DeyeDaily[];
+  errors: Record<string, string>;
+};
+
+const DETAIL_FRESH_MS = 10 * 60 * 1000;
+const detailKey = (ref: string) => `${ref}#detail`;
+
+function parseDailyItems(json: Record<string, unknown>): DeyeDaily[] {
+  const raw = ((json.stationDataItems ?? json.items ?? json.dataList ?? []) as Record<string, unknown>[]);
+  return raw
+    .map((r) => {
+      const y = r.year, m = r.month, dd = r.day;
+      const date =
+        typeof y === "number" && typeof m === "number" && typeof dd === "number"
+          ? `${y}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`
+          : String(r.date ?? r.time ?? "");
+      const kwhRaw = r.generationValue ?? r.energy ?? r.dayEnergy ?? r.value;
+      const kwh = typeof kwhRaw === "number" ? kwhRaw : Number(kwhRaw) || 0;
+      return { date, kwh: Math.round(kwh * 100) / 100 };
+    })
+    .filter((i) => /^\d{4}-\d{2}-\d{2}/.test(i.date))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+export async function refreshStationDetail(stationRef: string): Promise<DeyeDetail> {
+  const { orgId, stationId } = parseStationRef(stationRef);
+  const detail: DeyeDetail = { devices: [], alarms: [], daily365: [], errors: {} };
+
+  // Devices and their full measure points — the DeyeCloud device page data.
+  try {
+    const json = await withToken(orgId, (t) =>
+      fetchJson("/device/list", { stationId: Number(stationId), page: 1, size: 50 }, t),
+    );
+    const raw = ((json.deviceListItems ?? json.deviceList ?? json.items ?? []) as Record<string, unknown>[]);
+    if (raw.length === 0) console.error("[deye] device/list empty; keys:", Object.keys(json));
+    const devices = raw
+      .map((d) => ({
+        sn: String(d.deviceSn ?? d.sn ?? ""),
+        type: String(d.deviceType ?? d.type ?? "Device"),
+      }))
+      .filter((d) => d.sn);
+    for (const dev of devices) {
+      try {
+        const dj = await withToken(orgId, (t) =>
+          fetchJson("/device/latest", { deviceList: [dev.sn] }, t),
+        );
+        const list = ((dj.deviceDataList ?? dj.dataList ?? []) as Record<string, unknown>[]);
+        const first = list[0] ?? {};
+        const points = (((first.dataList ?? first.data ?? []) as Record<string, unknown>[]))
+          .map((p) => ({
+            key: String(p.key ?? p.code ?? ""),
+            name: String(p.name ?? p.key ?? ""),
+            value: String(p.value ?? ""),
+            unit: String(p.unit ?? ""),
+          }))
+          .filter((p) => p.key && p.value !== "");
+        detail.devices.push({ ...dev, points });
+      } catch (e) {
+        detail.devices.push({ ...dev, points: [] });
+        console.error(`[deye] device/latest ${dev.sn} failed:`, e instanceof Error ? e.message : e);
+      }
+    }
+  } catch (e) {
+    detail.errors.devices = e instanceof Error ? e.message : "device list failed";
+    console.error("[deye] device/list failed:", detail.errors.devices);
+  }
+
+  // Alarms (recent).
+  try {
+    const json = await withToken(orgId, (t) =>
+      fetchJson("/alarm/list", { stationId: Number(stationId), page: 1, size: 20 }, t),
+    );
+    detail.alarms = ((json.alarmList ?? json.items ?? json.dataList ?? []) as DeyeAlarm[]);
+  } catch (e) {
+    detail.errors.alarms = e instanceof Error ? e.message : "alarm list failed";
+    console.error("[deye] alarm/list failed:", detail.errors.alarms);
+  }
+
+  // A year of daily energy → monthly/yearly summaries.
+  try {
+    const json = await withToken(orgId, (t) =>
+      fetchJson(
+        "/station/history",
+        { stationId: Number(stationId), startAt: manilaDate(-364), endAt: manilaDate(0), granularity: 2 },
+        t,
+      ),
+    );
+    detail.daily365 = parseDailyItems(json);
+  } catch (e) {
+    detail.errors.daily365 = e instanceof Error ? e.message : "history failed";
+    console.error("[deye] 365-day history failed:", detail.errors.daily365);
+  }
+
+  const admin = createAdminClient();
+  await admin.from("deye_cache").upsert({
+    station_id: detailKey(stationRef),
+    data: detail,
+    fetched_at: new Date().toISOString(),
+  });
+  return detail;
+}
+
+export async function getCachedDetail(
+  stationRef: string,
+): Promise<{ detail: DeyeDetail; fetchedAt: string; stale: boolean } | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("deye_cache")
+    .select("data, fetched_at")
+    .eq("station_id", detailKey(stationRef))
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    detail: data.data as DeyeDetail,
+    fetchedAt: data.fetched_at,
+    stale: Date.now() - new Date(data.fetched_at).getTime() > DETAIL_FRESH_MS,
+  };
+}

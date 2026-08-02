@@ -120,7 +120,7 @@ export default async function MonitoringPage() {
           {rows.map((r) => (
             <Link
               key={r.projectId}
-              href={`/projects/${r.projectId}`}
+              href={`/monitoring/${r.projectId}`}
               className="block rounded-xl border border-gray-200 bg-white p-4"
             >
               <div className="flex items-start justify-between gap-2">
