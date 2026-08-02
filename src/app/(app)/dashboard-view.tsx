@@ -3,7 +3,7 @@ import { LEAD_SOURCES, type LeadSource } from "@/lib/crm";
 import { formatDate, formatPeso } from "@/lib/format";
 import { BarRows, MonthlyBars } from "@/components/charts";
 import { MaintenanceItem } from "./maintenance-item";
-import { AddMeetingForm, MeetingDelete } from "./agenda-meeting";
+import { AddMeetingForm, MeetingItem, type Meeting } from "./agenda-meeting";
 
 // Compact peso for chart labels: ₱1.2M / ₱850k / ₱950.
 function pesoShort(v: number): string {
@@ -18,7 +18,7 @@ export type DashboardData = {
     icon: string;
     label: string;
     href: string;
-    meetingId?: string;
+    meeting?: Meeting;
     sortTime?: string;
   }[];
   overdue: {
@@ -189,12 +189,8 @@ export function DashboardView({ data }: { data: DashboardData }) {
                       {formatDate(a.date)}
                     </p>
                   )}
-                  {a.meetingId ? (
-                    <div className="flex items-center gap-2 py-2">
-                      <span className="shrink-0">{a.icon}</span>
-                      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">{a.label}</span>
-                      <MeetingDelete id={a.meetingId} />
-                    </div>
+                  {a.meeting ? (
+                    <MeetingItem meeting={a.meeting} label={a.label} />
                   ) : (
                     <Link href={a.href} className="flex items-center gap-2 py-2">
                       <span className="shrink-0">{a.icon}</span>
