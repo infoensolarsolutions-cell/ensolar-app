@@ -37,6 +37,7 @@ type LeadDetail = {
     barangay: string | null;
     referred_by: string | null;
     messenger_name: string | null;
+    email2: string | null;
   } | null;
 };
 
@@ -60,7 +61,7 @@ export default async function LeadDetailPage({
   const { data: lead } = await supabase
     .from("leads")
     .select(
-      "id, status, service_type, next_followup_at, lost_reason, notes, assigned_to, created_at, customer_id, customers (name, phone, email, address, barangay, referred_by, messenger_name)",
+      "id, status, service_type, next_followup_at, lost_reason, notes, assigned_to, created_at, customer_id, customers (name, phone, email, email2, address, barangay, referred_by, messenger_name)",
     )
     .eq("id", id)
     .single()
@@ -145,6 +146,12 @@ export default async function LeadDetailPage({
               </p>
             )}
             {c?.email && <p>✉️ {c.email}</p>}
+            {c?.email2 && (
+              <p>
+                ✉️ {c.email2}{" "}
+                <span className="text-xs text-gray-400">(2nd contact)</span>
+              </p>
+            )}
             {(c?.address || c?.barangay) && (
               <p>📍 {[c.address, c.barangay].filter(Boolean).join(", ")}</p>
             )}
