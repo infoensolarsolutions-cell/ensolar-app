@@ -150,6 +150,7 @@ export async function updateLeadContact(
       barangay,
       referred_by: field("referred_by"),
       messenger_name: field("messenger_name"),
+      email2: field("email2"),
     })
     .eq("id", customerId);
   if (error) return { error: `Could not save: ${error.message}` };

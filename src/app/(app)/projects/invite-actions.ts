@@ -9,19 +9,28 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function inviteCustomerToPortal(
   customerId: string,
   projectId: string,
+  slot: "primary" | "secondary" = "primary",
 ): Promise<{ error?: string; done?: boolean }> {
   const profile = await requireRole("owner", "office_staff");
   const supabase = await createClient();
 
   const { data: customer } = await supabase
     .from("customers")
-    .select("name, email, profile_id")
+    .select("name, email, email2, profile_id, profile_id2")
     .eq("id", customerId)
     .single();
   if (!customer) return { error: "Customer not found." };
-  if (customer.profile_id) return { error: "This customer already has portal access." };
-  if (!customer.email) {
-    return { error: "Add an email address to the customer record first." };
+
+  const email = slot === "primary" ? customer.email : customer.email2;
+  const linked = slot === "primary" ? customer.profile_id : customer.profile_id2;
+  if (linked) return { error: "This contact already has portal access." };
+  if (!email) {
+    return {
+      error:
+        slot === "primary"
+          ? "Add an email address to the customer record first."
+          : "Add the second email address to the customer record first.",
+    };
   }
 
   let admin;
@@ -32,7 +41,7 @@ export async function inviteCustomerToPortal(
   }
 
   const origin = (await headers()).get("origin") ?? "https://ensolar-app.vercel.app";
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(customer.email, {
+  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { name: customer.name },
     redirectTo: `${origin}/auth/confirm?next=/reset-password`,
   });
@@ -45,7 +54,11 @@ export async function inviteCustomerToPortal(
 
   const { error: linkError } = await supabase
     .from("customers")
-    .update({ profile_id: data.user.id })
+    .update(
+      slot === "primary"
+        ? { profile_id: data.user.id }
+        : { profile_id2: data.user.id },
+    )
     .eq("id", customerId);
   if (linkError) return { error: "Invite sent but linking failed — contact support." };
 
@@ -53,7 +66,7 @@ export async function inviteCustomerToPortal(
     project_id: projectId,
     user_id: profile.id,
     event: "portal_invited",
-    detail: { email: customer.email },
+    detail: { email },
   });
 
   revalidatePath(`/projects/${projectId}`);

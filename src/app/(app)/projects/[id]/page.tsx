@@ -50,7 +50,9 @@ type ProjectDetail = {
     name: string;
     phone: string | null;
     email: string | null;
+    email2: string | null;
     profile_id: string | null;
+    profile_id2: string | null;
   } | null;
   quotations: { id: string; quote_no: string } | null;
   project_assignments: { user_id: string; profiles: { name: string } | null }[];
@@ -91,7 +93,7 @@ export default async function ProjectDetailPage({
   const { data: project } = await supabase
     .from("projects")
     .select(
-      "id, project_no, status, service_type, site_address, contract_amount, start_date, target_date, completed_date, created_at, customer_id, deye_station_id, deye_station_name, system_kwp, system_specs, customers (name, phone, email, profile_id), quotations (id, quote_no), project_assignments (user_id, profiles (name))",
+      "id, project_no, status, service_type, site_address, contract_amount, start_date, target_date, completed_date, created_at, customer_id, deye_station_id, deye_station_name, system_kwp, system_specs, customers (name, phone, email, email2, profile_id, profile_id2), quotations (id, quote_no), project_assignments (user_id, profiles (name))",
     )
     .eq("id", id)
     .single()
@@ -305,7 +307,7 @@ export default async function ProjectDetailPage({
             {project.completed_date && <p>Completed: {formatDate(project.completed_date)}</p>}
           </div>
           {isStaff && (
-            <div className="mt-3 border-t border-gray-100 pt-3">
+            <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
               {project.customers?.profile_id ? (
                 <p className="text-xs font-medium text-green-700">
                   ✓ Customer has portal access
@@ -317,6 +319,18 @@ export default async function ProjectDetailPage({
                   hasEmail={!!project.customers?.email}
                 />
               )}
+              {project.customers?.profile_id2 ? (
+                <p className="text-xs font-medium text-green-700">
+                  ✓ Second contact has portal access
+                </p>
+              ) : project.customers?.email2 ? (
+                <InviteButton
+                  customerId={project.customer_id}
+                  projectId={project.id}
+                  hasEmail
+                  slot="secondary"
+                />
+              ) : null}
             </div>
           )}
           {profile.role === "owner" && (
