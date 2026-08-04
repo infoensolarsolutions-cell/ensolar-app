@@ -72,3 +72,35 @@ export async function inviteCustomerToPortal(
   revalidatePath(`/projects/${projectId}`);
   return { done: true };
 }
+
+// Edit the customer's portal emails straight from the project page — needed
+// for projects without a lead record (historical imports, direct projects).
+export async function updateCustomerEmails(
+  _prev: { error?: string; saved?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; saved?: boolean }> {
+  const profile = await requireRole("owner", "office_staff");
+  const customerId = String(formData.get("customer_id") ?? "");
+  const projectId = String(formData.get("project_id") ?? "");
+  const email = String(formData.get("email") ?? "").trim().slice(0, 200) || null;
+  const email2 = String(formData.get("email2") ?? "").trim().slice(0, 200) || null;
+  if (!customerId) return { error: "Missing customer reference." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("customers")
+    .update({ email, email2 })
+    .eq("id", customerId);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  if (projectId) {
+    await supabase.from("project_events").insert({
+      project_id: projectId,
+      user_id: profile.id,
+      event: "note",
+      detail: { text: "updated the customer's email addresses" },
+    });
+    revalidatePath(`/projects/${projectId}`);
+  }
+  return { saved: true };
+}

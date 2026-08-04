@@ -25,6 +25,7 @@ import { DatesForm } from "./dates-form";
 import { SiteAddressForm } from "./site-address-form";
 import { EditProjectForm } from "./edit-project-form";
 import { DeleteProjectButton } from "./delete-project-button";
+import { CustomerEmailsForm } from "./customer-emails-form";
 import { ChecklistsPanel, type ChecklistSummary } from "./checklists-panel";
 import { normalizeItems, type ChecklistItem } from "@/lib/checklists";
 import { deyeEnabled, getCachedHistory, getCachedStation, listStations } from "@/lib/deye";
@@ -308,6 +309,12 @@ export default async function ProjectDetailPage({
           </div>
           {isStaff && (
             <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
+              <CustomerEmailsForm
+                customerId={project.customer_id}
+                projectId={project.id}
+                email={project.customers?.email ?? null}
+                email2={project.customers?.email2 ?? null}
+              />
               {project.customers?.profile_id ? (
                 <p className="text-xs font-medium text-green-700">
                   ✓ Customer has portal access
