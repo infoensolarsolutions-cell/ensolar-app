@@ -5,6 +5,7 @@ import {
   addMilestone,
   addStandardSchedule,
   deleteMilestone,
+  deletePayment,
   recordPayment,
   updatePaymentMethod,
 } from "../payment-actions";
@@ -167,6 +168,27 @@ export function PaymentsPanel({
               >
                 Receipt
               </a>
+              {isOwner && p.method !== "online" && (
+                <button
+                  disabled={pending}
+                  onClick={() => {
+                    if (
+                      !confirm(
+                        `Delete payment ${p.or_no} of ${formatPeso(p.amount)}?\n\nUse this only for wrongly recorded entries — the paid total and balance will recalculate, and the deletion is noted on the project timeline.`,
+                      )
+                    )
+                      return;
+                    setError(null);
+                    startTransition(async () => {
+                      const res = await deletePayment(p.id);
+                      if (res.error) setError(res.error);
+                    });
+                  }}
+                  className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 active:bg-red-50 disabled:opacity-60"
+                >
+                  🗑
+                </button>
+              )}
             </div>
           </li>
         ))}
