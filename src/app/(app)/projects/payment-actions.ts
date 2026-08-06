@@ -205,3 +205,40 @@ export async function updatePaymentMethod(
   }
   return {};
 }
+
+// Owner-only removal of a wrongly recorded payment. Online (PayMongo)
+// payments are real transactions and stay immutable; the deletion is noted
+// on the project timeline so the books show what happened.
+export async function deletePayment(
+  paymentId: string,
+): Promise<{ error?: string }> {
+  const profile = await requireRole("owner");
+  const supabase = await createClient();
+
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, or_no, amount, method, project_id")
+    .eq("id", paymentId)
+    .single();
+  if (!payment) return { error: "Payment not found." };
+  if (payment.method === "online") {
+    return { error: "Online payments are provider-recorded transactions and cannot be deleted." };
+  }
+
+  const { error } = await supabase.from("payments").delete().eq("id", paymentId);
+  if (error) return { error: `Could not delete: ${error.message}` };
+
+  if (payment.project_id) {
+    await supabase.from("project_events").insert({
+      project_id: payment.project_id,
+      user_id: profile.id,
+      event: "note",
+      detail: {
+        text: `deleted wrongly recorded payment ${payment.or_no} (₱${Number(payment.amount).toLocaleString()})`,
+      },
+    });
+    revalidatePath(`/projects/${payment.project_id}`);
+  }
+  revalidatePath("/");
+  return {};
+}
