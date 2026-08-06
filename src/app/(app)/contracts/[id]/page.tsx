@@ -55,7 +55,11 @@ export default async function ContractPage({
           </a>
         </div>
       </div>
-      <ContractEditor contractId={contract.id} initialBody={contract.body} />
+      <ContractEditor
+        contractId={contract.id}
+        initialBody={contract.body}
+        docType={contract.contract_no.startsWith("COC-") ? "certificate" : "contract"}
+      />
     </>
   );
 }

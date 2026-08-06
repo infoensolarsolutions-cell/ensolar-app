@@ -7,25 +7,29 @@ export function ContractEditor({
   projectId,
   contractId,
   initialBody,
+  docType = "contract",
 }: {
   projectId?: string;
   contractId?: string;
   initialBody: string;
+  docType?: "contract" | "certificate";
 }) {
   const [state, formAction, pending] = useActionState(
     contractId ? updateContract : createContract,
     null,
   );
+  const noun = docType === "certificate" ? "certificate" : "contract";
 
   return (
     <form action={formAction} className="space-y-3 p-4">
       {projectId && <input type="hidden" name="project_id" value={projectId} />}
       {contractId && <input type="hidden" name="contract_id" value={contractId} />}
+      <input type="hidden" name="doc_type" value={docType} />
 
       <p className="text-xs text-gray-500">
-        Review and edit freely — names, package details, amounts and payment
-        scheme were filled in from the project. Nothing is final until you
-        save.
+        {docType === "certificate"
+          ? "Review and edit freely — the project owner, address and system details were filled in from the project. Write the bank / financing institution over the blank line. Nothing is final until you save."
+          : "Review and edit freely — names, package details, amounts and payment scheme were filled in from the project. Nothing is final until you save."}
       </p>
 
       <textarea
@@ -46,7 +50,7 @@ export function ContractEditor({
         disabled={pending}
         className="w-full rounded-xl bg-brand-green px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
       >
-        {pending ? "Saving…" : contractId ? "Save changes" : "Save contract"}
+        {pending ? "Saving…" : contractId ? "Save changes" : `Save ${noun}`}
       </button>
     </form>
   );

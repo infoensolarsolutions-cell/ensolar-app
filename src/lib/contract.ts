@@ -28,6 +28,15 @@ export type ContractData = {
   signing_place: string;
 };
 
+// Generic {{KEY}} substitution — unknown placeholders are left visible so a
+// typo in a template shows up in the draft instead of vanishing silently.
+export function fillPlaceholders(
+  template: string,
+  map: Record<string, string>,
+): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (m, key) => map[key] ?? m);
+}
+
 export function fillTemplate(template: string, data: ContractData): string {
   const totalFigures = data.total.toLocaleString("en-PH", {
     minimumFractionDigits: 2,
@@ -47,5 +56,5 @@ export function fillTemplate(template: string, data: ContractData): string {
     PAYMENT_SCHEDULE: data.payment_schedule,
     SIGNING_PLACE: data.signing_place,
   };
-  return template.replace(/\{\{(\w+)\}\}/g, (m, key) => map[key] ?? m);
+  return fillPlaceholders(template, map);
 }

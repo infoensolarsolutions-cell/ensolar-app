@@ -3,11 +3,18 @@
 import { useActionState } from "react";
 import { saveTemplate } from "@/app/(app)/contracts/actions";
 
-export function TemplateEditor({ initialBody }: { initialBody: string }) {
+export function TemplateEditor({
+  initialBody,
+  templateKey = "solar_contract",
+}: {
+  initialBody: string;
+  templateKey?: string;
+}) {
   const [state, formAction, pending] = useActionState(saveTemplate, null);
 
   return (
     <form action={formAction} className="space-y-3">
+      <input type="hidden" name="template_key" value={templateKey} />
       <textarea
         name="body"
         defaultValue={initialBody}
