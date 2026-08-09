@@ -266,6 +266,66 @@ const BATTERY_ITEMS: ItemSpec[] = [
     req: () => "Owner briefed: keep the area dry and ventilated, never cover the units, what alarms look like, and the emergency shutdown steps" },
 ];
 
+// EV charger (AC wallbox) — e.g. a 7 kW BYD charger for a hybrid/EV car.
+// An EV charger is a continuous load: breaker and cable sizing use 125%.
+const EV_CHARGER_ITEMS: ItemSpec[] = [
+  // A — Planning and supply capacity
+  { label: "Manual and ratings confirmed",
+    req: (eq) => `${eq.brand} ${eq.model} manual on hand; rated ${eq.kw} kW at ${eq.voltage} V ${phaseLabel(eq)} ≈ ${fullLoadAmps(eq)} A charging current; connector type (Type 2 / GB/T) matches the vehicle; enclosure IP rating suits the mounting spot` },
+  { label: "Service capacity and load calculation",
+    req: (eq) => `Existing service entrance and main breaker can carry the charger as a CONTINUOUS load (${r1(fullLoadAmps(eq) * 1.25)} A = 125% of ${fullLoadAmps(eq)} A) on top of the house demand — computed and recorded; upgrade or load-management set before installation if not` },
+  { label: "Charging location survey",
+    req: () => "Charger reaches the vehicle's charge port with the cable relaxed (no strain, no crossing walkways); parking position fixed; charging cable never lies across a driveway or pedestrian path" },
+  { label: "Permit / utility notification",
+    req: () => "Electrical permit secured where required; utility notified if the added load pushes the service near its limit" },
+
+  // B — Mounting
+  { label: "Mounting surface and height",
+    req: (eq) => `${eq.brand} wallbox anchored to solid masonry/structure (or a rated pedestal) with the manual's anchors; connector holster ~0.9–1.5 m above finished floor; unit level` },
+  { label: "Weather and impact protection",
+    req: () => "Outdoor units sheltered from direct rain/sun where practical (IP rating respected regardless); bollard, wheel stop, or corner guard where a vehicle could strike the unit" },
+  { label: "Clearances and ventilation",
+    req: () => "Side/top clearances per manual; not enclosed in a sealed cabinet; ambient within the datasheet operating range (derating expected above ~40–45 °C)" },
+
+  // C — Circuit, protection and wiring
+  { label: "Dedicated circuit",
+    req: (eq) => `The charger runs on its OWN circuit from the panel — no shared outlets or loads on the ${r1(fullLoadAmps(eq) * 1.25)} A run` },
+  { label: "Breaker sizing",
+    req: (eq) => `2-pole breaker ≥ ${r1(fullLoadAmps(eq) * 1.25)} A (125% of ${fullLoadAmps(eq)} A continuous at ${eq.kw} kW, ${eq.voltage} V ${phaseLabel(eq)}) — use the next standard size (e.g. 40 A for a 7 kW / 230 V unit); breaking capacity per panel fault level` },
+  { label: "Earth-leakage protection",
+    req: (eq) => `30 mA RCD/RCBO on the charger circuit: Type A + 6 mA DC detection (if the ${eq.brand} ${eq.model} has DC leakage detection built in, per manual) or Type B otherwise — a plain AC-type RCD alone is NOT compliant for EV charging` },
+  { label: "Surge protection",
+    req: () => "Type II SPD at the supplying panel recommended (chargers carry sensitive electronics); connected to earth with short leads" },
+  { label: "Cable sizing",
+    req: (eq) => `Conductor ampacity ≥ ${r1(fullLoadAmps(eq) * 1.25)} A after conduit-fill/temperature derating (typically ≥ 8 mm² THHN for a 7 kW run); voltage drop ≤ 3% at ${fullLoadAmps(eq)} A over the full run` },
+  { label: "Cable routing and mechanical protection",
+    req: () => "Conduit or trunking throughout; protected from sunlight, abrasion, and vehicle wheels; glands at every enclosure entry; no flexible cord as fixed wiring" },
+  { label: "Earthing",
+    req: () => "Charger earth terminal bonded to the panel earth bar with a full-size earth conductor; earth electrode ≤ 5 Ω recommended (≤ 25 Ω maximum per PEC); metallic charger body bonded" },
+  { label: "Terminations",
+    req: () => "Supply terminals torqued per the manual's Nm table and marked; conductor markings correct; no copper strands exposed" },
+
+  // D — Testing and commissioning
+  { label: "Pre-energization checks",
+    req: () => "Insulation resistance of the new circuit ≥ 1 MΩ at 500 V DC; polarity verified; all covers closed before energizing" },
+  { label: "Supply voltage at charger terminals",
+    req: (eq) => `${eq.voltage} V ${phaseLabel(eq)} within ±10% (${r1(eq.voltage * 0.9)}–${r1(eq.voltage * 1.1)} V) measured under load; recorded` },
+  { label: "RCD trip test",
+    req: () => "RCD/RCBO test button trips and resets; where an RCD tester is available, trip time and current recorded" },
+  { label: "Charger configuration",
+    req: (eq) => `Maximum charging current set to match the breaker and supply capacity (never above ${fullLoadAmps(eq)} A for this ${eq.kw} kW unit); Wi-Fi/app or RFID set up per the ${eq.brand} manual; owner account created` },
+  { label: "Charging test with the vehicle",
+    req: (eq) => `Full charge session started with the actual car: handshake OK, charging at the expected power (≈ ${eq.kw} kW or the car's onboard-charger limit for hybrids — often 3.3–6.6 kW), no error codes; session visible in the app` },
+  { label: "Thermal check under load",
+    req: () => "After ≥ 30 minutes of charging: breaker, terminations, cable, plug, and connector only warm — not hot; any hot joint re-torqued and re-tested" },
+  { label: "Protection behavior",
+    req: () => "Charging stops when the connector is released / emergency stop pressed; cable lock-unlock works; charger recovers normally after a supply interruption" },
+  { label: "Labels and signage",
+    req: () => "Circuit labeled 'EV CHARGER' at the panel; charger current setting noted on a label; emergency shutdown steps posted for household members" },
+  { label: "Handover and documentation",
+    req: () => "Owner briefed: starting/stopping a session, app use, coiling the cable off the floor, never using damaged connectors, and what the status lights mean; photos and test values uploaded to the project" },
+];
+
 export const CHECKLIST_TEMPLATES: {
   key: string;
   title: string;
@@ -275,6 +335,7 @@ export const CHECKLIST_TEMPLATES: {
   { key: "hybrid_precommissioning", title: "Pre-Energization, Testing & Commissioning — Hybrid Inverter", items: TC_ITEMS },
   { key: "metal_roof_panel_installation", title: "Solar Panel Installation — Metal Roof (with Safety)", items: METAL_ROOF_ITEMS },
   { key: "lifepo4_battery_installation", title: "LiFePO4 Battery Installation (51.2 V)", items: BATTERY_ITEMS },
+  { key: "ev_charger_installation", title: "EV Charger Installation (AC Wallbox)", items: EV_CHARGER_ITEMS },
 ];
 
 export function newChecklistItems(
