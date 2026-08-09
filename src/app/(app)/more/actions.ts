@@ -26,3 +26,22 @@ export async function updateMyProfile(
   revalidatePath("/");
   return { saved: true };
 }
+
+// Change the signed-in user's own password — no email link needed.
+export async function changeMyPassword(
+  _prev: { error?: string; saved?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; saved?: boolean }> {
+  const profile = await getProfile();
+  if (!profile) return { error: "Not signed in." };
+
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password !== confirm) return { error: "Passwords do not match." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: `Could not change the password: ${error.message}` };
+  return { saved: true };
+}

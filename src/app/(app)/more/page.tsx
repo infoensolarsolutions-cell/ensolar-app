@@ -4,6 +4,7 @@ import { TopBar } from "@/components/top-bar";
 import { getProfile, ROLE_LABELS } from "@/lib/auth";
 import { signOut } from "@/app/(public)/login/actions";
 import { ProfileForm } from "./profile-form";
+import { ChangePasswordForm } from "./change-password-form";
 
 export const metadata: Metadata = { title: "More" };
 
@@ -25,6 +26,9 @@ export default async function MorePage() {
           </span>
           <div>
             <ProfileForm name={profile.name} phone={profile.phone} />
+          </div>
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <ChangePasswordForm />
           </div>
         </div>
         {["owner", "office_staff"].includes(profile.role) && (

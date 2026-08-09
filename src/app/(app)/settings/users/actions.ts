@@ -32,6 +32,49 @@ export async function updateUserRole(
   return { saved: true };
 }
 
+// Owner rescue for a stuck user: set a temporary password directly — no
+// email involved, so it works even when reset emails are limited or lost
+// to spam. The user should change it in More → Change password after.
+export async function setTempPassword(
+  _prev: { error?: string; saved?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; saved?: boolean }> {
+  const me = await requireRole("owner");
+  const userId = String(formData.get("user_id") ?? "");
+  const password = String(formData.get("password") ?? "");
+
+  if (!userId) return { error: "Missing user reference." };
+  if (userId === me.id) {
+    return { error: "Change your own password from More → Change password." };
+  }
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { error: "Server key not configured — cannot manage passwords." };
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  if (error) return { error: `Could not set the password: ${error.message}` };
+  return { saved: true };
+}
+
+// Owner-triggered reset email for a user, same link the Forgot password
+// page sends. Subject to Supabase's email rate limits.
+export async function sendResetLink(userEmail: string): Promise<{ error?: string; sent?: boolean }> {
+  await requireRole("owner");
+  if (!userEmail) return { error: "This user has no email on record." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+    redirectTo: "https://ensolar-app.vercel.app/auth/confirm?next=/reset-password",
+  });
+  if (error) return { error: `Could not send: ${error.message}` };
+  return { sent: true };
+}
+
 export async function createUser(
   _prev: { error?: string; saved?: boolean } | null,
   formData: FormData,
