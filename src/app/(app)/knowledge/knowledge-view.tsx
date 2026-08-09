@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
-import { addKbIssue, deleteKbIssue, updateKbIssue } from "./actions";
+import { addKbIssue, deleteKbIssue, importResolvedTickets, updateKbIssue } from "./actions";
 import { KB_CATEGORIES, type KbCategory } from "@/lib/kb";
 import { formatDate } from "@/lib/format";
 
@@ -102,6 +102,7 @@ export function KnowledgeView({
           )}
         </>
       )}
+      {isOwner && <ImportTicketsButton />}
 
       {!entries.length && (
         <p className="pt-6 text-center text-sm text-gray-500">
@@ -116,6 +117,49 @@ export function KnowledgeView({
       {filtered.map((e) => (
         <EntryCard key={e.id} entry={e} isStaff={isStaff} isOwner={isOwner} />
       ))}
+    </div>
+  );
+}
+
+function ImportTicketsButton() {
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div>
+      <button
+        disabled={pending}
+        onClick={() => {
+          setResult(null);
+          setError(null);
+          startTransition(async () => {
+            const res = await importResolvedTickets();
+            if (res.error) {
+              setError(res.error);
+              return;
+            }
+            const parts = [`${res.imported} imported`];
+            if (res.skipped) parts.push(`${res.skipped} already here`);
+            if (res.noSolution) parts.push(`${res.noSolution} without a recorded fix`);
+            setResult(parts.join(" · "));
+          });
+        }}
+        className="w-full rounded-lg border border-brand-green px-4 py-2.5 text-sm font-semibold text-brand-green-dark active:bg-brand-green/5 disabled:opacity-60"
+      >
+        {pending
+          ? "Scanning resolved tickets…"
+          : "⬇️ Import resolved service tickets from all projects"}
+      </button>
+      {result && (
+        <p className="mt-1 rounded-lg bg-green-50 px-3 py-2 text-xs font-medium text-green-800">
+          Done — {result}. Entries were categorized automatically; open one to
+          fine-tune its category or brand with &ldquo;edit&rdquo;.
+        </p>
+      )}
+      {error && (
+        <p className="mt-1 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{error}</p>
+      )}
     </div>
   );
 }
