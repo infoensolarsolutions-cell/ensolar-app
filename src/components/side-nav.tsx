@@ -17,6 +17,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/messages", label: "💬 Messages" },
         { href: "/projects", label: "🏗️ Projects" },
         { href: "/monitoring", label: "☀️ Monitoring" },
+        { href: "/knowledge", label: "🛠️ Troubleshooting" },
       ],
     },
     {
@@ -74,6 +75,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/messages", label: "💬 Messages" },
         { href: "/projects", label: "🏗️ Projects" },
         { href: "/monitoring", label: "☀️ Monitoring" },
+        { href: "/knowledge", label: "🛠️ Troubleshooting" },
       ],
     },
     {
@@ -109,6 +111,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/", label: "🏠 Dashboard" },
         { href: "/messages", label: "💬 Messages" },
         { href: "/projects", label: "🏗️ My Projects" },
+        { href: "/knowledge", label: "🛠️ Troubleshooting" },
         { href: "/attendance", label: "🕐 My Attendance" },
         { href: "/kpi", label: "📈 My KPI" },
         { href: "/more", label: "☰ More" },
