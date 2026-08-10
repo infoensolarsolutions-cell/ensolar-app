@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { todayManila } from "@/lib/format";
 
 export type QuotationItemInput = {
   product_id: string | null;
@@ -66,15 +67,21 @@ export async function saveQuotation(
   let id = quotationId;
 
   if (quotationId) {
-    // Edit an existing draft only.
+    // Drafts and submitted (sent) quotations are editable; editing a sent
+    // one automatically becomes the next revision. Accepted quotations are
+    // locked — they carry a project and contract amount.
     const { data: existing } = await supabase
       .from("quotations")
-      .select("status")
+      .select("status, revision_no, lead_id, quote_no")
       .eq("id", quotationId)
       .single();
     if (!existing) return { error: "Quotation not found." };
-    if (existing.status !== "draft") {
-      return { error: "Only draft quotations can be edited." };
+    if (!["draft", "sent"].includes(existing.status)) {
+      return { error: `A ${existing.status} quotation can no longer be edited.` };
+    }
+    if (existing.status === "sent") {
+      meta.revision_no = Math.max(revisionNo, (existing.revision_no ?? 0) + 1);
+      meta.revision_date = todayManila();
     }
 
     const { error } = await supabase
@@ -84,6 +91,15 @@ export async function saveQuotation(
     if (error) return { error: "Could not save. Please try again." };
 
     await supabase.from("quotation_items").delete().eq("quotation_id", quotationId);
+
+    if (existing.status === "sent" && existing.lead_id) {
+      await supabase.from("lead_events").insert({
+        lead_id: existing.lead_id,
+        user_id: profile.id,
+        event: "quotation_revised",
+        detail: { quote_no: existing.quote_no, revision_no: meta.revision_no },
+      });
+    }
   } else {
     if (!leadId) return { error: "Missing lead." };
     const { data: lead } = await supabase

@@ -33,7 +33,9 @@ export default async function EditQuotationPage({
   ]);
 
   if (!q) notFound();
-  if (q.status !== "draft") redirect(`/quotations/${id}`);
+  // Sent quotations stay editable (saving bumps the revision); accepted
+  // and closed ones are locked.
+  if (!["draft", "sent"].includes(q.status)) redirect(`/quotations/${id}`);
 
   const items = [...q.quotation_items]
     .sort((a, b) => a.sort_order - b.sort_order)
