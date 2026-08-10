@@ -12,7 +12,7 @@ export default async function EditQuotationPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("owner", "office_staff");
+  const profile = await requireRole("owner", "office_staff");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -34,8 +34,11 @@ export default async function EditQuotationPage({
 
   if (!q) notFound();
   // Sent quotations stay editable (saving bumps the revision); accepted
-  // and closed ones are locked.
-  if (!["draft", "sent"].includes(q.status)) redirect(`/quotations/${id}`);
+  // ones are owner-only since saving updates the project contract amount.
+  const editable =
+    ["draft", "sent"].includes(q.status) ||
+    (q.status === "accepted" && profile.role === "owner");
+  if (!editable) redirect(`/quotations/${id}`);
 
   const items = [...q.quotation_items]
     .sort((a, b) => a.sort_order - b.sort_order)

@@ -44,7 +44,7 @@ export default async function QuotationDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("owner", "office_staff");
+  const profile = await requireRole("owner", "office_staff");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -150,6 +150,7 @@ export default async function QuotationDetailPage({
             quotationId={q.id}
             status={q.status}
             hasProject={!!q.projects}
+            isOwner={profile.role === "owner"}
           />
         )}
 
