@@ -36,22 +36,22 @@ export function QuotationActions({
         </p>
       )}
 
+      {["draft", "sent"].includes(status) && (
+        <Link
+          href={`/quotations/${quotationId}/edit`}
+          className={`${buttonClass} block border border-gray-300 bg-white text-center text-gray-800`}
+        >
+          {status === "sent" ? "Edit items (saves as next revision)" : "Edit items"}
+        </Link>
+      )}
       {status === "draft" && (
-        <>
-          <Link
-            href={`/quotations/${quotationId}/edit`}
-            className={`${buttonClass} block border border-gray-300 bg-white text-center text-gray-800`}
-          >
-            Edit items
-          </Link>
-          <button
-            disabled={pending}
-            onClick={() => run(() => setQuotationStatus(quotationId, "sent"))}
-            className={`${buttonClass} bg-blue-600 text-white active:bg-blue-700`}
-          >
-            Mark as Sent
-          </button>
-        </>
+        <button
+          disabled={pending}
+          onClick={() => run(() => setQuotationStatus(quotationId, "sent"))}
+          className={`${buttonClass} bg-blue-600 text-white active:bg-blue-700`}
+        >
+          Mark as Sent
+        </button>
       )}
 
       {["draft", "sent"].includes(status) && !hasProject && (
