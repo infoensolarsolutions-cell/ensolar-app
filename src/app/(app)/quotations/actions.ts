@@ -67,19 +67,23 @@ export async function saveQuotation(
   let id = quotationId;
 
   if (quotationId) {
-    // Drafts and submitted (sent) quotations are editable; editing a sent
-    // one automatically becomes the next revision. Accepted quotations are
-    // locked — they carry a project and contract amount.
+    // Drafts and submitted (sent) quotations are editable; editing a sent or
+    // accepted one automatically becomes the next revision. Accepted
+    // quotations are owner-only — saving also updates the linked project's
+    // contract amount, with the change logged on the project timeline.
     const { data: existing } = await supabase
       .from("quotations")
       .select("status, revision_no, lead_id, quote_no")
       .eq("id", quotationId)
       .single();
     if (!existing) return { error: "Quotation not found." };
-    if (!["draft", "sent"].includes(existing.status)) {
+    if (!["draft", "sent", "accepted"].includes(existing.status)) {
       return { error: `A ${existing.status} quotation can no longer be edited.` };
     }
-    if (existing.status === "sent") {
+    if (existing.status === "accepted" && profile.role !== "owner") {
+      return { error: "Only the owner can edit an accepted quotation (it changes the project's contract amount)." };
+    }
+    if (existing.status !== "draft") {
       meta.revision_no = Math.max(revisionNo, (existing.revision_no ?? 0) + 1);
       meta.revision_date = todayManila();
     }
@@ -92,13 +96,36 @@ export async function saveQuotation(
 
     await supabase.from("quotation_items").delete().eq("quotation_id", quotationId);
 
-    if (existing.status === "sent" && existing.lead_id) {
+    if (existing.status !== "draft" && existing.lead_id) {
       await supabase.from("lead_events").insert({
         lead_id: existing.lead_id,
         user_id: profile.id,
         event: "quotation_revised",
         detail: { quote_no: existing.quote_no, revision_no: meta.revision_no },
       });
+    }
+
+    if (existing.status === "accepted") {
+      const { data: project } = await supabase
+        .from("projects")
+        .select("id, contract_amount")
+        .eq("quotation_id", quotationId)
+        .single();
+      if (project && Number(project.contract_amount) !== total) {
+        await supabase
+          .from("projects")
+          .update({ contract_amount: total })
+          .eq("id", project.id);
+        await supabase.from("project_events").insert({
+          project_id: project.id,
+          user_id: profile.id,
+          event: "note",
+          detail: {
+            text: `quotation ${existing.quote_no} revised (Rev ${meta.revision_no}): contract amount ₱${Number(project.contract_amount).toLocaleString()} → ₱${total.toLocaleString()}`,
+          },
+        });
+        revalidatePath(`/projects/${project.id}`);
+      }
     }
   } else {
     if (!leadId) return { error: "Missing lead." };

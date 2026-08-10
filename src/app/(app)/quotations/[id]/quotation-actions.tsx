@@ -8,10 +8,12 @@ export function QuotationActions({
   quotationId,
   status,
   hasProject,
+  isOwner = false,
 }: {
   quotationId: string;
   status: string;
   hasProject: boolean;
+  isOwner?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [confirmAccept, setConfirmAccept] = useState(false);
@@ -36,12 +38,16 @@ export function QuotationActions({
         </p>
       )}
 
-      {["draft", "sent"].includes(status) && (
+      {(["draft", "sent"].includes(status) || (status === "accepted" && isOwner)) && (
         <Link
           href={`/quotations/${quotationId}/edit`}
           className={`${buttonClass} block border border-gray-300 bg-white text-center text-gray-800`}
         >
-          {status === "sent" ? "Edit items (saves as next revision)" : "Edit items"}
+          {status === "sent"
+            ? "Edit items (saves as next revision)"
+            : status === "accepted"
+              ? "Edit items (revises the project contract amount)"
+              : "Edit items"}
         </Link>
       )}
       {status === "draft" && (
