@@ -143,7 +143,7 @@ export function ReceiptPdf({ data }: { data: ReceiptPdfData }) {
         </View>
         <Text style={styles.words}>{pesoInWords(data.amount)}</Text>
 
-        <View style={styles.sigRow}>
+        <View style={styles.sigRow} wrap={false}>
           <View style={styles.sigBox}>
             <Text style={styles.label}>Received by:</Text>
             {data.signature ? (
