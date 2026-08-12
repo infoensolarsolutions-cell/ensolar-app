@@ -210,7 +210,10 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
           </View>
         ) : null}
 
-        <View style={styles.sigRow}>
+        {/* wrap=false: near a page break the whole block moves to the next
+            page as one unit — a split used to strand the signature image on
+            one page and the preparer's name on another. */}
+        <View style={styles.sigRow} wrap={false}>
           <View style={styles.sigBox}>
             <Text style={styles.label}>Prepared by:</Text>
             {data.signature ? (
