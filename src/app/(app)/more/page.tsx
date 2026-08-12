@@ -5,11 +5,14 @@ import { getProfile, ROLE_LABELS } from "@/lib/auth";
 import { signOut } from "@/app/(public)/login/actions";
 import { ProfileForm } from "./profile-form";
 import { ChangePasswordForm } from "./change-password-form";
+import { SignatureForm } from "./signature-form";
+import { getSignature } from "@/lib/signature";
 
 export const metadata: Metadata = { title: "More" };
 
 export default async function MorePage() {
   const profile = (await getProfile())!;
+  const signature = profile.role === "owner" ? await getSignature(profile.id) : null;
 
   return (
     <>
@@ -30,6 +33,11 @@ export default async function MorePage() {
           <div className="mt-3 border-t border-gray-100 pt-3">
             <ChangePasswordForm />
           </div>
+          {profile.role === "owner" && (
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              <SignatureForm current={signature} />
+            </div>
+          )}
         </div>
         {["owner", "office_staff"].includes(profile.role) && (
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">

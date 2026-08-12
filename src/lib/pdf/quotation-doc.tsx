@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   Document,
   Font,
+  Image,
   Page,
   StyleSheet,
   Svg,
@@ -79,6 +80,7 @@ export type QuotationPdfData = {
   total: number;
   terms: string | null;
   prepared_by: string;
+  signature?: string | null; // data URI of the preparer's e-signature
 };
 
 function peso(n: number): string {
@@ -211,7 +213,18 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
         <View style={styles.sigRow}>
           <View style={styles.sigBox}>
             <Text style={styles.label}>Prepared by:</Text>
-            <Text style={styles.sigLine}>{data.prepared_by}</Text>
+            {data.signature ? (
+              // e-signature sits on the line, replacing the blank space
+              <>
+                <Image
+                  src={data.signature}
+                  style={{ height: 30, marginTop: 2, alignSelf: "center", objectFit: "contain" }}
+                />
+                <Text style={[styles.sigLine, { marginTop: -4 }]}>{data.prepared_by}</Text>
+              </>
+            ) : (
+              <Text style={styles.sigLine}>{data.prepared_by}</Text>
+            )}
           </View>
           <View style={styles.sigBox}>
             <Text style={styles.label}>Conforme (customer):</Text>

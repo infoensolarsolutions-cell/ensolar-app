@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   Document,
   Font,
+  Image,
   Page,
   StyleSheet,
   Svg,
@@ -68,6 +69,7 @@ export type ReceiptPdfData = {
   method: string;
   provider_ref: string | null;
   received_by: string;
+  signature?: string | null; // data URI of the receiver's e-signature
 };
 
 function peso(n: number): string {
@@ -144,7 +146,17 @@ export function ReceiptPdf({ data }: { data: ReceiptPdfData }) {
         <View style={styles.sigRow}>
           <View style={styles.sigBox}>
             <Text style={styles.label}>Received by:</Text>
-            <Text style={styles.sigLine}>{data.received_by}</Text>
+            {data.signature ? (
+              <>
+                <Image
+                  src={data.signature}
+                  style={{ height: 26, marginTop: 2, alignSelf: "center", objectFit: "contain" }}
+                />
+                <Text style={[styles.sigLine, { marginTop: -2 }]}>{data.received_by}</Text>
+              </>
+            ) : (
+              <Text style={styles.sigLine}>{data.received_by}</Text>
+            )}
           </View>
           <View style={styles.sigBox}>
             <Text style={styles.label}> </Text>

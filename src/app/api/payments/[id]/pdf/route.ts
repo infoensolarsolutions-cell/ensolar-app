@@ -4,6 +4,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ReceiptPdf, type ReceiptPdfData } from "@/lib/pdf/receipt-doc";
+import { getSignature } from "@/lib/signature";
 
 export async function GET(
   _request: Request,
@@ -18,7 +19,7 @@ export async function GET(
   const { data: p } = await supabase
     .from("payments")
     .select(
-      "or_no, amount, method, provider_ref, received_at, projects (project_no, customers (name)), payment_milestones (label), profiles:received_by (name)",
+      "or_no, amount, method, provider_ref, received_at, received_by, projects (project_no, customers (name)), payment_milestones (label), profiles:received_by (name)",
     )
     .eq("id", id)
     .single();
@@ -42,6 +43,7 @@ export async function GET(
     method: p.method,
     provider_ref: p.provider_ref,
     received_by: receiver?.name ?? "Ensolar Solutions",
+    signature: await getSignature(p.received_by),
   };
 
   const doc = createElement(ReceiptPdf, { data }) as Parameters<typeof renderToBuffer>[0];
