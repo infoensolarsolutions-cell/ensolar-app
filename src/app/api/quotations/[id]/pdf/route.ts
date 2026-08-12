@@ -4,6 +4,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { QuotationPdf, type QuotationPdfData } from "@/lib/pdf/quotation-doc";
+import { getSignature } from "@/lib/signature";
 
 export async function GET(
   _request: Request,
@@ -19,7 +20,7 @@ export async function GET(
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "quote_no, created_at, valid_until, subtotal, discount, total, terms, project_name, site_location, revision_no, revision_date, customers (name, phone, address, barangay), quotation_items (description, qty, unit, unit_price, line_total, sort_order), profiles:created_by (name)",
+      "quote_no, created_at, created_by, valid_until, subtotal, discount, total, terms, project_name, site_location, revision_no, revision_date, customers (name, phone, address, barangay), quotation_items (description, qty, unit, unit_price, line_total, sort_order), profiles:created_by (name)",
     )
     .eq("id", id)
     .single();
@@ -52,6 +53,7 @@ export async function GET(
     total: q.total,
     terms: q.terms,
     prepared_by: preparedBy?.name ?? "Ensolar Solutions",
+    signature: await getSignature(q.created_by),
   };
 
   const doc = createElement(QuotationPdf, { data }) as Parameters<
