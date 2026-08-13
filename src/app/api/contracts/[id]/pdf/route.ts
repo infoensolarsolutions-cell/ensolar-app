@@ -4,6 +4,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ContractPdf } from "@/lib/pdf/contract-doc";
+import { getSignature } from "@/lib/signature";
 
 export async function GET(
   _request: Request,
@@ -23,9 +24,21 @@ export async function GET(
     .single();
   if (!contract) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // The First Party signer is always the owner, whoever prepared the draft.
+  const { data: owners } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "owner");
+  let signature: string | null = null;
+  for (const o of owners ?? []) {
+    signature = await getSignature(o.id);
+    if (signature) break;
+  }
+
   const doc = createElement(ContractPdf, {
     contractNo: contract.contract_no,
     body: contract.body,
+    signature,
   }) as Parameters<typeof renderToBuffer>[0];
   const buffer = await renderToBuffer(doc);
 
