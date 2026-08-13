@@ -55,14 +55,44 @@ export default async function NewContractPage({
     .map((i) => `${i.description}\nQuantity: ${Number(i.qty)}${i.unit ? ` ${i.unit}` : ""}`)
     .join("\n\n") || "(describe the equipment here)";
 
+  // Each milestone becomes a full clause with its payment condition, matching
+  // the signed agreements: down payment → upon signing; delivery → after the
+  // materials arrive on site; completion → after T&C of the whole system.
+  const clauseFor = (label: string, index: number): { name: string; condition: string } => {
+    const l = label.toLowerCase();
+    const pct = label.match(/^\d+(?:\.\d+)?%/)?.[0];
+    if (l.includes("down")) {
+      return {
+        name: pct ? `${pct} down payment` : label,
+        condition: " upon signing of this Installation Agreement",
+      };
+    }
+    if (l.includes("deliver")) {
+      return {
+        name: pct ? `${pct} payment` : label,
+        condition:
+          " after the delivery of solar materials (inverters, solar panels & batteries) to the project site",
+      };
+    }
+    if (l.includes("complet") || l.includes("commission")) {
+      return {
+        name: pct ? `remaining ${pct} balance of the contract price` : label,
+        condition:
+          ", payable upon completion of installation and commissioning of the whole solar PV system",
+      };
+    }
+    return { name: label, condition: index === 0 ? " upon signing of this Installation Agreement" : "" };
+  };
+
   const schedule = (project.payment_milestones ?? [])
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((m) => {
+    .map((m, i) => {
       const words = pesoInWords(Number(m.amount)).toUpperCase();
       const figures = Number(m.amount).toLocaleString("en-PH", {
         minimumFractionDigits: 2, maximumFractionDigits: 2,
       });
-      return `The Second Party agreed to pay the ${m.label} in the amount of ${words} (Php ${figures}).`;
+      const { name, condition } = clauseFor(m.label, i);
+      return `The Second Party agreed to pay the ${name} in the amount of ${words} (Php ${figures})${condition}.`;
     })
     .join("\n\n") || "(define the payment scheme here)";
 
