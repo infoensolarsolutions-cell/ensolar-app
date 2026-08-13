@@ -1,6 +1,6 @@
 import path from "node:path";
 import {
-  Document, Font, Page, StyleSheet, Svg, Rect, Text, View,
+  Document, Font, Image, Page, StyleSheet, Svg, Rect, Text, View,
 } from "@react-pdf/renderer";
 
 const fontDir = path.join(process.cwd(), "public", "fonts");
@@ -51,9 +51,11 @@ function isHeadingLine(line: string): boolean {
 export function ContractPdf({
   contractNo,
   body,
+  signature,
 }: {
   contractNo: string;
   body: string;
+  signature?: string | null; // data URI of the owner's e-signature
 }) {
   // Blank-line-separated blocks; first non-empty line is the document title.
   const blocks = body.replace(/\r\n/g, "\n").split(/\n{2,}/);
@@ -87,6 +89,21 @@ export function ContractPdf({
         {rest.map((block, i) => {
           const lines = block.split("\n");
           const heading = lines.length === 1 && isHeadingLine(lines[0].trim());
+          // The First Party signature block gets the owner's e-signature laid
+          // over its line; kept unsplit so the image and name stay together.
+          const firstPartySig =
+            signature && block.includes("First Party") && block.includes("____");
+          if (firstPartySig) {
+            return (
+              <View key={i} wrap={false} style={styles.para}>
+                <Image
+                  src={signature}
+                  style={{ height: 34, width: 130, objectFit: "contain", marginLeft: 20, marginBottom: -10 }}
+                />
+                <Text>{block}</Text>
+              </View>
+            );
+          }
           return (
             <Text key={i} style={[styles.para, ...(heading ? [styles.bold] : [])]}>
               {block}
