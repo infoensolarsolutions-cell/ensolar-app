@@ -76,6 +76,38 @@ export async function updateContract(
   return { saved: true };
 }
 
+// Owner-only removal of unwanted generated documents — draft revisions,
+// duplicates, test runs — so only the final copy stays on the project.
+export async function deleteContract(
+  contractId: string,
+): Promise<{ error?: string }> {
+  const profile = await requireRole("owner");
+  const supabase = await createClient();
+
+  const { data: contract } = await supabase
+    .from("contracts")
+    .select("id, contract_no, project_id")
+    .eq("id", contractId)
+    .single();
+  if (!contract) return { error: "Document not found." };
+
+  const { error } = await supabase.from("contracts").delete().eq("id", contractId);
+  if (error) return { error: `Could not delete: ${error.message}` };
+
+  if (contract.project_id) {
+    await supabase.from("project_events").insert({
+      project_id: contract.project_id,
+      user_id: profile.id,
+      event: "note",
+      detail: {
+        text: `deleted ${contract.contract_no.startsWith("COC-") ? "certificate" : "contract"} ${contract.contract_no}`,
+      },
+    });
+    revalidatePath(`/projects/${contract.project_id}`);
+  }
+  redirect(contract.project_id ? `/projects/${contract.project_id}` : "/projects");
+}
+
 const TEMPLATE_KEYS: Record<string, string> = {
   solar_contract: "/settings/contract-template",
   compliance_certificate: "/settings/certificate-template",

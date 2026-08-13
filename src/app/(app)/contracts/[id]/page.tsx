@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { ContractEditor } from "../contract-editor";
+import { DeleteContractButton } from "./delete-button";
 
 export const metadata: Metadata = { title: "Contract" };
 
@@ -14,7 +15,7 @@ export default async function ContractPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("owner", "office_staff");
+  const profile = await requireRole("owner", "office_staff");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -60,6 +61,11 @@ export default async function ContractPage({
         initialBody={contract.body}
         docType={contract.contract_no.startsWith("COC-") ? "certificate" : "contract"}
       />
+      {profile.role === "owner" && (
+        <div className="px-4 pb-6">
+          <DeleteContractButton contractId={contract.id} contractNo={contract.contract_no} />
+        </div>
+      )}
     </>
   );
 }
