@@ -55,33 +55,28 @@ export default async function NewContractPage({
     .map((i) => `${i.description}\nQuantity: ${Number(i.qty)}${i.unit ? ` ${i.unit}` : ""}`)
     .join("\n\n") || "(describe the equipment here)";
 
-  // Each milestone becomes a full clause with its payment condition, matching
-  // the signed agreements: down payment → upon signing; delivery → after the
-  // materials arrive on site; completion → after T&C of the whole system.
-  const clauseFor = (label: string, index: number): { name: string; condition: string } => {
+  // Milestones become numbered clauses 5.2, 5.3, ... slotting into the
+  // template's payment scheme (5.1 = bank accounts, 5.5 = inclusions),
+  // worded exactly like the signed agreements.
+  const clauseFor = (
+    label: string,
+    index: number,
+    words: string,
+    figures: string,
+  ): string => {
     const l = label.toLowerCase();
     const pct = label.match(/^\d+(?:\.\d+)?%/)?.[0];
+    const p = pct ? `${pct} ` : "";
     if (l.includes("down")) {
-      return {
-        name: pct ? `${pct} down payment` : label,
-        condition: " upon signing of this Installation Agreement",
-      };
+      return `The Second Party agreed to pay the ${p}down payment in the amount of ${words} (Php ${figures}) upon signing of this installation agreement.`;
     }
     if (l.includes("deliver")) {
-      return {
-        name: pct ? `${pct} payment` : label,
-        condition:
-          " after the delivery of solar materials (inverters, solar panels & batteries) to the project site",
-      };
+      return `The Second Party agreed to pay the next ${p}payment in the amount of ${words} (Php ${figures}) after the delivery of solar materials (inverters, solar panels & batteries) to the project site.`;
     }
     if (l.includes("complet") || l.includes("commission")) {
-      return {
-        name: pct ? `remaining ${pct} balance of the contract price` : label,
-        condition:
-          ", payable upon completion of installation and commissioning of the whole solar PV system",
-      };
+      return `The remaining ${p}balance of the contract price amounting to ${words} (Php ${figures}), shall be payable by the Second Party upon completion of installation and commissioning of the whole solar pv system.`;
     }
-    return { name: label, condition: index === 0 ? " upon signing of this Installation Agreement" : "" };
+    return `The Second Party agreed to pay the ${label} in the amount of ${words} (Php ${figures})${index === 0 ? " upon signing of this installation agreement" : ""}.`;
   };
 
   const schedule = (project.payment_milestones ?? [])
@@ -91,8 +86,7 @@ export default async function NewContractPage({
       const figures = Number(m.amount).toLocaleString("en-PH", {
         minimumFractionDigits: 2, maximumFractionDigits: 2,
       });
-      const { name, condition } = clauseFor(m.label, i);
-      return `The Second Party agreed to pay the ${name} in the amount of ${words} (Php ${figures})${condition}.`;
+      return `5.${i + 2} ${clauseFor(m.label, i, words, figures)}`;
     })
     .join("\n\n") || "(define the payment scheme here)";
 
