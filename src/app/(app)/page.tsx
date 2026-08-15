@@ -472,9 +472,55 @@ export default async function DashboardPage() {
     },
   };
 
+  // Owner-only warning strip: red/amber business KPIs surface here so a
+  // problem is visible the moment the app opens.
+  let kpiAlert: { bad: number; warn: number; headlines: string[] } | null = null;
+  if (profile.role === "owner") {
+    try {
+      const { computeBusinessKpis } = await import("@/lib/bizkpi");
+      const { kpis, bad, warn } = await computeBusinessKpis(supabase);
+      if (bad > 0 || warn > 0) {
+        kpiAlert = {
+          bad,
+          warn,
+          headlines: kpis
+            .filter((k) => k.status === "bad")
+            .slice(0, 3)
+            .map((k) => k.label),
+        };
+      }
+    } catch {
+      // Never let the KPI check break the dashboard.
+    }
+  }
+
   return (
     <>
       <TopBar title="Ensolar" />
+      {kpiAlert && (
+        <div className="px-4 pt-3">
+          <Link
+            href="/reports/business-kpi"
+            className={`block rounded-xl border p-3 ${
+              kpiAlert.bad > 0
+                ? "border-red-200 bg-red-50"
+                : "border-amber-200 bg-amber-50"
+            }`}
+          >
+            <p className={`text-sm font-bold ${kpiAlert.bad > 0 ? "text-red-700" : "text-amber-800"}`}>
+              {kpiAlert.bad > 0
+                ? `🚨 ${kpiAlert.bad} business number${kpiAlert.bad === 1 ? "" : "s"} need${kpiAlert.bad === 1 ? "s" : ""} action`
+                : `⚠️ ${kpiAlert.warn} business number${kpiAlert.warn === 1 ? "" : "s"} to watch`}
+              <span className="font-medium"> — tap for the full Business KPI</span>
+            </p>
+            {kpiAlert.headlines.length > 0 && (
+              <p className="mt-0.5 text-xs text-red-700/80">
+                {kpiAlert.headlines.join(" · ")}
+              </p>
+            )}
+          </Link>
+        </div>
+      )}
       <DashboardView data={data} />
     </>
   );
