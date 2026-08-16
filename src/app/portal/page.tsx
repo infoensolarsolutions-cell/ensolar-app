@@ -14,6 +14,7 @@ import { formatDate, formatPeso } from "@/lib/format";
 import { ProgressBar } from "@/components/charts";
 import { RequestServiceForm } from "./request-service-form";
 import { PayButton } from "./pay-button";
+import { RateService } from "./rate-service";
 
 export const metadata: Metadata = { title: "My Projects" };
 
@@ -79,6 +80,16 @@ export default async function PortalPage({
             .order("reported_at", { ascending: false }),
         ])
       : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+
+  // Ratings degrade gracefully until the csat_ratings migration runs.
+  const ratedProjectIds = new Set<string>();
+  if (projectIds.length) {
+    const { data: ratings } = await supabase
+      .from("csat_ratings")
+      .select("project_id")
+      .in("project_id", projectIds);
+    for (const r of ratings ?? []) ratedProjectIds.add(r.project_id);
+  }
 
   const signedPhotos = photos?.length
     ? await supabase.storage
@@ -304,6 +315,10 @@ export default async function PortalPage({
                     ))}
                   </ul>
                 </div>
+              )}
+
+              {project.status === "completed" && !ratedProjectIds.has(project.id) && (
+                <RateService projectId={project.id} />
               )}
 
               <RequestServiceForm projectId={project.id} />

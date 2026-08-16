@@ -55,6 +55,16 @@ export default async function BusinessKpiPage() {
           </p>
         </div>
 
+        <Link
+          href="/reports/business-kpi/reviews"
+          className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3"
+        >
+          <span className="text-sm font-semibold text-gray-800">
+            📅 Weekly &amp; Monthly Reviews — cash flow, conversion, margin, turnover, satisfaction
+          </span>
+          <span className="text-gray-400">›</span>
+        </Link>
+
         {groups.map((group) => (
           <div key={group} className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="mb-2 flex items-center justify-between">
