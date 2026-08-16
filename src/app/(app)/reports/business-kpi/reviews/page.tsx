@@ -77,8 +77,8 @@ export default async function KpiReviewsPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="font-semibold text-gray-900">🗓️ Monthly review — last 6 months</p>
           <p className="mb-2 text-xs text-gray-500">
-            Net profit margin (benchmark 5–15%, healthy ≥10%), employee
-            turnover, and customer satisfaction.
+            Net profit margin (healthy ≥15%, amber below that, red below 5%),
+            employee turnover, and customer satisfaction.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full whitespace-nowrap text-sm">
@@ -103,7 +103,7 @@ export default async function KpiReviewsPage() {
                       {m.netMargin === null ? (
                         <span className="text-gray-400">no revenue</span>
                       ) : (
-                        <span className={m.netMargin < 0.05 ? "font-semibold text-red-600" : m.netMargin < 0.1 ? "text-amber-600" : "text-brand-green-dark"}>
+                        <span className={m.netMargin < 0.05 ? "font-semibold text-red-600" : m.netMargin < 0.15 ? "text-amber-600" : "text-brand-green-dark"}>
                           {pct(m.netMargin)}
                         </span>
                       )}
