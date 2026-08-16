@@ -4,6 +4,7 @@ import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { computeBusinessKpis, type KpiStatus } from "@/lib/bizkpi";
+import { formatPeso } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Business KPI" };
 
@@ -23,7 +24,7 @@ const GROUP_LINKS: Record<string, { href: string; label: string }> = {
 export default async function BusinessKpiPage() {
   await requireRole("owner");
   const supabase = await createClient();
-  const { kpis, bad, warn } = await computeBusinessKpis(supabase);
+  const { kpis, cashflow, bad, warn } = await computeBusinessKpis(supabase);
 
   const groups = [...new Set(kpis.map((k) => k.group))];
 
@@ -98,6 +99,58 @@ export default async function BusinessKpiPage() {
             </ul>
           </div>
         ))}
+
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-semibold text-gray-900">💵 Cash flow — last 6 months</p>
+            <Link href="/reports/pnl" className="text-xs font-medium text-brand-green-dark underline">
+              Profit &amp; Loss →
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-400">
+                  <th className="py-1.5 pr-2 font-semibold">Month</th>
+                  <th className="py-1.5 pr-2 text-right font-semibold">Cash in</th>
+                  <th className="py-1.5 pr-2 text-right font-semibold">Cash out</th>
+                  <th className="py-1.5 text-right font-semibold">Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cashflow.map((m, i) => (
+                  <tr key={m.label} className={`border-b border-gray-50 ${i === cashflow.length - 1 ? "font-semibold" : ""}`}>
+                    <td className="py-1.5 pr-2 text-gray-700">
+                      {m.label}
+                      {i === cashflow.length - 1 && (
+                        <span className="ml-1 text-[10px] font-normal text-gray-400">(to date)</span>
+                      )}
+                    </td>
+                    <td className="py-1.5 pr-2 text-right text-gray-800">{formatPeso(m.cashIn)}</td>
+                    <td className="py-1.5 pr-2 text-right text-gray-800">{formatPeso(m.cashOut)}</td>
+                    <td className={`py-1.5 text-right font-semibold ${m.net < 0 ? "text-red-600" : "text-brand-green-dark"}`}>
+                      {formatPeso(m.net)}
+                    </td>
+                  </tr>
+                ))}
+                <tr>
+                  <td className="pt-2 text-xs font-bold uppercase tracking-wide text-gray-500">6-month total</td>
+                  <td className="pt-2 pr-2 text-right font-bold">{formatPeso(cashflow.reduce((s, m) => s + m.cashIn, 0))}</td>
+                  <td className="pt-2 pr-2 text-right font-bold">{formatPeso(cashflow.reduce((s, m) => s + m.cashOut, 0))}</td>
+                  <td className={`pt-2 text-right font-bold ${cashflow.reduce((s, m) => s + m.net, 0) < 0 ? "text-red-600" : "text-brand-green-dark"}`}>
+                    {formatPeso(cashflow.reduce((s, m) => s + m.net, 0))}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+            Cash in = customer payments + POS sales. Cash out = expenses
+            (including payroll) + project costs. Cash flow tells you if the
+            bank balance is growing — profit tells you if the business model
+            works. Watch both.
+          </p>
+        </div>
 
         <p className="text-center text-xs text-gray-400">
           Thresholds: red = act now, amber = watch. Recomputed every time you

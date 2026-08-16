@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { formatPeso, todayManila } from "@/lib/format";
+import { formatPeso, todayManila, TIMEZONE } from "@/lib/format";
 
 // Business KPI engine: every number the owner needs to watch, each with a
 // traffic-light status and plain advice. Thresholds are deliberately simple
@@ -17,12 +17,26 @@ export type Kpi = {
   advice?: string;
 };
 
+export type CashflowMonth = {
+  label: string; // e.g. "Mar 2026"
+  cashIn: number;
+  cashOut: number;
+  net: number;
+};
+
 export type BusinessKpis = {
   kpis: Kpi[];
+  cashflow: CashflowMonth[];
   bad: number;
   warn: number;
   computedAt: string;
 };
+
+// Industry rule of thumb for solar installation contractors: net profit
+// margins commonly land between 5% and 15% of revenue. ≥10% is healthy,
+// below 5% is danger territory (one bad project can wipe the year).
+const NET_MARGIN_HEALTHY = 0.10;
+const NET_MARGIN_DANGER = 0.05;
 
 const d = (iso: string, days: number) => {
   const t = new Date(`${iso}T00:00:00Z`);
@@ -40,8 +54,27 @@ export async function computeBusinessKpis(
   const ninetyDaysAgo = d(today, -90);
   const sixMonthsAgo = d(today, -183);
 
+  // Last six calendar months (oldest first, current month last).
+  const monthKeys: string[] = [];
+  for (let i = 5; i >= 0; i--) {
+    let y = Number(today.slice(0, 4));
+    let m = Number(today.slice(5, 7)) - i;
+    while (m < 1) { m += 12; y -= 1; }
+    monthKeys.push(`${y}-${String(m).padStart(2, "0")}`);
+  }
+  const sixMonthStart = `${monthKeys[0]}-01`;
+  const monthFmt = new Intl.DateTimeFormat("en-PH", {
+    timeZone: TIMEZONE, month: "short", year: "numeric",
+  });
+  const tsMonthFmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE, year: "numeric", month: "2-digit",
+  });
+  const tsMonth = (iso: string) => tsMonthFmt.format(new Date(iso));
+
   const [
     payRes,
+    posRes,
+    costRes,
     expRes,
     projRes,
     marginRes,
@@ -53,8 +86,10 @@ export async function computeBusinessKpis(
     stockRes,
     maintRes,
   ] = await Promise.all([
-    supabase.from("payments").select("amount, received_at").gte("received_at", lastMonthStart),
-    supabase.from("expenses").select("amount, date").gte("date", lastMonthStart),
+    supabase.from("payments").select("amount, received_at").gte("received_at", sixMonthStart).limit(5000),
+    supabase.from("pos_sales").select("total, sold_at").gte("sold_at", sixMonthStart).limit(5000),
+    supabase.from("project_costs").select("amount, date").gte("date", sixMonthStart).limit(5000),
+    supabase.from("expenses").select("amount, date").gte("date", sixMonthStart).limit(5000),
     supabase
       .from("projects")
       .select("status, target_date, contract_amount, payment_milestones (amount, due_date, sort_order), payments (amount, milestone_id)")
@@ -101,13 +136,44 @@ export async function computeBusinessKpis(
   const kpis: Kpi[] = [];
   const dayMs = 86400000;
 
+  // ── Cash flow by month: in = collections + POS; out = expenses + project
+  // costs (payroll posts into expenses via payroll runs) ──────────────────
+  const inByMonth = new Map<string, number>();
+  const outByMonth = new Map<string, number>();
+  const bump = (map: Map<string, number>, key: string, amt: number) =>
+    map.set(key, (map.get(key) ?? 0) + amt);
+
+  for (const p of payRes.data ?? []) bump(inByMonth, tsMonth(p.received_at as string), Number(p.amount));
+  for (const s of posRes.data ?? []) bump(inByMonth, tsMonth(s.sold_at as string), Number(s.total));
+  for (const e of expRes.data ?? []) bump(outByMonth, (e.date as string).slice(0, 7), Number(e.amount));
+  for (const c of costRes.data ?? []) bump(outByMonth, (c.date as string).slice(0, 7), Number(c.amount));
+
+  const cashflow: CashflowMonth[] = monthKeys.map((key) => {
+    const cashIn = inByMonth.get(key) ?? 0;
+    const cashOut = outByMonth.get(key) ?? 0;
+    return {
+      label: monthFmt.format(new Date(`${key}-15T00:00:00Z`)),
+      cashIn,
+      cashOut,
+      net: cashIn - cashOut,
+    };
+  });
+
+  // Net profit margin over the last 3 FULL months (current month excluded —
+  // half a month of revenue against full bills would mislead).
+  const fullMonths = monthKeys.slice(2, 5);
+  const marginRevenue = fullMonths.reduce((s, k) => s + (inByMonth.get(k) ?? 0), 0);
+  const marginCosts = fullMonths.reduce((s, k) => s + (outByMonth.get(k) ?? 0), 0);
+  const netMargin = marginRevenue > 0 ? (marginRevenue - marginCosts) / marginRevenue : null;
+
   // ── Money ──────────────────────────────────────────────────────────────
-  const pays = payRes.data ?? [];
-  const revNow = pays
-    .filter((p) => (p.received_at as string) >= monthStart)
+  const currentKey = monthKeys[5];
+  const prevKey = monthKeys[4];
+  const revNow = (payRes.data ?? [])
+    .filter((p) => tsMonth(p.received_at as string) === currentKey)
     .reduce((s, p) => s + Number(p.amount), 0);
-  const revPrev = pays
-    .filter((p) => (p.received_at as string) < monthStart)
+  const revPrev = (payRes.data ?? [])
+    .filter((p) => tsMonth(p.received_at as string) === prevKey)
     .reduce((s, p) => s + Number(p.amount), 0);
   kpis.push({
     group: "Money",
@@ -125,22 +191,36 @@ export async function computeBusinessKpis(
     advice: "Collections, not sales, pay the bills — chase due milestones first.",
   });
 
-  const exps = expRes.data ?? [];
-  const expNow = exps
-    .filter((e) => (e.date as string) >= monthStart)
-    .reduce((s, e) => s + Number(e.amount), 0);
-  const net = revNow - expNow;
+  const thisMonthFlow = cashflow[5];
   kpis.push({
     group: "Money",
-    label: "Expenses vs revenue this month",
-    value: `${formatPeso(expNow)} out · ${formatPeso(net)} net`,
+    label: "Cash flow this month",
+    value: `${formatPeso(thisMonthFlow.net)} net`,
+    sub: `${formatPeso(thisMonthFlow.cashIn)} in · ${formatPeso(thisMonthFlow.cashOut)} out`,
     status:
-      expNow > 0 && expNow > revNow
+      thisMonthFlow.cashOut > 0 && thisMonthFlow.net < 0
         ? "bad"
-        : expNow > revNow * 0.8 && expNow > 0
+        : thisMonthFlow.cashOut > thisMonthFlow.cashIn * 0.9 && thisMonthFlow.cashOut > 0
           ? "warn"
           : "good",
-    advice: "Spending above collections drains cash — delay purchases or speed up collections.",
+    advice: "More cash going out than coming in — delay purchases, chase collections, or both.",
+  });
+
+  kpis.push({
+    group: "Money",
+    label: "Net profit margin (last 3 full months)",
+    value: netMargin === null ? "no revenue in the period" : `${Math.round(netMargin * 100)}%`,
+    sub: "solar installer benchmark: 5–15% typical, ≥10% healthy",
+    status:
+      netMargin === null
+        ? "warn"
+        : netMargin < NET_MARGIN_DANGER
+          ? "bad"
+          : netMargin < NET_MARGIN_HEALTHY
+            ? "warn"
+            : "good",
+    advice:
+      "Net margin is what's left after ALL costs. Below the industry range, check pricing first, then material costs, then overhead.",
   });
 
   // Receivables: same rules as the Receivables Aging report, condensed.
@@ -301,6 +381,7 @@ export async function computeBusinessKpis(
 
   return {
     kpis,
+    cashflow,
     bad: kpis.filter((k) => k.status === "bad").length,
     warn: kpis.filter((k) => k.status === "warn").length,
     computedAt: today,
