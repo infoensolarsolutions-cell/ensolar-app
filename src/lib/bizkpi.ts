@@ -33,9 +33,10 @@ export type BusinessKpis = {
 };
 
 // Industry rule of thumb for solar installation contractors: net profit
-// margins commonly land between 5% and 15% of revenue. ≥10% is healthy,
-// below 5% is danger territory (one bad project can wipe the year).
-const NET_MARGIN_HEALTHY = 0.10;
+// margins commonly land between 5% and 15% of revenue. The owner set the
+// healthy bar at ≥15%; below 5% is danger territory (one bad project can
+// wipe the year).
+const NET_MARGIN_HEALTHY = 0.15;
 const NET_MARGIN_DANGER = 0.05;
 
 const d = (iso: string, days: number) => {
@@ -210,7 +211,7 @@ export async function computeBusinessKpis(
     group: "Money",
     label: "Net profit margin (last 3 full months)",
     value: netMargin === null ? "no revenue in the period" : `${Math.round(netMargin * 100)}%`,
-    sub: "solar installer benchmark: 5–15% typical, ≥10% healthy",
+    sub: "solar installer benchmark: 5–15% typical · your healthy bar: ≥15%",
     status:
       netMargin === null
         ? "warn"
