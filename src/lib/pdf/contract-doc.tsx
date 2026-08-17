@@ -89,11 +89,15 @@ export function ContractPdf({
         {rest.map((block, i) => {
           const lines = block.split("\n");
           const heading = lines.length === 1 && isHeadingLine(lines[0].trim());
-          // The First Party signature block gets the owner's e-signature laid
-          // over its line; kept unsplit so the image and name stay together.
-          const firstPartySig =
-            signature && block.includes("First Party") && block.includes("____");
-          if (firstPartySig) {
+          // The owner's signature block gets the e-signature laid over its
+          // line — matched by "First Party" (contracts) or the engineer's
+          // name (certificates), never the customer's blank line. Kept
+          // unsplit so the image and name stay together.
+          const ownerSig =
+            signature &&
+            block.includes("____") &&
+            (block.includes("First Party") || block.toUpperCase().includes("ESPINA"));
+          if (ownerSig) {
             return (
               <View key={i} wrap={false} style={styles.para}>
                 <Image
