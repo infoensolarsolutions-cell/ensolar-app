@@ -53,6 +53,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/reports/business-kpi", label: "🚦 Business KPI" },
         { href: "/expenses", label: "🧾 Expenses" },
         { href: "/reports/pnl", label: "📊 Profit & Loss" },
+        { href: "/reports/income-statement", label: "📑 Income Statement" },
         { href: "/reports/receivables", label: "⏰ Receivables" },
       ],
     },
