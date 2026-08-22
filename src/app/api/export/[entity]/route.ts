@@ -189,6 +189,49 @@ export async function GET(
           section: "REVENUE BY PAYMENT METHOD", line: method, amount: r2(amount),
         })),
     ];
+  } else if (entity.startsWith("bir-")) {
+    // BIR books — owner only. ?year= selects the book year.
+    if (profile.role !== "owner") {
+      return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+    }
+    const { computeBirBooks } = await import("@/lib/bir");
+    const currentYear = Number(todayManila().slice(0, 4));
+    const rawYear = Number(new URL(request.url).searchParams.get("year"));
+    const year =
+      Number.isInteger(rawYear) && rawYear >= 2018 && rawYear <= currentYear
+        ? rawYear
+        : currentYear;
+    const books = await computeBirBooks(supabase, year);
+
+    if (entity === "bir-sales") {
+      rows = books.sales.map((r) => ({
+        date: r.date,
+        or_ref_no: r.reference,
+        customer: r.customer,
+        tin: "",
+        address: r.address,
+        amount: r.amount,
+      }));
+    } else if (entity === "bir-purchases") {
+      rows = books.purchases.map((r) => ({
+        date: r.date,
+        particulars_supplier: r.particulars,
+        tin: "",
+        account: r.account,
+        amount: r.amount,
+      }));
+    } else if (entity === "bir-ledger") {
+      rows = books.ledger.map((r) => ({
+        group: r.group,
+        account: r.account,
+        jan: r.values[0], feb: r.values[1], mar: r.values[2], apr: r.values[3],
+        may: r.values[4], jun: r.values[5], jul: r.values[6], aug: r.values[7],
+        sep: r.values[8], oct: r.values[9], nov: r.values[10], dec: r.values[11],
+        total: r.total,
+      }));
+    } else {
+      return NextResponse.json({ error: "Unknown export" }, { status: 404 });
+    }
   } else {
     return NextResponse.json({ error: "Unknown export" }, { status: 404 });
   }
