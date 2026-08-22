@@ -149,6 +149,10 @@ export default async function MorePage() {
               <span className="font-medium text-gray-800">📑 Income Statement</span>
               <span className="text-gray-400">›</span>
             </Link>
+            <Link href="/reports/bir-books" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">📚 BIR Books (Sales, Purchases, Ledger)</span>
+              <span className="text-gray-400">›</span>
+            </Link>
             <Link href="/settings/contract-template" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
               <span className="font-medium text-gray-800">📜 Contract Template</span>
               <span className="text-gray-400">›</span>
