@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatPeso, todayManila } from "@/lib/format";
 import { StatusBadge } from "./status-badge";
 import { ListTrashButton } from "./list-trash-button";
+import { ExpireLapsedButton } from "./expire-lapsed-button";
 
 export const metadata: Metadata = { title: "Quotations" };
 
@@ -119,6 +120,11 @@ export default async function QuotationsPage() {
                   );
                 })}
               </ul>
+              <ExpireLapsedButton
+                lapsedCount={
+                  awaiting.filter((q) => q.valid_until && days(q.valid_until) < 0).length
+                }
+              />
             </div>
           );
         })()}
