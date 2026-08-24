@@ -58,9 +58,9 @@ function cellText(row: StmtRow, v: number): string {
 }
 
 export function IncomeStatementPdf({ statement }: { statement: IncomeStatement }) {
-  const { year, monthLabels, rows } = statement;
+  const { title, columnLabels, rows } = statement;
   return (
-    <Document title={`Income Statement ${year}`}>
+    <Document title={title}>
       <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.headerRow}>
           <Logo />
@@ -75,14 +75,14 @@ export function IncomeStatementPdf({ statement }: { statement: IncomeStatement }
         </View>
         <View style={styles.rule} />
 
-        <Text style={styles.title}>INCOME STATEMENT — {year}</Text>
+        <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>
           Cash basis · amounts in Philippine Pesos · ( ) denotes negative
         </Text>
 
         <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: "#111" }]}>
           <Text style={[styles.label, styles.bold]}> </Text>
-          {monthLabels.map((m) => (
+          {columnLabels.map((m) => (
             <Text key={m} style={[styles.cell, styles.bold]}>{m}</Text>
           ))}
           <Text style={[styles.cell, styles.bold]}>TOTAL</Text>
@@ -93,7 +93,7 @@ export function IncomeStatementPdf({ statement }: { statement: IncomeStatement }
             return (
               <View key={i} style={[styles.row, styles.headerCell]}>
                 <Text style={[styles.label, styles.bold]}>{row.label}</Text>
-                {monthLabels.map((m) => (
+                {columnLabels.map((m) => (
                   <Text key={m} style={styles.cell}> </Text>
                 ))}
                 <Text style={styles.cell}> </Text>

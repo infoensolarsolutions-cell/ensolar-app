@@ -4,7 +4,12 @@ import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayManila } from "@/lib/format";
-import { computeIncomeStatement, type StmtRow } from "@/lib/income-statement";
+import {
+  computeIncomeStatement,
+  PERIOD_LABELS,
+  type StmtPeriod,
+  type StmtRow,
+} from "@/lib/income-statement";
 
 export const metadata: Metadata = { title: "Income Statement" };
 
@@ -23,17 +28,22 @@ const cellText = (row: StmtRow, v: number): string =>
 export default async function IncomeStatementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string }>;
+  searchParams: Promise<{ year?: string; period?: string }>;
 }) {
   await requireRole("owner");
   const currentYear = Number(todayManila().slice(0, 4));
-  const { year: yearParam } = await searchParams;
+  const { year: yearParam, period: periodParam } = await searchParams;
   const raw = Number(yearParam);
   const year =
     Number.isInteger(raw) && raw >= 2018 && raw <= currentYear ? raw : currentYear;
+  const period: StmtPeriod = (Object.keys(PERIOD_LABELS) as StmtPeriod[]).includes(
+    periodParam as StmtPeriod,
+  )
+    ? (periodParam as StmtPeriod)
+    : "monthly";
 
   const supabase = await createClient();
-  const { monthLabels, rows } = await computeIncomeStatement(supabase, year);
+  const { title, columnLabels, rows } = await computeIncomeStatement(supabase, year, period);
 
   const years: number[] = [];
   for (let y = currentYear; y >= 2018; y--) years.push(y);
@@ -43,40 +53,61 @@ export default async function IncomeStatementPage({
       <TopBar title="Income Statement" backHref="/more" />
       <div className="space-y-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <form action="/reports/income-statement" className="flex gap-2">
-            <select
-              name="year"
-              defaultValue={String(year)}
-              className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(PERIOD_LABELS) as StmtPeriod[]).map((p) => (
+              <Link
+                key={p}
+                href={`/reports/income-statement?period=${p}&year=${year}`}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  p === period
+                    ? "bg-brand-green text-white"
+                    : "border border-gray-300 text-gray-600"
+                }`}
+              >
+                {PERIOD_LABELS[p]}
+              </Link>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            {period !== "annual" && (
+              <form action="/reports/income-statement" className="flex gap-2">
+                <input type="hidden" name="period" value={period} />
+                <select
+                  name="year"
+                  defaultValue={String(year)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-green focus:outline-none"
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <button className="rounded-lg bg-gray-800 px-3 py-2 text-sm font-semibold text-white">
+                  View
+                </button>
+              </form>
+            )}
+            <a
+              href={`/api/income-statement/pdf?year=${year}&period=${period}`}
+              target="_blank"
+              className="rounded-lg bg-brand-green px-3 py-2 text-sm font-semibold text-white"
             >
-              {years.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <button className="rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-semibold text-white">
-              View
-            </button>
-          </form>
-          <a
-            href={`/api/income-statement/pdf?year=${year}`}
-            target="_blank"
-            className="rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            Download PDF
-          </a>
+              Download PDF
+            </a>
+          </div>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="font-semibold text-gray-900">Income Statement — {year}</p>
+          <p className="font-semibold text-gray-900">{title}</p>
           <p className="mb-3 text-xs text-gray-500">
-            Cash basis · amounts in ₱ · ( ) negative · scroll sideways for all months
+            Cash basis · amounts in ₱ · ( ) negative
+            {columnLabels.length > 4 ? " · scroll sideways for all columns" : ""}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full whitespace-nowrap text-xs">
               <thead>
                 <tr className="border-b-2 border-gray-800 text-right">
                   <th className="py-1.5 pr-3 text-left font-semibold"> </th>
-                  {monthLabels.map((m) => (
+                  {columnLabels.map((m) => (
                     <th key={m} className="px-2 py-1.5 font-semibold">{m}</th>
                   ))}
                   <th className="px-2 py-1.5 font-bold">TOTAL</th>
@@ -87,7 +118,7 @@ export default async function IncomeStatementPage({
                   if (row.kind === "header") {
                     return (
                       <tr key={i} className="bg-gray-100">
-                        <td colSpan={monthLabels.length + 2} className="py-1.5 pl-1 pr-3 text-[11px] font-bold uppercase tracking-wide text-gray-600">
+                        <td colSpan={columnLabels.length + 2} className="py-1.5 pl-1 pr-3 text-[11px] font-bold uppercase tracking-wide text-gray-600">
                           {row.label}
                         </td>
                       </tr>
@@ -131,8 +162,8 @@ export default async function IncomeStatementPage({
           <Link href="/reports/business-kpi" className="font-medium text-brand-green-dark underline">
             Business KPI
           </Link>
-          <Link href="/reports/receivables" className="font-medium text-brand-green-dark underline">
-            Receivables
+          <Link href="/reports/bir-books" className="font-medium text-brand-green-dark underline">
+            BIR Books
           </Link>
         </div>
       </div>
