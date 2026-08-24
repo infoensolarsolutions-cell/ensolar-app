@@ -353,6 +353,47 @@ export async function destroyQuotation(id: string): Promise<{ error?: string }> 
   return {};
 }
 
+// One tap marks every sent quotation past its validity date as Expired —
+// counted as lost in the win-rate stats and cleared from the awaiting
+// strip, with nothing deleted.
+export async function expireLapsedQuotations(): Promise<{
+  error?: string;
+  expired?: number;
+}> {
+  const profile = await requireRole("owner", "office_staff");
+  const supabase = await createClient();
+  const today = todayManila();
+
+  const { data: lapsed, error: readError } = await supabase
+    .from("quotations")
+    .select("id, quote_no, lead_id")
+    .eq("status", "sent")
+    .is("deleted_at", null)
+    .not("valid_until", "is", null)
+    .lt("valid_until", today);
+  if (readError) return { error: `Could not read quotations: ${readError.message}` };
+  if (!lapsed?.length) return { expired: 0 };
+
+  const { error } = await supabase
+    .from("quotations")
+    .update({ status: "expired" })
+    .in("id", lapsed.map((q) => q.id));
+  if (error) return { error: `Could not update: ${error.message}` };
+
+  const events = lapsed
+    .filter((q) => q.lead_id)
+    .map((q) => ({
+      lead_id: q.lead_id,
+      user_id: profile.id,
+      event: "quotation_expired",
+      detail: { quote_no: q.quote_no },
+    }));
+  if (events.length) await supabase.from("lead_events").insert(events);
+
+  revalidatePath("/quotations");
+  return { expired: lapsed.length };
+}
+
 export async function saveQuotationTemplate(
   name: string,
   itemsJson: string,
