@@ -166,10 +166,13 @@ export default async function ProjectDetailPage({
         .order("created_at"),
     ]);
 
-  // Split by document-number prefix so this works even before the doc_type
-  // column exists (COC- = Certificate of Compliance, IA- = agreement).
+  // Split by document-number prefix (COC- = compliance certificate,
+  // COMP- = completion certificate, everything else = agreement).
   const certificates = (contracts ?? []).filter((c) => c.contract_no.startsWith("COC-"));
-  const agreements = (contracts ?? []).filter((c) => !c.contract_no.startsWith("COC-"));
+  const completions = (contracts ?? []).filter((c) => c.contract_no.startsWith("COMP-"));
+  const agreements = (contracts ?? []).filter(
+    (c) => !c.contract_no.startsWith("COC-") && !c.contract_no.startsWith("COMP-"),
+  );
 
   const paid = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
   const balance = Number(project.contract_amount) - paid;
@@ -590,6 +593,38 @@ export default async function ProjectDetailPage({
               className="mt-2 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
             >
               + Generate Certificate of Compliance
+            </Link>
+
+            <p className="mb-2 mt-5 font-semibold text-gray-900">Certificate of Completion</p>
+            {!completions.length && (
+              <p className="mb-2 text-sm text-gray-500">
+                No certificate yet — banks require it before releasing loan proceeds.
+              </p>
+            )}
+            <ul className="divide-y divide-gray-100">
+              {completions.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <Link href={`/contracts/${c.id}`} className="font-medium text-brand-green-dark underline">
+                    {c.contract_no}
+                  </Link>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{formatDate(c.created_at)}</span>
+                    <a
+                      href={`/api/contracts/${c.id}/pdf`}
+                      target="_blank"
+                      className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700"
+                    >
+                      PDF
+                    </a>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href={`/projects/${project.id}/completion`}
+              className="mt-2 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
+            >
+              + Generate Certificate of Completion
             </Link>
           </div>
         )}

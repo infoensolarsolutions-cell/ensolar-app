@@ -12,14 +12,17 @@ export async function createContract(
   const profile = await requireRole("owner", "office_staff");
   const projectId = String(formData.get("project_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
-  const docType = formData.get("doc_type") === "certificate" ? "certificate" : "contract";
+  const docTypeRaw = String(formData.get("doc_type") ?? "contract");
+  const docType = ["certificate", "completion"].includes(docTypeRaw) ? docTypeRaw : "contract";
   if (!projectId || body.length < 100) {
     return { error: "The document text looks empty." };
   }
 
   const supabase = await createClient();
+  // Both certificate kinds store doc_type 'certificate'; the number prefix
+  // (COC vs COMP) tells them apart everywhere they are listed.
   const { data: contractNo, error: noError } = await supabase.rpc("next_doc_no", {
-    p_doc_type: docType === "certificate" ? "COC" : "IA",
+    p_doc_type: docType === "completion" ? "COMP" : docType === "certificate" ? "COC" : "IA",
   });
   if (noError || !contractNo) return { error: "Could not generate a document number." };
 
@@ -32,14 +35,14 @@ export async function createContract(
       created_by: profile.id,
       // Only sent for certificates so contract generation keeps working
       // until the 0039 migration adds the column (default 'contract').
-      ...(docType === "certificate" ? { doc_type: "certificate" } : {}),
+      ...(docType !== "contract" ? { doc_type: "certificate" } : {}),
     })
     .select("id")
     .single();
   if (error || !created) {
     return {
       error:
-        docType === "certificate" && error?.message.includes("doc_type")
+        docType !== "contract" && error?.message.includes("doc_type")
           ? "Run the certificate database migration (0039) first."
           : `Could not save: ${error?.message ?? "unknown"}`,
     };
@@ -48,7 +51,7 @@ export async function createContract(
   await supabase.from("project_events").insert({
     project_id: projectId,
     user_id: profile.id,
-    event: docType === "certificate" ? "certificate_created" : "contract_created",
+    event: docType === "contract" ? "contract_created" : "certificate_created",
     detail: { contract_no: contractNo },
   });
 
@@ -111,6 +114,7 @@ export async function deleteContract(
 const TEMPLATE_KEYS: Record<string, string> = {
   solar_contract: "/settings/contract-template",
   compliance_certificate: "/settings/certificate-template",
+  completion_certificate: "/settings/completion-template",
 };
 
 export async function saveTemplate(
