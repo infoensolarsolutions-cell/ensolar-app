@@ -59,7 +59,13 @@ export default async function ContractPage({
       <ContractEditor
         contractId={contract.id}
         initialBody={contract.body}
-        docType={contract.contract_no.startsWith("COC-") ? "certificate" : "contract"}
+        docType={
+          contract.contract_no.startsWith("COMP-")
+            ? "completion"
+            : contract.contract_no.startsWith("COC-")
+              ? "certificate"
+              : "contract"
+        }
       />
       {profile.role === "owner" && (
         <div className="px-4 pb-6">
