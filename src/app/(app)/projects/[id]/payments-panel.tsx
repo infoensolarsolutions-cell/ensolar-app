@@ -39,6 +39,7 @@ export type PaymentRow = {
   method: keyof typeof METHODS | "online";
   received_at: string;
   milestone_label: string | null;
+  receipt_urls?: string[];
 };
 
 export function PaymentsPanel({
@@ -158,6 +159,20 @@ export function PaymentsPanel({
                 {formatDate(p.received_at)}
                 {p.milestone_label && ` · ${p.milestone_label}`}
               </p>
+              {(p.receipt_urls?.length ?? 0) > 0 && (
+                <p className="mt-0.5 flex flex-wrap gap-2 text-xs">
+                  {p.receipt_urls!.map((url, i) => (
+                    <a
+                      key={i}
+                      href={url}
+                      target="_blank"
+                      className="font-medium text-brand-green-dark underline"
+                    >
+                      📎 attachment {p.receipt_urls!.length > 1 ? i + 1 : ""}
+                    </a>
+                  ))}
+                </p>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="text-sm font-bold text-brand-green-dark">{formatPeso(p.amount)}</span>
@@ -351,8 +366,16 @@ function PaymentForm({
       <input name="provider_ref" placeholder="Reference no. (bank/GCash, optional)" className={inputClass} />
       <input name="notes" placeholder="Notes (optional)" className={inputClass} />
       <div>
-        <label className="text-xs text-gray-500">Receipt / deposit slip photo (optional)</label>
-        <input name="receipt_photo" type="file" accept="image/*" capture="environment" className="w-full text-sm" />
+        <label className="text-xs text-gray-500">
+          Receipt / deposit slip photos or PDFs (optional, up to 6 files)
+        </label>
+        <input
+          name="receipt_photo"
+          type="file"
+          accept="image/*,application/pdf"
+          multiple
+          className="w-full text-sm"
+        />
       </div>
       {state?.error && <p className="text-xs font-medium text-red-600">{state.error}</p>}
       <div className="flex gap-2">

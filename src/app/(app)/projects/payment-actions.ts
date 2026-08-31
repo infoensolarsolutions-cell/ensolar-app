@@ -107,26 +107,33 @@ export async function recordPayment(
   const method = String(formData.get("method") ?? "");
   const providerRef = String(formData.get("provider_ref") ?? "").trim().slice(0, 200);
   const notes = String(formData.get("notes") ?? "").trim().slice(0, 500);
-  const photo = formData.get("receipt_photo") as File | null;
+  const photos = (formData.getAll("receipt_photo") as File[]).filter(
+    (f) => f && f.size > 0,
+  );
 
   if (!projectId) return { error: "Invalid project." };
   if (!(amount > 0)) return { error: "Enter the amount received." };
   if (!["cash", "gcash", "maya", "bank_transfer", "check", "card"].includes(method)) {
     return { error: "Choose a payment method." };
   }
+  if (photos.length > 6) return { error: "Attach at most 6 files per payment." };
 
   const supabase = await createClient();
 
-  let receiptPath: string | null = null;
-  if (photo && photo.size > 0) {
-    if (photo.size > 10 * 1024 * 1024) return { error: "Photo too large (max 10 MB)." };
+  const receiptPaths: string[] = [];
+  for (const photo of photos) {
+    if (photo.size > 10 * 1024 * 1024) {
+      return { error: `"${photo.name}" is too large (max 10 MB per file).` };
+    }
     const ext = (photo.name.split(".").pop() || "jpg").toLowerCase().slice(0, 5);
-    receiptPath = `receipts/${projectId}/${crypto.randomUUID()}.${ext}`;
+    const path = `receipts/${projectId}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("project-photos")
-      .upload(receiptPath, photo);
-    if (uploadError) return { error: "Could not upload the receipt photo." };
+      .upload(path, photo);
+    if (uploadError) return { error: `Could not upload "${photo.name}".` };
+    receiptPaths.push(path);
   }
+  const receiptPath = receiptPaths[0] ?? null;
 
   const { data: orNo, error: noError } = await supabase.rpc("next_doc_no", {
     p_doc_type: "OR",
@@ -141,6 +148,7 @@ export async function recordPayment(
     method,
     provider_ref: providerRef || null,
     receipt_photo: receiptPath,
+    receipt_photos: receiptPaths.length ? receiptPaths : null,
     notes: notes || null,
     received_by: profile.id,
   });
