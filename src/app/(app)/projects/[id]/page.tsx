@@ -130,7 +130,7 @@ export default async function ProjectDetailPage({
         .overrideTypes<EventRow[]>(),
       supabase
         .from("payments")
-        .select("id, or_no, amount, method, received_at, milestone_id, payment_milestones (label)")
+        .select("id, or_no, amount, method, received_at, milestone_id, receipt_photo, receipt_photos, payment_milestones (label)")
         .eq("project_id", id)
         .order("received_at", { ascending: false }),
       supabase
@@ -254,6 +254,27 @@ export default async function ProjectDetailPage({
     };
   });
 
+  // Signed URLs for every receipt attachment (new array + legacy single).
+  const receiptPathsByPayment = new Map<string, string[]>();
+  for (const p of payments ?? []) {
+    const paths: string[] = Array.isArray(p.receipt_photos)
+      ? (p.receipt_photos as string[])
+      : p.receipt_photo
+        ? [p.receipt_photo as string]
+        : [];
+    if (paths.length) receiptPathsByPayment.set(p.id, paths);
+  }
+  const allReceiptPaths = [...receiptPathsByPayment.values()].flat();
+  const receiptUrlByPath = new Map<string, string>();
+  if (allReceiptPaths.length) {
+    const { data: signed } = await supabase.storage
+      .from("project-photos")
+      .createSignedUrls(allReceiptPaths, 3600);
+    for (const s of signed ?? []) {
+      if (s.path && s.signedUrl) receiptUrlByPath.set(s.path, s.signedUrl);
+    }
+  }
+
   const paymentRows = (payments ?? []).map((p) => {
     const milestone = Array.isArray(p.payment_milestones)
       ? p.payment_milestones[0]
@@ -265,6 +286,9 @@ export default async function ProjectDetailPage({
       method: p.method,
       received_at: p.received_at,
       milestone_label: milestone?.label ?? null,
+      receipt_urls: (receiptPathsByPayment.get(p.id) ?? [])
+        .map((path) => receiptUrlByPath.get(path))
+        .filter((u): u is string => !!u),
     };
   });
 
