@@ -129,7 +129,9 @@ export default async function PnlPage({
             📥 Export CSV
           </a>
           <span className="text-xs text-gray-400">
-            Cash basis: money actually received and spent in this range.
+            Revenue when received · materials when issued to a project (bulk
+            stock buys sit in inventory until issued — see Business KPI cash
+            flow for bank-account timing).
           </span>
         </form>
 
