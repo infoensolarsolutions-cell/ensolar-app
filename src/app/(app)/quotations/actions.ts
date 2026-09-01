@@ -83,7 +83,11 @@ export async function saveQuotation(
     if (existing.status === "accepted" && profile.role !== "owner") {
       return { error: "Only the owner can edit an accepted quotation (it changes the project's contract amount)." };
     }
-    if (existing.status !== "draft") {
+    // Editing a submitted quotation bumps the revision unless the editor
+    // unticked "save as next revision" (minor corrections keep Rev/date).
+    const bumpRevision =
+      existing.status !== "draft" && formData.get("bump_revision") === "yes";
+    if (bumpRevision) {
       meta.revision_no = Math.max(revisionNo, (existing.revision_no ?? 0) + 1);
       meta.revision_date = todayManila();
     }
@@ -96,7 +100,7 @@ export async function saveQuotation(
 
     await supabase.from("quotation_items").delete().eq("quotation_id", quotationId);
 
-    if (existing.status !== "draft" && existing.lead_id) {
+    if (bumpRevision && existing.lead_id) {
       await supabase.from("lead_events").insert({
         lead_id: existing.lead_id,
         user_id: profile.id,

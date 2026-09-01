@@ -55,6 +55,7 @@ export default async function EditQuotationPage({
       <TopBar title={`Edit ${q.quote_no}`} backHref={`/quotations/${id}`} />
       <QuotationBuilder
         products={products ?? []}
+        isRevision={q.status !== "draft"}
         quotation={{
           id: q.id,
           valid_until: q.valid_until,

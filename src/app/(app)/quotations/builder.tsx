@@ -55,6 +55,7 @@ export function QuotationBuilder({
   quotation,
   templates,
   prefill,
+  isRevision = false,
 }: {
   products: ProductOption[];
   leadId?: string;
@@ -71,6 +72,8 @@ export function QuotationBuilder({
   };
   templates?: QuotationTemplate[];
   prefill?: { siteLocation?: string | null };
+  // Editing an already-submitted quotation: offer the next-revision choice.
+  isRevision?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveQuotation, null);
   const [terms, setTerms] = useState<string>(quotation?.terms ?? DEFAULT_TERMS);
@@ -173,6 +176,23 @@ export function QuotationBuilder({
               className={inputClass}
             />
           </div>
+          {isRevision && (
+            <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <input
+                type="checkbox"
+                name="bump_revision"
+                value="yes"
+                defaultChecked
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-semibold">Save as next revision</span> (Rev{" "}
+                {quotation?.revision_no ?? 0} → {(quotation?.revision_no ?? 0) + 1},
+                dated today). Untick for a minor correction — typo fixes and the
+                like — keeping the current revision number and date.
+              </span>
+            </label>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-gray-500">Revision No.</label>
