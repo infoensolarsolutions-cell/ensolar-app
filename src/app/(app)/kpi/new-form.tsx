@@ -63,6 +63,16 @@ export function NewEvaluationForm({
             </option>
           ))}
       </select>
+      <select name="supervisor2_name" defaultValue="" className={inputClass}>
+        <option value="">Second supervisor (optional) — pick a name…</option>
+        {employees
+          .filter((e) => e.id !== employeeId)
+          .map((e) => (
+            <option key={e.id} value={e.name}>
+              {e.name}{e.employee_position ? ` — ${e.employee_position}` : ""}
+            </option>
+          ))}
+      </select>
       {state?.error && <p className="text-xs font-medium text-red-600">{state.error}</p>}
       <button
         disabled={pending}

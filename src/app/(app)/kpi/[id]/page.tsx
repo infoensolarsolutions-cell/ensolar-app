@@ -24,7 +24,7 @@ export default async function KpiDetailPage({
   const { data: ev } = await supabase
     .from("kpi_evaluations")
     .select(
-      "id, employee_id, employee_name, employee_position, period, supervisor_name, status, scores, supervisor_comments, manager_comments, development_plan, self_comments, self_submitted_at",
+      "id, employee_id, employee_name, employee_position, period, supervisor_name, supervisor2_name, status, scores, supervisor_comments, supervisor2_comments, manager_comments, development_plan, self_comments, self_submitted_at",
     )
     .eq("id", id)
     .single();
@@ -61,9 +61,11 @@ export default async function KpiDetailPage({
           employee_position: ev.employee_position,
           period: ev.period,
           supervisor_name: ev.supervisor_name,
+          supervisor2_name: ev.supervisor2_name ?? null,
           status: ev.status as "draft" | "supervisor_done" | "final",
           scores,
           supervisor_comments: ev.supervisor_comments,
+          supervisor2_comments: ev.supervisor2_comments ?? null,
           manager_comments: ev.manager_comments,
           development_plan: ev.development_plan,
           self_comments: ev.self_comments,

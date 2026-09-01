@@ -15,9 +15,11 @@ type Evaluation = {
   employee_position: string | null;
   period: string;
   supervisor_name: string | null;
+  supervisor2_name: string | null;
   status: "draft" | "supervisor_done" | "final";
   scores: KpiScore[];
   supervisor_comments: string | null;
+  supervisor2_comments: string | null;
   manager_comments: string | null;
   development_plan: string | null;
   self_comments: string | null;
@@ -92,6 +94,8 @@ export function Scorecard({
   const showStaffColumns = !isEmployee || locked;
 
   const [scores, setScores] = useState<KpiScore[]>(evaluation.scores);
+  const [sup2Name, setSup2Name] = useState(evaluation.supervisor2_name ?? "");
+  const hasSup2 = sup2Name.trim().length > 0;
   const [state, formAction, pending] = useActionState(
     isEmployee ? saveSelfEvaluation : saveEvaluation,
     null,
@@ -101,9 +105,12 @@ export function Scorecard({
 
   const selfTotal = totalFor(scores, "self");
   const supTotal = totalFor(scores, "sup");
+  const sup2Total = totalFor(scores, "sup2");
+  // Supervisor tile: average of the two supervisor scores when both exist.
+  const supShown = hasSup2 ? Math.round(((supTotal + sup2Total) / 2) * 10) / 10 : supTotal;
   const mgrTotal = totalFor(scores, "mgr");
 
-  function setRating(key: string, field: "self" | "sup" | "mgr", v: number | null) {
+  function setRating(key: string, field: "self" | "sup" | "sup2" | "mgr", v: number | null) {
     setScores((cur) => cur.map((s) => (s.key === key ? { ...s, [field]: v } : s)));
   }
 
@@ -146,15 +153,28 @@ export function Scorecard({
         </div>
         <p className="mt-1 text-xs text-gray-500">{statusNote}</p>
         {!isEmployee && (
-          <div className="mt-2">
-            <label className="text-xs text-gray-500">Assigned supervisor</label>
-            <input
-              name="supervisor_name"
-              defaultValue={evaluation.supervisor_name ?? ""}
-              disabled={locked}
-              placeholder="Supervisor's name"
-              className={`${inputClass} disabled:bg-gray-50`}
-            />
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div>
+              <label className="text-xs text-gray-500">Assigned supervisor</label>
+              <input
+                name="supervisor_name"
+                defaultValue={evaluation.supervisor_name ?? ""}
+                disabled={locked}
+                placeholder="Supervisor's name"
+                className={`${inputClass} disabled:bg-gray-50`}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Second supervisor (optional)</label>
+              <input
+                name="supervisor2_name"
+                value={sup2Name}
+                onChange={(e) => setSup2Name(e.target.value)}
+                disabled={locked}
+                placeholder="Adds a 2nd rating column"
+                className={`${inputClass} disabled:bg-gray-50`}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -162,7 +182,9 @@ export function Scorecard({
       {/* Score totals */}
       <div className={`grid gap-3 ${showStaffColumns ? "grid-cols-3" : "grid-cols-1"}`}>
         <ScoreTile label="Self score" total={selfTotal} />
-        {showStaffColumns && <ScoreTile label="Supervisor score" total={supTotal} />}
+        {showStaffColumns && (
+          <ScoreTile label={hasSup2 ? "Supervisors (avg)" : "Supervisor score"} total={supShown} />
+        )}
         {showStaffColumns && <ScoreTile label="Manager final" total={mgrTotal} highlight />}
       </div>
       <p className="-mt-2 text-center text-xs text-gray-400">
@@ -207,7 +229,9 @@ export function Scorecard({
                 {showStaffColumns && (
                   <>
                     <div>
-                      <label className="text-[11px] font-semibold text-gray-500">Supervisor</label>
+                      <label className="text-[11px] font-semibold text-gray-500">
+                        Supervisor{hasSup2 ? ` 1 — ${evaluation.supervisor_name ?? ""}` : ""}
+                      </label>
                       {isEmployee ? (
                         <p className="text-sm font-bold text-gray-700">{s.sup ?? "—"} / 5</p>
                       ) : (
@@ -218,6 +242,22 @@ export function Scorecard({
                         />
                       )}
                     </div>
+                    {hasSup2 && (
+                      <div>
+                        <label className="text-[11px] font-semibold text-gray-500">
+                          Supervisor 2 — {sup2Name}
+                        </label>
+                        {isEmployee ? (
+                          <p className="text-sm font-bold text-gray-700">{s.sup2 ?? "—"} / 5</p>
+                        ) : (
+                          <RatingTicks
+                            value={s.sup2 ?? null}
+                            disabled={locked}
+                            onChange={(v) => setRating(c.key, "sup2", v)}
+                          />
+                        )}
+                      </div>
+                    )}
                     <div>
                       <label className="text-[11px] font-semibold text-gray-500">Manager (final)</label>
                       {isOwner ? (
@@ -263,7 +303,9 @@ export function Scorecard({
         {!isEmployee && (
           <>
             <div>
-              <label className="text-xs text-gray-500">Supervisor&rsquo;s comments</label>
+              <label className="text-xs text-gray-500">
+                Supervisor{hasSup2 ? " 1" : ""}&rsquo;s comments
+              </label>
               <textarea
                 name="supervisor_comments"
                 rows={2}
@@ -272,6 +314,18 @@ export function Scorecard({
                 className={`${inputClass} disabled:bg-gray-50`}
               />
             </div>
+            {hasSup2 && (
+              <div>
+                <label className="text-xs text-gray-500">Supervisor 2&rsquo;s comments</label>
+                <textarea
+                  name="supervisor2_comments"
+                  rows={2}
+                  defaultValue={evaluation.supervisor2_comments ?? ""}
+                  disabled={locked}
+                  className={`${inputClass} disabled:bg-gray-50`}
+                />
+              </div>
+            )}
             <div>
               <label className="text-xs text-gray-500">
                 Manager&rsquo;s final remarks {isOwner ? "" : "(owner only)"}

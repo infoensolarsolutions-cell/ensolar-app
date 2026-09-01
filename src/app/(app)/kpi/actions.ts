@@ -22,8 +22,12 @@ export async function createEvaluation(
   const employeePosition = String(formData.get("employee_position") ?? "").trim().slice(0, 120) || null;
   const period = String(formData.get("period") ?? "").trim().slice(0, 60);
   const supervisorName = String(formData.get("supervisor_name") ?? "").trim().slice(0, 200) || null;
+  const supervisor2Name = String(formData.get("supervisor2_name") ?? "").trim().slice(0, 200) || null;
 
   if (!employeeId || !employeeName) return { error: "Pick an employee." };
+  if (supervisor2Name && supervisor2Name === supervisorName) {
+    return { error: "The two supervisors must be different people." };
+  }
   if (!period) return { error: "Evaluation period is required (e.g. Q3 2026)." };
 
   const supabase = await createClient();
@@ -35,6 +39,7 @@ export async function createEvaluation(
       employee_position: employeePosition,
       period,
       supervisor_name: supervisorName,
+      supervisor2_name: supervisor2Name,
       scores: emptyScores(),
       created_by: profile.id,
     })
@@ -71,7 +76,7 @@ function mergeScores(
 ): KpiScore[] | null {
   if (!Array.isArray(incoming)) return null;
   const byKey = new Map(
-    incoming.map((s: { key?: string; sup?: unknown; mgr?: unknown }) => [String(s.key), s]),
+    incoming.map((s: { key?: string; sup?: unknown; sup2?: unknown; mgr?: unknown }) => [String(s.key), s]),
   );
   return current.map((s) => {
     const inc = byKey.get(s.key);
@@ -79,6 +84,7 @@ function mergeScores(
       ...s,
       self: s.self ?? null,
       sup: inc && "sup" in inc ? clampRating(inc.sup) : s.sup,
+      sup2: inc && "sup2" in inc ? clampRating(inc.sup2) : (s.sup2 ?? null),
       mgr: isOwner && inc && "mgr" in inc ? clampRating(inc.mgr) : s.mgr,
     };
   });
@@ -210,10 +216,14 @@ export async function saveEvaluation(
   const scores = mergeScores(ev.scores as KpiScore[], scoresJson, isOwner);
   if (!scores) return { error: "Invalid scores." };
 
+  const supervisor2Name =
+    String(formData.get("supervisor2_name") ?? "").trim().slice(0, 200) || null;
   const updates: Record<string, unknown> = {
     scores,
     supervisor_name: String(formData.get("supervisor_name") ?? "").trim().slice(0, 200) || null,
     supervisor_comments: String(formData.get("supervisor_comments") ?? "").trim().slice(0, 2000) || null,
+    supervisor2_name: supervisor2Name,
+    supervisor2_comments: String(formData.get("supervisor2_comments") ?? "").trim().slice(0, 2000) || null,
   };
   if (isOwner) {
     updates.manager_comments = String(formData.get("manager_comments") ?? "").trim().slice(0, 2000) || null;
@@ -224,11 +234,17 @@ export async function saveEvaluation(
     if (!isComplete(scores, "sup")) {
       return { error: "Rate all 10 criteria in the supervisor column first." };
     }
+    if (supervisor2Name && !isComplete(scores, "sup2")) {
+      return { error: `Supervisor 2 (${supervisor2Name}) must also rate all 10 criteria — or clear the second supervisor's name.` };
+    }
     updates.status = "supervisor_done";
   } else if (intent === "finalize") {
     if (!isOwner) return { error: "Only the owner can finalize." };
     if (!isComplete(scores, "sup") || !isComplete(scores, "mgr")) {
       return { error: "Both the supervisor and manager columns must be fully rated before finalizing." };
+    }
+    if (supervisor2Name && !isComplete(scores, "sup2")) {
+      return { error: `Supervisor 2 (${supervisor2Name}) has not rated all criteria — complete them or clear the second supervisor's name.` };
     }
     updates.status = "final";
     updates.finalized_by = profile.id;
