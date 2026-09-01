@@ -149,9 +149,11 @@ export default async function IncomeStatementPage({
           </div>
           <p className="mt-3 text-[11px] leading-relaxed text-gray-400">
             Revenue = customer payments received + POS sales. Direct costs =
-            costs recorded on projects. Operating expenses = the Expenses
-            ledger (including payroll). Figures are cash basis — they reflect
-            money that actually moved, not invoices issued.
+            costs recorded on projects, counted when materials are issued —
+            bulk stock purchases are NOT an expense here; until issued, that
+            value sits as inventory in Products &amp; Stock (an asset, shown on
+            the Business KPI as &ldquo;Cash tied up in stock&rdquo;). Operating
+            expenses = the Expenses ledger (including payroll).
           </p>
         </div>
 
