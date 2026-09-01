@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/format";
 import { band, totalFor, type KpiScore } from "@/lib/kpi";
 import { NewEvaluationForm } from "./new-form";
@@ -22,6 +23,8 @@ type EvalRow = {
   employee_position: string | null;
   period: string;
   supervisor_name: string | null;
+  supervisor_employee_id: string | null;
+  supervisor2_employee_id: string | null;
   status: string;
   scores: KpiScore[];
   created_at: string;
@@ -33,10 +36,18 @@ export default async function KpiListPage() {
   const isStaff = ["owner", "office_staff"].includes(profile.role);
   const supabase = await createClient();
 
+  // Which employee records belong to this login (to flag "you rate this").
+  const admin = createAdminClient();
+  const { data: myEmployees } = await admin
+    .from("employees")
+    .select("id")
+    .eq("profile_id", profile.id);
+  const myIds = new Set((myEmployees ?? []).map((e) => e.id));
+
   const [{ data: evaluations }, { data: employees }] = await Promise.all([
     supabase
       .from("kpi_evaluations")
-      .select("id, employee_name, employee_position, period, supervisor_name, status, scores, created_at")
+      .select("id, employee_name, employee_position, period, supervisor_name, supervisor_employee_id, supervisor2_employee_id, status, scores, created_at")
       .order("created_at", { ascending: false })
       .limit(200)
       .overrideTypes<EvalRow[]>(),
@@ -57,7 +68,7 @@ export default async function KpiListPage() {
           <p className="pt-6 text-center text-sm text-gray-500">
             {isStaff
               ? "No evaluations yet. Start one above."
-              : "No evaluation has been opened for you yet."}
+              : "Nothing here yet — your own evaluations and the ones you rate as supervisor will appear."}
           </p>
         )}
 
@@ -65,6 +76,9 @@ export default async function KpiListPage() {
           {evaluations?.map((ev) => {
             const status = STATUS_LABELS[ev.status] ?? STATUS_LABELS.draft;
             const mgrTotal = totalFor(ev.scores, "mgr");
+            const iRate =
+              (!!ev.supervisor_employee_id && myIds.has(ev.supervisor_employee_id)) ||
+              (!!ev.supervisor2_employee_id && myIds.has(ev.supervisor2_employee_id));
             return (
               <Link
                 key={ev.id}
@@ -78,8 +92,15 @@ export default async function KpiListPage() {
                       {ev.employee_position ?? "—"} · {ev.period}
                     </p>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${status.cls}`}>
-                    {status.label}
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${status.cls}`}>
+                      {status.label}
+                    </span>
+                    {iRate && ev.status === "draft" && (
+                      <span className="rounded-full bg-brand-green/10 px-2.5 py-0.5 text-[10px] font-bold text-brand-green-dark">
+                        ⭐ you rate this
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
