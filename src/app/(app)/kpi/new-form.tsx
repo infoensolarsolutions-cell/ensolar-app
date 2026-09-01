@@ -53,22 +53,22 @@ export function NewEvaluationForm({
       <input type="hidden" name="employee_name" value={selected?.name ?? ""} />
       <input type="hidden" name="employee_position" value={selected?.employee_position ?? ""} />
       <input name="period" placeholder="Evaluation period (e.g. Q3 2026) *" required className={inputClass} />
-      <select name="supervisor_name" defaultValue="" className={inputClass}>
+      <select name="supervisor_employee_id" defaultValue="" className={inputClass}>
         <option value="">Assigned supervisor — pick a name…</option>
         {employees
           .filter((e) => e.id !== employeeId)
           .map((e) => (
-            <option key={e.id} value={e.name}>
+            <option key={e.id} value={e.id}>
               {e.name}{e.employee_position ? ` — ${e.employee_position}` : ""}
             </option>
           ))}
       </select>
-      <select name="supervisor2_name" defaultValue="" className={inputClass}>
+      <select name="supervisor2_employee_id" defaultValue="" className={inputClass}>
         <option value="">Second supervisor (optional) — pick a name…</option>
         {employees
           .filter((e) => e.id !== employeeId)
           .map((e) => (
-            <option key={e.id} value={e.name}>
+            <option key={e.id} value={e.id}>
               {e.name}{e.employee_position ? ` — ${e.employee_position}` : ""}
             </option>
           ))}

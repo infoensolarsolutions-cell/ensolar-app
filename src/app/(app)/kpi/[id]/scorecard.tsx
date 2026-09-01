@@ -83,9 +83,11 @@ function ScoreTile({ label, total, highlight }: { label: string; total: number; 
 export function Scorecard({
   evaluation,
   viewer,
+  canRate = { sup: true, sup2: true, meta: true },
 }: {
   evaluation: Evaluation;
   viewer: Viewer;
+  canRate?: { sup: boolean; sup2: boolean; meta: boolean };
 }) {
   const locked = evaluation.status === "final";
   const isEmployee = viewer === "employee";
@@ -159,7 +161,7 @@ export function Scorecard({
               <input
                 name="supervisor_name"
                 defaultValue={evaluation.supervisor_name ?? ""}
-                disabled={locked}
+                disabled={locked || !canRate.meta}
                 placeholder="Supervisor's name"
                 className={`${inputClass} disabled:bg-gray-50`}
               />
@@ -170,7 +172,7 @@ export function Scorecard({
                 name="supervisor2_name"
                 value={sup2Name}
                 onChange={(e) => setSup2Name(e.target.value)}
-                disabled={locked}
+                disabled={locked || !canRate.meta}
                 placeholder="Adds a 2nd rating column"
                 className={`${inputClass} disabled:bg-gray-50`}
               />
@@ -237,7 +239,7 @@ export function Scorecard({
                       ) : (
                         <RatingTicks
                           value={s.sup}
-                          disabled={locked}
+                          disabled={locked || !canRate.sup}
                           onChange={(v) => setRating(c.key, "sup", v)}
                         />
                       )}
@@ -252,7 +254,7 @@ export function Scorecard({
                         ) : (
                           <RatingTicks
                             value={s.sup2 ?? null}
-                            disabled={locked}
+                            disabled={locked || !canRate.sup2}
                             onChange={(v) => setRating(c.key, "sup2", v)}
                           />
                         )}
@@ -310,7 +312,7 @@ export function Scorecard({
                 name="supervisor_comments"
                 rows={2}
                 defaultValue={evaluation.supervisor_comments ?? ""}
-                disabled={locked}
+                disabled={locked || !(canRate.meta || canRate.sup)}
                 className={`${inputClass} disabled:bg-gray-50`}
               />
             </div>
@@ -321,7 +323,7 @@ export function Scorecard({
                   name="supervisor2_comments"
                   rows={2}
                   defaultValue={evaluation.supervisor2_comments ?? ""}
-                  disabled={locked}
+                  disabled={locked || !(canRate.meta || canRate.sup2)}
                   className={`${inputClass} disabled:bg-gray-50`}
                 />
               </div>
