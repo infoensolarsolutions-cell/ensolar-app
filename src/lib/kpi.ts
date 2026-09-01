@@ -8,8 +8,11 @@ export type KpiScore = {
   weight: number;
   self: number | null;
   sup: number | null;
+  sup2?: number | null; // second supervisor (optional; older rows lack it)
   mgr: number | null;
 };
+
+export type ScoreField = "self" | "sup" | "sup2" | "mgr";
 
 export const RATING_MIN = 1;
 export const RATING_MAX = 5;
@@ -48,20 +51,21 @@ export const KPI_CRITERIA: { key: string; name: string; desc: string; weight: nu
 
 export function emptyScores(): KpiScore[] {
   return KPI_CRITERIA.map((c) => ({
-    key: c.key, criterion: c.name, weight: c.weight, self: null, sup: null, mgr: null,
+    key: c.key, criterion: c.name, weight: c.weight, self: null, sup: null, sup2: null, mgr: null,
   }));
 }
 
-export function totalFor(scores: KpiScore[], field: "self" | "sup" | "mgr"): number {
+export function totalFor(scores: KpiScore[], field: ScoreField): number {
   let total = 0;
   for (const s of scores) total += (s.weight * (s[field] ?? 0)) / RATING_MAX;
   return Math.round(total * 10) / 10;
 }
 
-export function isComplete(scores: KpiScore[], field: "self" | "sup" | "mgr"): boolean {
-  return scores.every(
-    (s) => s[field] !== null && s[field]! >= RATING_MIN && s[field]! <= RATING_MAX,
-  );
+export function isComplete(scores: KpiScore[], field: ScoreField): boolean {
+  return scores.every((s) => {
+    const v = s[field] ?? null;
+    return v !== null && v >= RATING_MIN && v <= RATING_MAX;
+  });
 }
 
 export function band(total: number): string {
