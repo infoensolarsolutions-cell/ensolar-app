@@ -77,6 +77,7 @@ export async function computeBusinessKpis(
     posRes,
     costRes,
     expRes,
+    stockInRes,
     projRes,
     marginRes,
     leadsNowRes,
@@ -89,8 +90,9 @@ export async function computeBusinessKpis(
   ] = await Promise.all([
     supabase.from("payments").select("amount, received_at").gte("received_at", sixMonthStart).limit(5000),
     supabase.from("pos_sales").select("total, sold_at").gte("sold_at", sixMonthStart).limit(5000),
-    supabase.from("project_costs").select("amount, date").gte("date", sixMonthStart).limit(5000),
+    supabase.from("project_costs").select("amount, date, inventory_txn_id").gte("date", sixMonthStart).limit(5000),
     supabase.from("expenses").select("amount, date").gte("date", sixMonthStart).limit(5000),
+    supabase.from("inventory_txns").select("qty, unit_cost, date").eq("type", "in").gte("date", sixMonthStart).limit(5000),
     supabase
       .from("projects")
       .select("status, target_date, contract_amount, payment_milestones (amount, due_date, sort_order), payments (amount, milestone_id)")
@@ -124,9 +126,8 @@ export async function computeBusinessKpis(
       .in("status", ["open", "in_progress"]),
     supabase
       .from("products_with_stock")
-      .select("on_hand, reorder_level")
-      .eq("active", true)
-      .gt("reorder_level", 0),
+      .select("on_hand, reorder_level, cost_price")
+      .eq("active", true),
     supabase
       .from("maintenance_reminders")
       .select("id", { count: "exact", head: true })
@@ -137,21 +138,35 @@ export async function computeBusinessKpis(
   const kpis: Kpi[] = [];
   const dayMs = 86400000;
 
-  // ── Cash flow by month: in = collections + POS; out = expenses + project
-  // costs (payroll posts into expenses via payroll runs) ──────────────────
+  // ── Two "money out" timelines with different timing:
+  // cashOut = when money actually left (expenses + stock purchases +
+  //           direct project spending; stock ISSUES excluded — that cash
+  //           left when the stock was bought)
+  // costOut = when cost is incurred for profit purposes (expenses + all
+  //           project costs at issue time) — used for the margin KPIs.
   const inByMonth = new Map<string, number>();
-  const outByMonth = new Map<string, number>();
+  const cashOutByMonth = new Map<string, number>();
+  const costOutByMonth = new Map<string, number>();
   const bump = (map: Map<string, number>, key: string, amt: number) =>
     map.set(key, (map.get(key) ?? 0) + amt);
 
   for (const p of payRes.data ?? []) bump(inByMonth, tsMonth(p.received_at as string), Number(p.amount));
   for (const s of posRes.data ?? []) bump(inByMonth, tsMonth(s.sold_at as string), Number(s.total));
-  for (const e of expRes.data ?? []) bump(outByMonth, (e.date as string).slice(0, 7), Number(e.amount));
-  for (const c of costRes.data ?? []) bump(outByMonth, (c.date as string).slice(0, 7), Number(c.amount));
+  for (const e of expRes.data ?? []) {
+    bump(cashOutByMonth, (e.date as string).slice(0, 7), Number(e.amount));
+    bump(costOutByMonth, (e.date as string).slice(0, 7), Number(e.amount));
+  }
+  for (const c of costRes.data ?? []) {
+    bump(costOutByMonth, (c.date as string).slice(0, 7), Number(c.amount));
+    if (!c.inventory_txn_id) bump(cashOutByMonth, (c.date as string).slice(0, 7), Number(c.amount));
+  }
+  for (const t of stockInRes.data ?? []) {
+    bump(cashOutByMonth, (t.date as string).slice(0, 7), Number(t.qty) * Number(t.unit_cost));
+  }
 
   const cashflow: CashflowMonth[] = monthKeys.map((key) => {
     const cashIn = inByMonth.get(key) ?? 0;
-    const cashOut = outByMonth.get(key) ?? 0;
+    const cashOut = cashOutByMonth.get(key) ?? 0;
     return {
       label: monthFmt.format(new Date(`${key}-15T00:00:00Z`)),
       cashIn,
@@ -164,7 +179,7 @@ export async function computeBusinessKpis(
   // half a month of revenue against full bills would mislead).
   const fullMonths = monthKeys.slice(2, 5);
   const marginRevenue = fullMonths.reduce((s, k) => s + (inByMonth.get(k) ?? 0), 0);
-  const marginCosts = fullMonths.reduce((s, k) => s + (outByMonth.get(k) ?? 0), 0);
+  const marginCosts = fullMonths.reduce((s, k) => s + (costOutByMonth.get(k) ?? 0), 0);
   const netMargin = marginRevenue > 0 ? (marginRevenue - marginCosts) / marginRevenue : null;
 
   // ── Money ──────────────────────────────────────────────────────────────
@@ -361,8 +376,19 @@ export async function computeBusinessKpis(
   });
 
   const lowStock = (stockRes.data ?? []).filter(
-    (p) => Number(p.on_hand) <= Number(p.reorder_level),
+    (p) => Number(p.reorder_level) > 0 && Number(p.on_hand) <= Number(p.reorder_level),
   ).length;
+  const stockValue = (stockRes.data ?? []).reduce(
+    (s, p) => s + Math.max(0, Number(p.on_hand)) * Number(p.cost_price ?? 0),
+    0,
+  );
+  kpis.push({
+    group: "Money",
+    label: "Cash tied up in stock (at cost)",
+    value: formatPeso(stockValue),
+    sub: "unissued materials are an asset — counted as cost only when issued to a project",
+    status: "good",
+  });
   kpis.push({
     group: "After-sales & stock",
     label: "Products at or below reorder level",

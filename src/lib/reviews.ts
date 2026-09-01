@@ -71,11 +71,12 @@ export async function computeReviews(supabase: SupabaseClient): Promise<Reviews>
   });
   const tsDay = (iso: string) => tsDayFmt.format(new Date(iso));
 
-  const [payRes, posRes, expRes, costRes, quoteRes, empRes, csatRes] = await Promise.all([
+  const [payRes, posRes, expRes, costRes, stockInRes, quoteRes, empRes, csatRes] = await Promise.all([
     supabase.from("payments").select("amount, received_at").gte("received_at", earliest).limit(5000),
     supabase.from("pos_sales").select("total, sold_at").gte("sold_at", earliest).limit(5000),
     supabase.from("expenses").select("amount, date").gte("date", earliest).limit(5000),
-    supabase.from("project_costs").select("amount, date").gte("date", earliest).limit(5000),
+    supabase.from("project_costs").select("amount, date, inventory_txn_id").gte("date", earliest).limit(5000),
+    supabase.from("inventory_txns").select("qty, unit_cost, date").eq("type", "in").gte("date", earliest).limit(5000),
     supabase
       .from("quotations")
       .select("status, created_at")
@@ -88,14 +89,26 @@ export async function computeReviews(supabase: SupabaseClient): Promise<Reviews>
   ]);
 
   // In/out amounts keyed by local day, so weeks and months slice one dataset.
+  // cashOut = purchase timing (stock buys count, stock issues do not);
+  // costOut = issue timing, used for the monthly net-margin column.
   const inByDay = new Map<string, number>();
-  const outByDay = new Map<string, number>();
+  const cashOutByDay = new Map<string, number>();
+  const costOutByDay = new Map<string, number>();
   const bump = (map: Map<string, number>, key: string, amt: number) =>
     map.set(key, (map.get(key) ?? 0) + amt);
   for (const p of payRes.data ?? []) bump(inByDay, tsDay(p.received_at as string), Number(p.amount));
   for (const s of posRes.data ?? []) bump(inByDay, tsDay(s.sold_at as string), Number(s.total));
-  for (const e of expRes.data ?? []) bump(outByDay, e.date as string, Number(e.amount));
-  for (const c of costRes.data ?? []) bump(outByDay, c.date as string, Number(c.amount));
+  for (const e of expRes.data ?? []) {
+    bump(cashOutByDay, e.date as string, Number(e.amount));
+    bump(costOutByDay, e.date as string, Number(e.amount));
+  }
+  for (const c of costRes.data ?? []) {
+    bump(costOutByDay, c.date as string, Number(c.amount));
+    if (!c.inventory_txn_id) bump(cashOutByDay, c.date as string, Number(c.amount));
+  }
+  for (const t of stockInRes.data ?? []) {
+    bump(cashOutByDay, t.date as string, Number(t.qty) * Number(t.unit_cost));
+  }
 
   const sumRange = (map: Map<string, number>, from: string, toExclusive: string) => {
     let s = 0;
@@ -118,7 +131,7 @@ export async function computeReviews(supabase: SupabaseClient): Promise<Reviews>
   const weekly: WeekRow[] = weekStarts.map((start) => {
     const end = addDays(start, 7);
     const revenue = sumRange(inByDay, start, end);
-    const cashOut = sumRange(outByDay, start, end);
+    const cashOut = sumRange(cashOutByDay, start, end);
     const wq = quotes.filter((q) => q.day >= start && q.day < end);
     const won = wq.filter((q) => q.status === "accepted").length;
     const decided = wq.filter((q) => ["accepted", "rejected", "expired"].includes(q.status)).length;
@@ -145,7 +158,7 @@ export async function computeReviews(supabase: SupabaseClient): Promise<Reviews>
     const from = `${key}-01`;
     const toEx = addDays(`${key}-28`, 7).slice(0, 7) + "-01";
     const revenue = sumRange(inByDay, from, toEx);
-    const cashOut = sumRange(outByDay, from, toEx);
+    const cashOut = sumRange(costOutByDay, from, toEx);
     const monthEnd = addDays(toEx, -1);
 
     // Headcount during the month: hired by month end and not resigned

@@ -156,9 +156,11 @@ export default async function BusinessKpiPage() {
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
             Cash in = customer payments + POS sales. Cash out = expenses
-            (including payroll) + project costs. Cash flow tells you if the
-            bank balance is growing — profit tells you if the business model
-            works. Watch both.
+            (including payroll) + bulk stock purchases + direct project
+            spending — stock counts when you BUY it, not when it is later
+            issued to a project, so this matches your bank account. Profit
+            reports do the opposite (cost when issued) — both views are
+            correct for their purpose.
           </p>
         </div>
 
