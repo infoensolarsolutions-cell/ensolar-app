@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBranch, getBranches } from "@/lib/branch";
 import { formatDate, formatPeso, todayManila } from "@/lib/format";
 import { StatusBadge } from "./status-badge";
 import { ListTrashButton } from "./list-trash-button";
@@ -25,14 +26,16 @@ export default async function QuotationsPage() {
   await requireRole("owner", "office_staff");
   const supabase = await createClient();
 
+  const activeBranch = await getActiveBranch(await getBranches(supabase));
+  let quotationsQuery = supabase
+    .from("quotations")
+    .select("id, quote_no, status, valid_until, total, created_at, customers (name), projects (id)")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (activeBranch !== "all") quotationsQuery = quotationsQuery.eq("branch_id", activeBranch);
   const [{ data: quotations }, { count: trashed }] = await Promise.all([
-    supabase
-      .from("quotations")
-      .select("id, quote_no, status, valid_until, total, created_at, customers (name), projects (id)")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(100)
-      .overrideTypes<QuotationRow[]>(),
+    quotationsQuery.overrideTypes<QuotationRow[]>(),
     supabase
       .from("quotations")
       .select("id", { count: "exact", head: true })

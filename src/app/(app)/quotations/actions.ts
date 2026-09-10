@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayManila } from "@/lib/format";
+import { getWriteBranchId } from "@/lib/branch";
 
 export type QuotationItemInput = {
   product_id: string | null;
@@ -145,10 +146,12 @@ export async function saveQuotation(
     });
     if (noError || !quoteNo) return { error: "Could not generate a quotation number." };
 
+    const branchId = await getWriteBranchId(supabase, profile.branch_id);
     const { data: created, error } = await supabase
       .from("quotations")
       .insert({
         quote_no: quoteNo,
+        branch_id: branchId,
         lead_id: lead.id,
         customer_id: lead.customer_id,
         valid_until: validUntil || null,
@@ -246,7 +249,7 @@ export async function acceptQuotation(
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "id, status, quote_no, total, customer_id, lead_id, leads (service_type), customers (address, barangay)",
+      "id, status, quote_no, total, customer_id, lead_id, leads (service_type), customers (address, barangay), branch_id",
     )
     .eq("id", quotationId)
     .single();
@@ -273,6 +276,7 @@ export async function acceptQuotation(
     const customer = Array.isArray(q.customers) ? q.customers[0] : q.customers;
     const { error: projectError } = await supabase.from("projects").insert({
       project_no: projectNo,
+      branch_id: q.branch_id ?? null,
       customer_id: q.customer_id,
       quotation_id: q.id,
       service_type: lead?.service_type ?? null,

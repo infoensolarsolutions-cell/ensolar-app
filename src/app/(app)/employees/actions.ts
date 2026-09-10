@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getWriteBranchId } from "@/lib/branch";
 import { makePinHash } from "@/lib/pin";
 
 export async function saveEmployee(
@@ -73,6 +74,7 @@ export async function saveEmployee(
     return {};
   }
 
+  row.branch_id = await getWriteBranchId(supabase);
   const { data: created, error } = await supabase
     .from("employees")
     .insert(row)

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBranch, getBranches } from "@/lib/branch";
 import { formatDate, formatPeso, todayManila } from "@/lib/format";
 import { ExpenseForm, ExpenseItem, ExpenseTable } from "./expense-form";
 
@@ -43,6 +44,7 @@ export default async function ExpensesPage({
 
   const supabase = await createClient();
 
+  const activeBranch = await getActiveBranch(await getBranches(supabase));
   let query = supabase
     .from("expenses")
     .select("id, category, description, amount, date, payroll_run_id")
@@ -50,6 +52,7 @@ export default async function ExpensesPage({
     .lt("date", endExclusive)
     .order("date", { ascending: false });
   if (category) query = query.eq("category", category);
+  if (activeBranch !== "all") query = query.eq("branch_id", activeBranch);
 
   const [{ data: expenses }, { data: allCats }] = await Promise.all([
     query,

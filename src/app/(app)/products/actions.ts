@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getWriteBranchId } from "@/lib/branch";
 
 // Show the real database error so failures are diagnosable, with a plain
 // translation for the two most common cases.
@@ -91,8 +92,10 @@ export async function stockIn(
   if (!productId || !(qty > 0)) return { error: "Enter the quantity received." };
 
   const supabase = await createClient();
+  const branchId = await getWriteBranchId(supabase, profile.branch_id);
   const { error } = await supabase.from("inventory_txns").insert({
     product_id: productId,
+    branch_id: branchId,
     type: "in",
     qty,
     unit_cost: unitCost,
@@ -127,8 +130,10 @@ export async function adjustStock(
   if (!reason) return { error: "A reason is required for adjustments." };
 
   const supabase = await createClient();
+  const branchId = await getWriteBranchId(supabase, profile.branch_id);
   const { error } = await supabase.from("inventory_txns").insert({
     product_id: productId,
+    branch_id: branchId,
     type: "adjustment",
     qty,
     reason,

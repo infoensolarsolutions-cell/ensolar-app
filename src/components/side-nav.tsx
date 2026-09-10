@@ -62,6 +62,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
       title: "Settings",
       items: [
         { href: "/settings/users", label: "👤 Users & Roles" },
+        { href: "/settings/branches", label: "🏢 Branches" },
         { href: "/settings/contract-template", label: "📜 Contract Template" },
         { href: "/settings/certificate-template", label: "🏅 Certificate Template" },
         { href: "/settings/completion-template", label: "🏁 Completion Template" },
