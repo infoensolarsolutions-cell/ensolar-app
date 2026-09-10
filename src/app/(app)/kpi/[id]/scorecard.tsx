@@ -195,19 +195,19 @@ export function Scorecard({
 
       {/* Criteria */}
       <div className="space-y-3">
-        {KPI_CRITERIA.map((c, idx) => {
-          const s = scores.find((x) => x.key === c.key)!;
+        {scores.map((s, idx) => {
+          const desc = s.desc ?? KPI_CRITERIA.find((c) => c.key === s.key)?.desc ?? "";
           return (
-            <div key={c.key} className="rounded-xl border border-gray-200 bg-white p-3">
+            <div key={s.key} className="rounded-xl border border-gray-200 bg-white p-3">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm font-semibold text-gray-800">
-                  {idx + 1}. {c.name}
+                  {idx + 1}. {s.criterion}
                 </p>
                 <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">
-                  {c.weight}%
+                  {s.weight}%
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-gray-500">{c.desc}</p>
+              <p className="mt-0.5 text-xs text-gray-500">{desc}</p>
               <div className="mt-2 space-y-2">
                 <div>
                   <label className="text-[11px] font-semibold text-gray-500">
@@ -220,7 +220,7 @@ export function Scorecard({
                     <RatingTicks
                       value={s.self}
                       disabled={locked}
-                      onChange={(v) => setRating(c.key, "self", v)}
+                      onChange={(v) => setRating(s.key, "self", v)}
                     />
                   ) : (
                     s.self !== null && (
@@ -240,7 +240,7 @@ export function Scorecard({
                         <RatingTicks
                           value={s.sup}
                           disabled={locked || !canRate.sup}
-                          onChange={(v) => setRating(c.key, "sup", v)}
+                          onChange={(v) => setRating(s.key, "sup", v)}
                         />
                       )}
                     </div>
@@ -255,7 +255,7 @@ export function Scorecard({
                           <RatingTicks
                             value={s.sup2 ?? null}
                             disabled={locked || !canRate.sup2}
-                            onChange={(v) => setRating(c.key, "sup2", v)}
+                            onChange={(v) => setRating(s.key, "sup2", v)}
                           />
                         )}
                       </div>
@@ -266,7 +266,7 @@ export function Scorecard({
                         <RatingTicks
                           value={s.mgr}
                           disabled={locked}
-                          onChange={(v) => setRating(c.key, "mgr", v)}
+                          onChange={(v) => setRating(s.key, "mgr", v)}
                         />
                       ) : (
                         <p className="text-sm font-bold text-gray-700">

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createEvaluation } from "./actions";
+import { KPI_TEMPLATES, type KpiTemplateKey } from "@/lib/kpi";
 
 const inputClass =
   "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-green focus:outline-none";
@@ -53,6 +54,18 @@ export function NewEvaluationForm({
       <input type="hidden" name="employee_name" value={selected?.name ?? ""} />
       <input type="hidden" name="employee_position" value={selected?.employee_position ?? ""} />
       <input name="period" placeholder="Evaluation period (e.g. Q3 2026) *" required className={inputClass} />
+      <div>
+        <label className="text-xs text-gray-500">Scorecard type</label>
+        <select name="template_key" defaultValue="field" className={inputClass}>
+          {(Object.keys(KPI_TEMPLATES) as KpiTemplateKey[]).map((k) => (
+            <option key={k} value={k}>{KPI_TEMPLATES[k].label}</option>
+          ))}
+        </select>
+        <p className="mt-0.5 text-[11px] text-gray-400">
+          Field: workmanship, safety, productivity. Office Admin: bookkeeping
+          accuracy, payroll &amp; remittance deadlines, HR files, customer handling.
+        </p>
+      </div>
       <select name="supervisor_employee_id" defaultValue="" className={inputClass}>
         <option value="">Assigned supervisor — pick a name…</option>
         {employees

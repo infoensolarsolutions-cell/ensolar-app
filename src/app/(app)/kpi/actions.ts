@@ -5,7 +5,10 @@ import { revalidatePath } from "next/cache";
 import { getProfile, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { emptyScores, isComplete, RATING_MAX, RATING_MIN, type KpiScore } from "@/lib/kpi";
+import {
+  emptyScores, isComplete, KPI_TEMPLATES, RATING_MAX, RATING_MIN,
+  type KpiScore, type KpiTemplateKey,
+} from "@/lib/kpi";
 
 function clampRating(v: unknown): number | null {
   const n = Number(v);
@@ -25,6 +28,10 @@ export async function createEvaluation(
   // rate; names are resolved server-side for display.
   const supervisorEmployeeId = String(formData.get("supervisor_employee_id") ?? "") || null;
   const supervisor2EmployeeId = String(formData.get("supervisor2_employee_id") ?? "") || null;
+
+  const templateRaw = String(formData.get("template_key") ?? "field");
+  const templateKey: KpiTemplateKey =
+    templateRaw in KPI_TEMPLATES ? (templateRaw as KpiTemplateKey) : "field";
 
   if (!employeeId || !employeeName) return { error: "Pick an employee." };
   if (supervisorEmployeeId === employeeId || supervisor2EmployeeId === employeeId) {
@@ -60,7 +67,7 @@ export async function createEvaluation(
       supervisor2_name: supervisor2Name,
       supervisor_employee_id: supervisorEmployeeId,
       supervisor2_employee_id: supervisor2EmployeeId,
-      scores: emptyScores(),
+      scores: emptyScores(templateKey),
       created_by: profile.id,
     })
     .select("id")
