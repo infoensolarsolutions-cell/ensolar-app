@@ -13,6 +13,7 @@ export type Profile = {
   role: UserRole;
   active: boolean;
   email: string;
+  branch_id: string | null;
 };
 
 // Returns the signed-in user's profile, or null when signed out.
@@ -25,7 +26,7 @@ export async function getProfile(): Promise<Profile | null> {
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, name, phone, role, active")
+    .select("id, name, phone, role, active, branch_id")
     .eq("id", user.id)
     .single();
   if (!data) return null;

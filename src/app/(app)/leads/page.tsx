@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBranch, getBranches } from "@/lib/branch";
 import { type LeadStatus, type ServiceType } from "@/lib/crm";
 import { todayManila } from "@/lib/format";
 import { type BoardLead } from "./board";
@@ -22,15 +23,17 @@ type LeadRow = {
 export default async function LeadsPage() {
   await requireRole("owner", "office_staff");
   const supabase = await createClient();
+  const activeBranch = await getActiveBranch(await getBranches(supabase));
 
-  const { data: leads } = await supabase
+  let leadsQuery = supabase
     .from("leads")
     .select(
       "id, status, service_type, next_followup_at, customers (name, phone), profiles:assigned_to (name)",
     )
     .order("next_followup_at", { ascending: true, nullsFirst: false })
-    .limit(300)
-    .overrideTypes<LeadRow[]>();
+    .limit(300);
+  if (activeBranch !== "all") leadsQuery = leadsQuery.eq("branch_id", activeBranch);
+  const { data: leads } = await leadsQuery.overrideTypes<LeadRow[]>();
 
   const today = todayManila();
   const boardLeads: BoardLead[] = (leads ?? []).map((lead) => {

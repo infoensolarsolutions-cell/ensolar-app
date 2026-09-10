@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getWriteBranchId } from "@/lib/branch";
 import { todayManila } from "@/lib/format";
 
 export async function addExpense(
@@ -22,9 +23,11 @@ export async function addExpense(
   }
 
   const supabase = await createClient();
+  const branchId = await getWriteBranchId(supabase, profile.branch_id);
   const savedDate = date || todayManila();
   const { error } = await supabase.from("expenses").insert({
     category,
+    branch_id: branchId,
     description: description || null,
     amount,
     date: savedDate,

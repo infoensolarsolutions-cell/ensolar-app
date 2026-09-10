@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getWriteBranchId } from "@/lib/branch";
 import { tomorrowManila } from "@/lib/crm";
 
 export async function createLead(
@@ -33,6 +34,7 @@ export async function createLead(
   }
 
   const supabase = await createClient();
+  const branchId = await getWriteBranchId(supabase, profile.branch_id);
 
   const { data: customer, error: customerError } = await supabase
     .from("customers")
@@ -56,6 +58,7 @@ export async function createLead(
     .from("leads")
     .insert({
       customer_id: customer.id,
+      branch_id: branchId,
       service_type: serviceType,
       assigned_to: profile.id,
       next_followup_at: followupAt,

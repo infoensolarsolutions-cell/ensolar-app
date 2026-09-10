@@ -472,6 +472,47 @@ export default async function DashboardPage() {
     },
   };
 
+  // Branch overview: one card per branch, shown once a second branch
+  // exists. Payments derive their branch from the project.
+  type BranchCard = {
+    id: string; name: string; code: string;
+    revenue: number; spent: number; activeProjects: number;
+  };
+  let branchCards: BranchCard[] | null = null;
+  {
+    const { getBranches } = await import("@/lib/branch");
+    const branches = (await getBranches(supabase)).filter((b) => b.active);
+    if (branches.length > 1) {
+      const [payB, posB, projB, expB] = await Promise.all([
+        supabase.from("payments").select("amount, projects (branch_id)").gte("received_at", monthStart).limit(5000),
+        supabase.from("pos_sales").select("total, branch_id").gte("sold_at", monthStart).limit(5000),
+        supabase.from("projects").select("status, branch_id").in("status", ["pending", "ongoing"]).limit(2000),
+        supabase.from("expenses").select("amount, branch_id").gte("date", monthStart).limit(5000),
+      ]);
+      branchCards = branches.map((b) => {
+        const collections = (payB.data ?? [])
+          .filter((p) => {
+            const proj = Array.isArray(p.projects) ? p.projects[0] : p.projects;
+            return proj?.branch_id === b.id;
+          })
+          .reduce((s, p) => s + Number(p.amount), 0);
+        const pos = (posB.data ?? [])
+          .filter((x) => x.branch_id === b.id)
+          .reduce((s, x) => s + Number(x.total), 0);
+        return {
+          id: b.id,
+          name: b.name,
+          code: b.code,
+          revenue: collections + pos,
+          spent: (expB.data ?? [])
+            .filter((x) => x.branch_id === b.id)
+            .reduce((s, x) => s + Number(x.amount), 0),
+          activeProjects: (projB.data ?? []).filter((x) => x.branch_id === b.id).length,
+        };
+      });
+    }
+  }
+
   // Owner-only warning strip: red/amber business KPIs surface here so a
   // problem is visible the moment the app opens.
   let kpiAlert: { bad: number; warn: number; headlines: string[] } | null = null;
@@ -519,6 +560,29 @@ export default async function DashboardPage() {
               </p>
             )}
           </Link>
+        </div>
+      )}
+      {branchCards && (
+        <div className="px-4 pt-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">
+            🏢 Branches — {monthLabel}
+          </p>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            {branchCards.map((b) => (
+              <div key={b.id} className="rounded-xl border border-gray-200 bg-white p-3">
+                <p className="truncate text-sm font-bold text-gray-900">{b.name}</p>
+                <p className="mt-1 text-lg font-extrabold text-brand-green-dark">
+                  {formatPeso(b.revenue)}
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  revenue · {formatPeso(b.spent)} expenses
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  {b.activeProjects} active project{b.activeProjects === 1 ? "" : "s"}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       <DashboardView data={data} />

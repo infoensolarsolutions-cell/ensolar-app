@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getWriteBranchId } from "@/lib/branch";
 
 type CartItem = { product_id: string; qty: number };
 
@@ -58,6 +59,7 @@ export async function completeSale(
   if (discount > subtotal) return { error: "Discount cannot exceed the subtotal." };
   const total = Math.round((subtotal - discount) * 100) / 100;
 
+  const branchId = await getWriteBranchId(supabase, profile.branch_id);
   const { data: saleNo, error: noError } = await supabase.rpc("next_doc_no", {
     p_doc_type: "S",
   });
@@ -67,6 +69,7 @@ export async function completeSale(
     .from("pos_sales")
     .insert({
       sale_no: saleNo,
+      branch_id: branchId,
       lines,
       subtotal,
       discount,
@@ -85,6 +88,7 @@ export async function completeSale(
   const { error: txnError } = await supabase.from("inventory_txns").insert(
     lines.map((l) => ({
       product_id: l.product_id,
+      branch_id: branchId,
       type: "sale",
       qty: -l.qty,
       unit_cost: 0,
