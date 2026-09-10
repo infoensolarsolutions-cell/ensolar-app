@@ -6,6 +6,7 @@ export type KpiScore = {
   key: string;
   criterion: string;
   weight: number;
+  desc?: string; // stored at creation so each scorecard is self-contained
   self: number | null;
   sup: number | null;
   sup2?: number | null; // second supervisor (optional; older rows lack it)
@@ -26,7 +27,10 @@ export const RATING_WORDS: Record<number, string> = {
 export const SCALE_NOTE =
   "1 Poor · 2 Below average · 3 Average · 4 Satisfactory · 5 Excellent";
 
-export const KPI_CRITERIA: { key: string; name: string; desc: string; weight: number }[] = [
+export type KpiCriterion = { key: string; name: string; desc: string; weight: number };
+
+// Field / technical crew scorecard (the original template).
+const FIELD_CRITERIA: KpiCriterion[] = [
   { key: "attendance", name: "Attendance & punctuality", weight: 10,
     desc: "Clock-in/out record vs the 8:00–17:00 schedule; unexcused absences" },
   { key: "quality", name: "Quality of workmanship", weight: 15,
@@ -49,9 +53,45 @@ export const KPI_CRITERIA: { key: string; name: string; desc: string; weight: nu
     desc: "Follows house rules, honesty, proper conduct as Ensolar's representative" },
 ];
 
-export function emptyScores(): KpiScore[] {
-  return KPI_CRITERIA.map((c) => ({
-    key: c.key, criterion: c.name, weight: c.weight, self: null, sup: null, sup2: null, mgr: null,
+// Office admin scorecard: HR, accounting/bookkeeping, and general office
+// duties, tied to the modules the admin actually works in.
+const OFFICE_ADMIN_CRITERIA: KpiCriterion[] = [
+  { key: "attendance", name: "Attendance & punctuality", weight: 10,
+    desc: "Clock-in/out record vs the office schedule; unexcused absences" },
+  { key: "records", name: "Accuracy of records & bookkeeping", weight: 15,
+    desc: "Payments, expenses and receipts encoded correctly and completely; OR numbers in sequence; errors found on review" },
+  { key: "money_timeliness", name: "Timeliness of collections, payroll & remittances", weight: 15,
+    desc: "Due milestones followed up, payroll released on schedule, SSS/PhilHealth/Pag-IBIG and BIR deadlines never missed" },
+  { key: "compliance", name: "Statutory & BIR compliance work", weight: 10,
+    desc: "Books of accounts kept current, filings prepared ahead of deadlines, permits and registrations renewed on time" },
+  { key: "hr_admin", name: "HR administration", weight: 10,
+    desc: "201 files complete, attendance and leave records maintained, KPI and employment paperwork prepared without follow-up" },
+  { key: "customer_service", name: "Customer & phone handling", weight: 10,
+    desc: "Inquiries answered promptly and courteously; messages relayed; follow-ups logged in the system" },
+  { key: "system_use", name: "Use of the business system", weight: 10,
+    desc: "Leads, quotations, payments and expenses encoded the same day and categorized correctly; app kept as the single source of truth" },
+  { key: "organization", name: "Office organization & filing", weight: 5,
+    desc: "Documents findable in minutes; supplies stocked; office presentable to visitors" },
+  { key: "initiative", name: "Initiative & problem-solving", weight: 5,
+    desc: "Flags unpaid balances, missing receipts and anomalies without being told; suggests improvements" },
+  { key: "confidentiality", name: "Confidentiality & values", weight: 10,
+    desc: "Payroll, financial and customer data kept private; honesty; follows house rules" },
+];
+
+export const KPI_TEMPLATES = {
+  field: { label: "Field / Technical crew", criteria: FIELD_CRITERIA },
+  office_admin: { label: "Office Admin (HR, accounting & office)", criteria: OFFICE_ADMIN_CRITERIA },
+} as const;
+export type KpiTemplateKey = keyof typeof KPI_TEMPLATES;
+
+// Legacy alias: older stored scorecards lack per-row descriptions and are
+// looked up against the original field criteria.
+export const KPI_CRITERIA = FIELD_CRITERIA;
+
+export function emptyScores(template: KpiTemplateKey = "field"): KpiScore[] {
+  return KPI_TEMPLATES[template].criteria.map((c) => ({
+    key: c.key, criterion: c.name, weight: c.weight, desc: c.desc,
+    self: null, sup: null, sup2: null, mgr: null,
   }));
 }
 
