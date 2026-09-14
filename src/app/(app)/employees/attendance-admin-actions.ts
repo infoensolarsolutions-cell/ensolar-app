@@ -130,3 +130,61 @@ export async function deleteLeave(
   revalidatePath(`/employees/${employeeId}`);
   return {};
 }
+
+// ── Personnel development: trainings, seminars, certifications ────────────
+
+export async function addTraining(
+  _prev: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  const profile = await requireRole("owner");
+  const employeeId = String(formData.get("employee_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim().slice(0, 200);
+  const provider = String(formData.get("provider") ?? "").trim().slice(0, 200);
+  const type = String(formData.get("type") ?? "training");
+  const dateFrom = String(formData.get("date_from") ?? "");
+  const dateTo = String(formData.get("date_to") ?? "") || null;
+  const venue = String(formData.get("venue") ?? "").trim().slice(0, 200);
+  const certificate = String(formData.get("certificate") ?? "") === "yes";
+  const notes = String(formData.get("notes") ?? "").trim().slice(0, 500);
+
+  if (!employeeId || !title) return { error: "Title is required." };
+  if (!dateFrom) return { error: "Start date is required." };
+  if (!["training", "seminar", "certification", "workshop", "other"].includes(type)) {
+    return { error: "Choose an activity type." };
+  }
+  if (dateTo && dateTo < dateFrom) return { error: "End date is before start date." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("employee_trainings").insert({
+    employee_id: employeeId,
+    title,
+    provider: provider || null,
+    type,
+    date_from: dateFrom,
+    date_to: dateTo,
+    venue: venue || null,
+    certificate,
+    notes: notes || null,
+    created_by: profile.id,
+  });
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  revalidatePath(`/employees/${employeeId}`);
+  return {};
+}
+
+export async function deleteTraining(
+  trainingId: string,
+  employeeId: string,
+): Promise<{ error?: string }> {
+  await requireRole("owner");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("employee_trainings")
+    .delete()
+    .eq("id", trainingId);
+  if (error) return { error: `Could not delete: ${error.message}` };
+  revalidatePath(`/employees/${employeeId}`);
+  return {};
+}

@@ -9,6 +9,7 @@ import { EmployeeForm } from "../employee-form";
 import { AttendanceAdmin, type AttendanceEntry } from "./attendance-admin";
 import { LeavesPanel, type LeaveRow } from "./leaves-panel";
 import { AdvancesPanel, type AdvanceRow } from "./advances-panel";
+import { TrainingsPanel, type TrainingRow } from "./trainings-panel";
 
 export const metadata: Metadata = { title: "Employee" };
 
@@ -26,6 +27,7 @@ export default async function EmployeeDetailPage({
     { data: attendance },
     { data: leaves },
     { data: advances },
+    { data: trainings },
     { data: profiles },
     { data: linked },
     { data: workSetting },
@@ -49,6 +51,12 @@ export default async function EmployeeDetailPage({
       .eq("employee_id", id)
       .order("date", { ascending: false })
       .limit(30),
+    supabase
+      .from("employee_trainings")
+      .select("id, title, provider, type, date_from, date_to, venue, certificate, notes")
+      .eq("employee_id", id)
+      .order("date_from", { ascending: false })
+      .limit(50),
     supabase
       .from("profiles")
       .select("id, name, role")
@@ -88,6 +96,7 @@ export default async function EmployeeDetailPage({
       <div className="space-y-4 px-4 pb-4">
         <AttendanceAdmin employeeId={id} entries={entries} />
         <LeavesPanel employeeId={id} leaves={(leaves ?? []) as LeaveRow[]} />
+        <TrainingsPanel employeeId={id} trainings={(trainings ?? []) as TrainingRow[]} />
         <AdvancesPanel
           employeeId={id}
           advances={((advances ?? []) as AdvanceRow[]).map((a) => ({
