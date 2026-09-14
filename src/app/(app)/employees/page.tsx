@@ -71,6 +71,12 @@ export default async function EmployeesPage() {
           >
             📥 Export CSV
           </a>
+          <Link
+            href="/employees/development"
+            className="rounded-xl border border-brand-green px-4 py-3.5 text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
+          >
+            🎓 Development
+          </Link>
         </div>
         {!employees?.length && (
           <p className="pt-6 text-center text-sm text-gray-500">No employees yet.</p>

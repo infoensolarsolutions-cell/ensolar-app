@@ -43,6 +43,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/attendance", label: "🕐 Attendance" },
         { href: "/kiosk", label: "🖥️ Attendance Kiosk" },
         { href: "/employees", label: "👥 Employees" },
+        { href: "/employees/development", label: "🎓 Trainings" },
         { href: "/kpi", label: "📈 KPI Evaluations" },
         { href: "/payroll", label: "💵 Payroll" },
       ],
