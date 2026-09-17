@@ -125,6 +125,18 @@ export function QuotationBuilder({
     setRows((cur) => cur.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
+  // Splice a blank row in right after the given one, so an item can be added
+  // mid-list without removing everything below it.
+  function insertBelow(key: number) {
+    setRows((cur) => {
+      const idx = cur.findIndex((r) => r.key === key);
+      const blank: Row = { key: nextKey++, product_id: null, description: "", qty: "1", unit: "", unit_price: "" };
+      const next = [...cur];
+      next.splice(idx + 1, 0, blank);
+      return next;
+    });
+  }
+
   function pickProduct(key: number, productId: string) {
     const p = products.find((x) => x.id === productId);
     if (!p) {
@@ -239,15 +251,24 @@ export function QuotationBuilder({
           <div key={row.key} className="rounded-xl border border-gray-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-700">Item {idx + 1}</p>
-              {rows.length > 1 && (
+              <div className="flex items-center gap-4">
                 <button
                   type="button"
-                  onClick={() => setRows((cur) => cur.filter((r) => r.key !== row.key))}
-                  className="text-sm font-medium text-red-600"
+                  onClick={() => insertBelow(row.key)}
+                  className="text-sm font-medium text-brand-green-dark"
                 >
-                  Remove
+                  ＋ Insert below
                 </button>
-              )}
+                {rows.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setRows((cur) => cur.filter((r) => r.key !== row.key))}
+                    className="text-sm font-medium text-red-600"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
 
             {products.length > 0 && (
