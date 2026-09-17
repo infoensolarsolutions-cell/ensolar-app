@@ -38,6 +38,15 @@ export default async function ChatPage({
 
   if (!contact) notFound();
 
+  // Opening the thread marks this sender's messages as read, clearing the
+  // unread badge on the next poll.
+  await supabase
+    .from("messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("recipient_id", profile.id)
+    .eq("sender_id", userId)
+    .is("read_at", null);
+
   return (
     <>
       <TopBar
