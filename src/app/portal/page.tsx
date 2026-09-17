@@ -37,6 +37,12 @@ export default async function PortalPage({
 
   const supabase = await createClient();
 
+  const { count: unreadCount } = await supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("recipient_id", profile.id)
+    .is("read_at", null);
+
   const { data: announcements } = await supabase
     .from("announcements")
     .select("id, title, body")
@@ -119,6 +125,23 @@ export default async function PortalPage({
         <p className="text-sm text-gray-700 lg:col-span-full">
           Welcome, <span className="font-semibold">{profile.name || "Customer"}</span>
         </p>
+
+        <a
+          href="/portal/messages"
+          className="flex items-center justify-between rounded-xl border border-brand-green bg-white px-4 py-3 lg:col-span-full"
+        >
+          <span className="text-sm font-semibold text-brand-green-dark">
+            💬 Message Ensolar — questions, concerns, or good news welcome
+          </span>
+          <span className="flex items-center gap-2">
+            {(unreadCount ?? 0) > 0 && (
+              <span className="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                {unreadCount}
+              </span>
+            )}
+            <span className="text-gray-400">›</span>
+          </span>
+        </a>
 
         {announcements?.map((a) => (
           <div key={a.id} className="rounded-xl border border-brand-yellow bg-brand-yellow/15 px-4 py-3">
