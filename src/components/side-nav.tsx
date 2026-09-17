@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/lib/auth-shared";
+import { UnreadBadge } from "@/components/unread-badge";
 
 type Item = { href: string; label: string };
 type Group = { title: string; items: Item[] };
@@ -153,13 +154,14 @@ export function SideNav({ role }: { role: UserRole }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
                     active
                       ? "bg-brand-green/10 text-brand-green-dark"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {item.label}
+                  {item.href === "/messages" && <UnreadBadge />}
                 </Link>
               );
             })}

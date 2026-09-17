@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UnreadBadge } from "@/components/unread-badge";
 
 const TABS = [
   {
@@ -84,7 +85,10 @@ export function BottomNav({ role }: { role?: string }) {
                 active ? "text-brand-green-dark" : "text-gray-500"
               }`}
             >
-              {tab.icon}
+              <span className="relative">
+                {tab.icon}
+                {tab.href === "/messages" && <UnreadBadge variant="dot" />}
+              </span>
               {tab.label}
             </Link>
           );
