@@ -46,6 +46,23 @@ export default async function MessagesPage() {
     if (!lastTalk.has(other)) lastTalk.set(other, m.created_at);
   }
 
+  // Customers who have a conversation with me (staff see these threads too).
+  const staffIds = new Set((contacts ?? []).map((c) => c.id));
+  const customerIds = [...lastTalk.keys()].filter((id) => !staffIds.has(id));
+  const { data: customerProfiles } = customerIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, name, role")
+        .in("id", customerIds)
+        .eq("role", "customer")
+    : { data: [] };
+  const customers = [...(customerProfiles ?? [])].sort((a, b) => {
+    const ua = unreadBy.get(a.id) ?? 0;
+    const ub = unreadBy.get(b.id) ?? 0;
+    if (ua !== ub) return ub - ua;
+    return (lastTalk.get(b.id) ?? "").localeCompare(lastTalk.get(a.id) ?? "");
+  });
+
   const sorted = [...(contacts ?? [])].sort((a, b) => {
     const ua = unreadBy.get(a.id) ?? 0;
     const ub = unreadBy.get(b.id) ?? 0;
@@ -96,6 +113,45 @@ export default async function MessagesPage() {
             );
           })}
         </div>
+
+        {customers.length > 0 && (
+          <>
+            <p className="pt-1 text-xs font-bold uppercase tracking-wider text-gray-400">
+              Customers
+            </p>
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+              {customers.map((c, i) => {
+                const count = unreadBy.get(c.id) ?? 0;
+                return (
+                  <Link
+                    key={c.id}
+                    href={`/messages/${c.id}`}
+                    className={`flex items-center justify-between gap-3 px-4 py-3.5 active:bg-gray-50 ${
+                      i > 0 ? "border-t border-gray-100" : ""
+                    }`}
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-yellow/40 font-bold text-gray-700">
+                        {(c.name || "?").charAt(0).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className={`truncate ${count ? "font-bold" : "font-medium"} text-gray-900`}>
+                          {c.name || "Customer"}
+                        </p>
+                        <p className="text-xs text-gray-500">Customer</p>
+                      </div>
+                    </div>
+                    {count > 0 && (
+                      <span className="shrink-0 rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-bold text-white">
+                        {count}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </>
   );

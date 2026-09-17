@@ -23,7 +23,6 @@ export default async function ChatPage({
       .from("profiles")
       .select("id, name, role, active")
       .eq("id", userId)
-      .neq("role", "customer")
       .maybeSingle(),
     supabase
       .from("messages")
