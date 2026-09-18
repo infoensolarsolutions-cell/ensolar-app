@@ -24,6 +24,7 @@ export function CostsPanel({
   isOwner,
   isStaff,
   overheadRate = null,
+  durationAlt = null,
 }: {
   projectId: string;
   costs: CostRow[];
@@ -33,6 +34,9 @@ export function CostsPanel({
   // Company opex ÷ revenue over the last 12 months (owner only) — the
   // project's fair share of rent/salaries/etc, for net profit.
   overheadRate?: number | null;
+  // Alternative allocation: this project's days × company overhead per
+  // project-day, so slow projects carry more overhead than quick ones.
+  durationAlt?: { days: number; overhead: number } | null;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +127,13 @@ export function CostsPanel({
             </span>
           </div>
           <p className={`mt-1 text-[11px] font-semibold ${netTone.text}`}>{netTone.label}</p>
+          {durationAlt && (
+            <DurationAltRow
+              alt={durationAlt}
+              grossProfit={profit}
+              contractAmount={contractAmount}
+            />
+          )}
           <p className="mt-0.5 text-[11px] text-gray-500">
             Overhead = this project&apos;s share of company operating expenses
             (salaries, rent, fuel, utilities…), charged at the last 12 months&apos;
@@ -150,6 +161,31 @@ export function CostsPanel({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Second opinion on net profit: overhead charged by how long the project
+// ran instead of by contract size.
+function DurationAltRow({
+  alt,
+  grossProfit,
+  contractAmount,
+}: {
+  alt: { days: number; overhead: number };
+  grossProfit: number;
+  contractAmount: number;
+}) {
+  const net = grossProfit - alt.overhead;
+  const margin = contractAmount > 0 ? (net / contractAmount) * 100 : 0;
+  return (
+    <div className="mt-1.5 border-t border-black/5 pt-1.5 text-[11px] text-gray-600">
+      <span className="font-semibold">By duration instead:</span> {alt.days}{" "}
+      day{alt.days === 1 ? "" : "s"} of overhead = −{formatPeso(alt.overhead)} →
+      net{" "}
+      <span className={`font-bold ${net >= 0 ? "text-green-800" : "text-red-700"}`}>
+        {formatPeso(net)} ({margin.toFixed(1)}%)
+      </span>
     </div>
   );
 }

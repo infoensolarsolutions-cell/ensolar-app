@@ -7,6 +7,7 @@ import { formatPeso } from "@/lib/format";
 import { PROJECT_STATUSES, type ProjectStatus } from "@/lib/crm";
 import {
   overheadRate,
+  projectDuration,
   PROJECT_MARGIN_DANGER,
   PROJECT_MARGIN_HEALTHY,
 } from "@/lib/overhead";
@@ -18,20 +19,28 @@ type ProjectRow = {
   project_no: string;
   status: ProjectStatus;
   contract_amount: number;
+  start_date: string | null;
+  created_at: string;
   completed_date: string | null;
   customers: { name: string } | { name: string }[] | null;
   project_costs: { amount: number }[];
 };
 
-export default async function ProjectProfitPage() {
+export default async function ProjectProfitPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ by?: string }>;
+}) {
   await requireRole("owner");
+  const { by } = await searchParams;
+  const byDuration = by === "duration";
   const supabase = await createClient();
 
   const [{ data: projects }, overhead] = await Promise.all([
     supabase
       .from("projects")
       .select(
-        "id, project_no, status, contract_amount, completed_date, customers (name), project_costs (amount)",
+        "id, project_no, status, contract_amount, start_date, created_at, completed_date, customers (name), project_costs (amount)",
       )
       .limit(1000)
       .overrideTypes<ProjectRow[]>(),
@@ -47,7 +56,10 @@ export default async function ProjectProfitPage() {
         0,
       );
       const gross = contract - directCosts;
-      const overheadShare = contract * overhead.rate;
+      const days = projectDuration(p, overhead.today).days;
+      const overheadShare = byDuration
+        ? days * overhead.perDay
+        : contract * overhead.rate;
       const net = gross - overheadShare;
       const netMargin = contract > 0 ? net / contract : 0;
       return {
@@ -58,6 +70,7 @@ export default async function ProjectProfitPage() {
         contract,
         directCosts,
         gross,
+        days,
         overheadShare,
         net,
         netMargin,
@@ -74,10 +87,26 @@ export default async function ProjectProfitPage() {
   ).length;
   const poor = rows.filter((r) => r.netMargin < PROJECT_MARGIN_DANGER).length;
 
+  const pill = (active: boolean) =>
+    `rounded-full px-4 py-2 text-sm font-semibold ${
+      active
+        ? "bg-brand-green text-white"
+        : "border border-gray-300 bg-white text-gray-700"
+    }`;
+
   return (
     <>
       <TopBar title="Project Profitability" backHref="/more" />
       <div className="space-y-4 p-4">
+        <div className="flex gap-2">
+          <Link href="/reports/project-profit" className={pill(!byDuration)}>
+            💰 By contract size
+          </Link>
+          <Link href="/reports/project-profit?by=duration" className={pill(byDuration)}>
+            📅 By duration
+          </Link>
+        </div>
+
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <div className="rounded-xl border border-gray-200 bg-white p-3">
             <p className="text-xs text-gray-500">Net profit — all projects</p>
@@ -101,13 +130,31 @@ export default async function ProjectProfitPage() {
 
         <p className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs text-blue-900">
           <span className="font-semibold">How net profit is computed:</span>{" "}
-          Contract − direct project costs = gross profit. Then each project is
-          charged its share of company overhead (salaries, rent, fuel,
-          utilities…) at {(overhead.rate * 100).toFixed(1)}% of its contract —
-          the company&apos;s actual overhead rate over the last 12 months
-          (expenses {formatPeso(overhead.opex)} ÷ revenue{" "}
-          {formatPeso(overhead.revenue)}). Worst margins are listed first so
-          you can spot which quotes were priced too low.
+          Contract − direct project costs = gross profit, then minus the
+          project&apos;s share of company overhead (salaries, rent, fuel,
+          utilities…).{" "}
+          {byDuration ? (
+            <>
+              Here overhead is charged{" "}
+              <span className="font-semibold">by how long each project ran</span>:
+              the last 12 months&apos; overhead ({formatPeso(overhead.opex)})
+              spread over {overhead.totalProjectDays.toLocaleString()} combined
+              project-days = {formatPeso(overhead.perDay)} per day a project is
+              open, × each project&apos;s days from start to completion. Slow
+              projects carry more overhead than quick ones.
+            </>
+          ) : (
+            <>
+              Here overhead is charged{" "}
+              <span className="font-semibold">by contract size</span> at{" "}
+              {(overhead.rate * 100).toFixed(1)}% of each contract — the
+              company&apos;s actual overhead rate over the last 12 months
+              (expenses {formatPeso(overhead.opex)} ÷ revenue{" "}
+              {formatPeso(overhead.revenue)}).
+            </>
+          )}{" "}
+          Worst margins are listed first so you can spot which quotes were
+          priced too low{byDuration ? " or which projects dragged on" : ""}.
         </p>
 
         {rows.length === 0 && (
@@ -136,6 +183,8 @@ export default async function ProjectProfitPage() {
                       <p className="text-xs text-gray-600">{r.customer}</p>
                       <p className="text-[11px] text-gray-400">
                         {PROJECT_STATUSES[r.status]}
+                        {byDuration &&
+                          ` · ${r.days} day${r.days === 1 ? "" : "s"}`}
                       </p>
                     </div>
                     <div className="text-right">
