@@ -23,12 +23,16 @@ export function CostsPanel({
   contractAmount,
   isOwner,
   isStaff,
+  overheadRate = null,
 }: {
   projectId: string;
   costs: CostRow[];
   contractAmount: number;
   isOwner: boolean;
   isStaff: boolean;
+  // Company opex ÷ revenue over the last 12 months (owner only) — the
+  // project's fair share of rent/salaries/etc, for net profit.
+  overheadRate?: number | null;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +40,17 @@ export function CostsPanel({
   const totalCosts = costs.reduce((s, c) => s + c.amount, 0);
   const profit = contractAmount - totalCosts;
   const marginPct = contractAmount > 0 ? (profit / contractAmount) * 100 : 0;
+
+  const overheadShare = overheadRate !== null ? contractAmount * overheadRate : 0;
+  const netProfit = profit - overheadShare;
+  const netMargin = contractAmount > 0 ? netProfit / contractAmount : 0;
+  // Same traffic lights as the Business KPI net-margin signal.
+  const netTone =
+    netMargin >= 0.2
+      ? { box: "bg-green-50", text: "text-green-800", label: "✅ Healthy (≥20%)" }
+      : netMargin >= 0.05
+        ? { box: "bg-amber-50", text: "text-amber-800", label: "⚠️ Thin (5–20%)" }
+        : { box: "bg-red-50", text: "text-red-700", label: "🚨 Poor (<5%)" };
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -84,6 +99,35 @@ export function CostsPanel({
           </div>
           <p className="mt-0.5 text-[11px] text-gray-500">
             Contract {formatPeso(contractAmount)} − Costs {formatPeso(totalCosts)}
+          </p>
+        </div>
+      )}
+
+      {isOwner && overheadRate !== null && (
+        <div className={`mt-2 rounded-lg p-3 ${netTone.box}`}>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">
+              Overhead share ({(overheadRate * 100).toFixed(1)}% of contract)
+            </span>
+            <span className="font-semibold text-gray-700">
+              − {formatPeso(overheadShare)}
+            </span>
+          </div>
+          <div className="mt-1.5 flex items-center justify-between border-t border-black/5 pt-1.5">
+            <span className="text-sm font-semibold text-gray-700">Net profit</span>
+            <span className={`text-base font-extrabold ${netTone.text}`}>
+              {formatPeso(netProfit)}
+              <span className="ml-1.5 text-xs font-bold">
+                ({(netMargin * 100).toFixed(1)}%)
+              </span>
+            </span>
+          </div>
+          <p className={`mt-1 text-[11px] font-semibold ${netTone.text}`}>{netTone.label}</p>
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            Overhead = this project&apos;s share of company operating expenses
+            (salaries, rent, fuel, utilities…), charged at the last 12 months&apos;
+            company rate. See all projects compared in Reports → Project
+            Profitability.
           </p>
         </div>
       )}

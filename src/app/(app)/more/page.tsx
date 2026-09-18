@@ -137,6 +137,10 @@ export default async function MorePage() {
               <span className="font-medium text-gray-800">📊 Profit & Loss</span>
               <span className="text-gray-400">›</span>
             </Link>
+            <Link href="/reports/project-profit" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">🎯 Project Profitability</span>
+              <span className="text-gray-400">›</span>
+            </Link>
             <Link href="/reports/receivables" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
               <span className="font-medium text-gray-800">⏰ Receivables Aging</span>
               <span className="text-gray-400">›</span>
