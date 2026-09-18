@@ -29,7 +29,7 @@ import { CustomerEmailsForm } from "./customer-emails-form";
 import { ChecklistsPanel, type ChecklistSummary } from "./checklists-panel";
 import { normalizeItems, type ChecklistItem } from "@/lib/checklists";
 import { deyeEnabled, getCachedHistory, getCachedStation, listStations } from "@/lib/deye";
-import { overheadRate } from "@/lib/overhead";
+import { overheadRate, projectDuration } from "@/lib/overhead";
 import { DeyePanel } from "./deye-panel";
 
 export const metadata: Metadata = { title: "Project" };
@@ -199,9 +199,16 @@ export default async function ProjectDetailPage({
     };
   });
 
-  // Overhead rate for the net-profit box (owner only).
+  // Overhead figures for the net-profit box (owner only): allocation by
+  // contract size, plus the by-duration alternative for this project.
   const overhead =
     profile.role === "owner" ? await overheadRate(supabase) : null;
+  const durationAlt = overhead
+    ? (() => {
+        const d = projectDuration(project, overhead.today);
+        return { days: d.days, overhead: d.days * overhead.perDay };
+      })()
+    : null;
 
   const costRows: CostRow[] = (costs ?? []).map((c) => ({
     id: c.id,
@@ -526,6 +533,7 @@ export default async function ProjectDetailPage({
               isOwner={profile.role === "owner"}
               isStaff={isStaff}
               overheadRate={overhead?.rate ?? null}
+              durationAlt={durationAlt}
             />
             <IssueForm projectId={project.id} products={issueProducts} />
           </>
