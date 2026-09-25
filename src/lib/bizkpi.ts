@@ -87,6 +87,7 @@ export async function computeBusinessKpis(
     ticketRes,
     stockRes,
     maintRes,
+    payablesRes,
   ] = await Promise.all([
     supabase.from("payments").select("amount, received_at").gte("received_at", sixMonthStart).limit(5000),
     supabase.from("pos_sales").select("total, sold_at").gte("sold_at", sixMonthStart).limit(5000),
@@ -133,6 +134,11 @@ export async function computeBusinessKpis(
       .select("id", { count: "exact", head: true })
       .eq("status", "pending")
       .lt("due_date", today),
+    supabase
+      .from("payables")
+      .select("original_amount, due_date, monthly_amount, payable_payments (amount)")
+      .is("settled_at", null)
+      .limit(1000),
   ]);
 
   const kpis: Kpi[] = [];
@@ -269,6 +275,46 @@ export async function computeBusinessKpis(
           : "good",
     advice: "Money overdue loses value and gets harder to collect the longer it sits.",
   });
+
+  // Payables: what the company owes (loans, supplier credit, remittances).
+  // The mirror of receivables — overdue obligations damage credit lines and
+  // supplier trust, so anything past due is red.
+  let payablesTotal = 0;
+  let payablesOverdue = 0;
+  let payablesDueSoon = 0; // next 7 days
+  for (const p of payablesRes.data ?? []) {
+    const paidP = ((p.payable_payments ?? []) as { amount: number }[]).reduce(
+      (s, x) => s + Number(x.amount),
+      0,
+    );
+    const bal = Math.max(0, Number(p.original_amount) - paidP);
+    if (bal <= 0.005) continue;
+    payablesTotal += bal;
+    const nextDue = Math.min(
+      p.monthly_amount === null ? bal : Number(p.monthly_amount),
+      bal,
+    );
+    if (p.due_date && (p.due_date as string) < today) payablesOverdue += nextDue;
+    else if (p.due_date && (p.due_date as string) <= d(today, 7)) payablesDueSoon += nextDue;
+  }
+  kpis.push({
+    group: "Money",
+    label: "Payables (what the company owes)",
+    value: formatPeso(payablesTotal),
+    sub:
+      payablesOverdue > 0.005
+        ? `${formatPeso(payablesOverdue)} OVERDUE`
+        : payablesDueSoon > 0.005
+          ? `${formatPeso(payablesDueSoon)} due within 7 days`
+          : payablesTotal > 0.005
+            ? "nothing due within 7 days"
+            : "record loans & supplier credit in Payables to track this",
+    status:
+      payablesOverdue > 0.005 ? "bad" : payablesDueSoon > 0.005 ? "warn" : "good",
+    advice:
+      "Late payments to banks and suppliers cost penalties, interest, and trust — pay on or before the due date, or renegotiate early.",
+  });
+
 
   const margins = (marginRes.data ?? [])
     .map((p) => {
