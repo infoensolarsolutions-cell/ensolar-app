@@ -55,9 +55,9 @@ export default async function NewContractPage({
     .map((i) => `${i.description}\nQuantity: ${Number(i.qty)}${i.unit ? ` ${i.unit}` : ""}`)
     .join("\n\n") || "(describe the equipment here)";
 
-  // Milestones become numbered clauses 5.2, 5.3, ... slotting into the
-  // template's payment scheme (5.1 = bank accounts, 5.5 = inclusions),
-  // worded exactly like the signed agreements.
+  // Milestones become clauses 5.1, 5.1.2, 5.1.3, ... at the front of the
+  // template's payment scheme (5.2 = bank accounts, 5.3 = inclusions),
+  // numbered exactly like the signed agreement IA-2026-0020.
   const clauseFor = (
     label: string,
     index: number,
@@ -86,7 +86,7 @@ export default async function NewContractPage({
       const figures = Number(m.amount).toLocaleString("en-PH", {
         minimumFractionDigits: 2, maximumFractionDigits: 2,
       });
-      return `5.${i + 2} ${clauseFor(m.label, i, words, figures)}`;
+      return `${i === 0 ? "5.1" : `5.1.${i + 1}`} ${clauseFor(m.label, i, words, figures)}`;
     })
     .join("\n\n") || "(define the payment scheme here)";
 
