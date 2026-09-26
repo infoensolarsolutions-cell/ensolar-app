@@ -74,7 +74,9 @@ export async function saveQuotation(
     // contract amount, with the change logged on the project timeline.
     const { data: existing } = await supabase
       .from("quotations")
-      .select("status, revision_no, lead_id, quote_no")
+      .select(
+        "status, revision_no, revision_date, lead_id, quote_no, project_name, site_location, valid_until, terms, discount, subtotal, total, quotation_items (description, qty, unit, unit_price, line_total, sort_order)",
+      )
       .eq("id", quotationId)
       .single();
     if (!existing) return { error: "Quotation not found." };
@@ -89,6 +91,31 @@ export async function saveQuotation(
     const bumpRevision =
       existing.status !== "draft" && formData.get("bump_revision") === "yes";
     if (bumpRevision) {
+      // Archive the outgoing revision BEFORE overwriting it, so every past
+      // revision stays viewable and printable from the quotation page.
+      const { error: snapError } = await supabase.from("quotation_revisions").insert({
+        quotation_id: quotationId,
+        revision_no: existing.revision_no ?? 0,
+        revision_date: existing.revision_date ?? null,
+        snapshot: {
+          quote_no: existing.quote_no,
+          status: existing.status,
+          project_name: existing.project_name,
+          site_location: existing.site_location,
+          valid_until: existing.valid_until,
+          terms: existing.terms,
+          discount: existing.discount,
+          subtotal: existing.subtotal,
+          total: existing.total,
+          items: [...(existing.quotation_items ?? [])].sort(
+            (a, b) => a.sort_order - b.sort_order,
+          ),
+        },
+        created_by: profile.id,
+      });
+      if (snapError) {
+        return { error: `Could not archive the previous revision, so nothing was changed: ${snapError.message}` };
+      }
       meta.revision_no = Math.max(revisionNo, (existing.revision_no ?? 0) + 1);
       meta.revision_date = todayManila();
     }

@@ -59,6 +59,14 @@ export default async function QuotationDetailPage({
 
   if (!q) notFound();
 
+  // Archived revisions, newest first (snapshots taken each time a revision
+  // was bumped — revisions made before this feature existed have no archive).
+  const { data: revisions } = await supabase
+    .from("quotation_revisions")
+    .select("id, revision_no, revision_date, created_at, snapshot")
+    .eq("quotation_id", id)
+    .order("revision_no", { ascending: false });
+
   const items = [...q.quotation_items].sort((a, b) => a.sort_order - b.sort_order);
   const today = todayManila();
 
@@ -144,6 +152,39 @@ export default async function QuotationDetailPage({
         >
           Download PDF
         </a>
+
+        {(revisions?.length ?? 0) > 0 && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-1 font-semibold text-gray-900">Previous revisions</p>
+            <p className="mb-2 text-xs text-gray-500">
+              Archived automatically each time this quotation was saved as a
+              new revision.
+            </p>
+            <ul className="divide-y divide-gray-100">
+              {revisions!.map((r) => {
+                const snap = r.snapshot as { total?: number } | null;
+                return (
+                  <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                    <div>
+                      <p className="font-medium text-gray-800">Rev {r.revision_no}</p>
+                      <p className="text-xs text-gray-500">
+                        {r.revision_date ? formatDate(r.revision_date) : formatDate(r.created_at)}
+                        {typeof snap?.total === "number" && <> · {formatPeso(snap.total)}</>}
+                      </p>
+                    </div>
+                    <a
+                      href={`/api/quotations/${q.id}/revisions/${r.id}/pdf`}
+                      target="_blank"
+                      className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700"
+                    >
+                      PDF
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {!q.deleted_at && (
           <QuotationActions
