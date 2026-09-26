@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const inputClass =
   "w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30";
@@ -51,7 +52,24 @@ function num(v: string): number {
 const fmt = (n: number, digits = 2) =>
   n.toLocaleString("en-PH", { maximumFractionDigits: digits });
 
-export function SizingCalculator() {
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+export type SizingProduct = {
+  id: string;
+  sku: string;
+  name: string;
+  unit: string;
+  selling_price: number;
+};
+
+export function SizingCalculator({
+  products = [],
+  canQuote = false,
+}: {
+  products?: SizingProduct[];
+  canQuote?: boolean;
+}) {
+  const router = useRouter();
   const [mode, setMode] = useState<"kwh" | "bill">("bill");
   const [monthlyKwhIn, setMonthlyKwhIn] = useState("");
   const [bill, setBill] = useState("");
@@ -61,6 +79,52 @@ export function SizingCalculator() {
   const [panelW, setPanelW] = useState("585");
   const [nightPct, setNightPct] = useState("50");
   const [batteryAh, setBatteryAh] = useState("314");
+
+  // ── Pricing (for the auto-quotation) ────────────────────────────────────
+  const [panelDesc, setPanelDesc] = useState("");
+  const [panelPrice, setPanelPrice] = useState("");
+  const [inverterDesc, setInverterDesc] = useState("");
+  const [inverterPrice, setInverterPrice] = useState("");
+  const [batteryDesc, setBatteryDesc] = useState("");
+  const [batteryPrice, setBatteryPrice] = useState("");
+  const [railPrice, setRailPrice] = useState("");
+  const [endPrice, setEndPrice] = useState("");
+  const [midPrice, setMidPrice] = useState("");
+  const [lfootPrice, setLfootPrice] = useState("");
+  const [bosPct, setBosPct] = useState("30");
+  const [itcPct, setItcPct] = useState("25");
+  const [loadedPrices, setLoadedPrices] = useState(false);
+
+  // Remember typed prices on this device so staff enter them once.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sizing-prices");
+      if (raw) {
+        const p = JSON.parse(raw) as Record<string, string>;
+        if (p.panelPrice) setPanelPrice(p.panelPrice);
+        if (p.inverterPrice) setInverterPrice(p.inverterPrice);
+        if (p.batteryPrice) setBatteryPrice(p.batteryPrice);
+        if (p.railPrice) setRailPrice(p.railPrice);
+        if (p.endPrice) setEndPrice(p.endPrice);
+        if (p.midPrice) setMidPrice(p.midPrice);
+        if (p.lfootPrice) setLfootPrice(p.lfootPrice);
+      }
+    } catch {
+      // Blocked storage — start blank.
+    }
+    setLoadedPrices(true);
+  }, []);
+  useEffect(() => {
+    if (!loadedPrices) return;
+    try {
+      localStorage.setItem(
+        "sizing-prices",
+        JSON.stringify({ panelPrice, inverterPrice, batteryPrice, railPrice, endPrice, midPrice, lfootPrice }),
+      );
+    } catch {
+      // Nothing to do — prices just won't be remembered.
+    }
+  }, [loadedPrices, panelPrice, inverterPrice, batteryPrice, railPrice, endPrice, midPrice, lfootPrice]);
 
   // ── The sizing worksheet, exactly as specified ─────────────────────────
   const monthlyKwh =
@@ -90,6 +154,84 @@ export function SizingCalculator() {
   const endClamps = arrayW > 0 ? Math.ceil(arrayW / 2000) * 4 : 0; // 4 pcs per 2 kW
   const midClamps = Math.max(0, (panels - 2) * 2);
   const lFeet = panels * 3;
+
+  // ── Costing: panels + inverter + battery + mounting, then BOS % on the
+  // sub-total, then Installation/Testing/Commissioning % on the second
+  // sub-total — the company's standard quotation build-up.
+  const panelsCost = panels * num(panelPrice);
+  const inverterCost = num(inverterPrice);
+  const batteryCost = batteryQty * num(batteryPrice);
+  const mountingCost =
+    rails * num(railPrice) +
+    endClamps * num(endPrice) +
+    midClamps * num(midPrice) +
+    lFeet * num(lfootPrice);
+  const sub1 = panelsCost + inverterCost + batteryCost + mountingCost;
+  const bosCost = r2(sub1 * ((num(bosPct) || 0) / 100));
+  const sub2 = sub1 + bosCost;
+  const itcCost = r2(sub2 * ((num(itcPct) || 0) / 100));
+  const totalProject = sub2 + itcCost;
+  const pricingReady = sub1 > 0;
+
+  function createQuotation() {
+    const deyeFit = suggestions.find((s) => s.brand === "Deye")?.fit;
+    const items = [
+      {
+        description:
+          panelDesc.trim() || `Solar PV Module, ${fmt(panelWN, 0)}W, N-type Bifacial`,
+        qty: panels,
+        unit: "pcs",
+        unit_price: num(panelPrice),
+      },
+      {
+        description:
+          inverterDesc.trim() ||
+          `Hybrid Inverter${deyeFit ? `, ${fmt(deyeFit.kw)}kW (${deyeFit.model})` : ""}`,
+        qty: 1,
+        unit: "pc",
+        unit_price: num(inverterPrice),
+      },
+      ...(batteryQty > 0 && num(batteryPrice) > 0
+        ? [{
+            description:
+              batteryDesc.trim() ||
+              `Battery, LiFePO4, ${battery.ah}AH, 51.2V, LV Topsun`,
+            qty: batteryQty,
+            unit: "pcs",
+            unit_price: num(batteryPrice),
+          }]
+        : []),
+      {
+        description: `Mounting materials — aluminum rails 2.4m (${rails} pcs), end clamps (${endClamps} pcs), mid clamps (${midClamps} pcs), L-foot (${lFeet} pcs)`,
+        qty: 1,
+        unit: "lot",
+        unit_price: r2(mountingCost),
+      },
+      {
+        description:
+          "Balance of System (BOS) — DC & AC protection, wiring materials, conduits & fittings, grounding materials",
+        qty: 1,
+        unit: "lot",
+        unit_price: bosCost,
+      },
+      {
+        description: "Installation, Testing & Commissioning",
+        qty: 1,
+        unit: "lot",
+        unit_price: itcCost,
+      },
+    ].filter((i) => i.qty > 0);
+    try {
+      sessionStorage.setItem(
+        "sizing-quotation",
+        JSON.stringify({ items, project_name: `${fmt(arrayW / 1000)} kWp Hybrid Solar PV System` }),
+      );
+    } catch {
+      alert("Could not hand the items to the quotation builder — please copy them manually.");
+      return;
+    }
+    router.push("/quotations/new");
+  }
 
   // Per brand: the smallest inverter whose datasheet max PV fits the array.
   const suggestions = BRANDS.map((brand) => {
@@ -354,6 +496,110 @@ export function SizingCalculator() {
             </ul>
           </div>
 
+          {/* ── Pricing → quotation ── */}
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-1 font-semibold text-gray-900">💰 Pricing → Quotation</p>
+            <p className="mb-3 text-xs text-gray-500">
+              Pick from Products (price auto-fills) or type prices. Prices are
+              remembered on this device.
+            </p>
+
+            <PricedComponent
+              label={`Solar panels — ${panels} pcs`}
+              products={products}
+              desc={panelDesc} setDesc={setPanelDesc}
+              price={panelPrice} setPrice={setPanelPrice}
+              placeholder={`Solar PV Module, ${fmt(panelWN, 0)}W`}
+            />
+            <PricedComponent
+              label="Hybrid inverter — 1 pc"
+              products={products}
+              desc={inverterDesc} setDesc={setInverterDesc}
+              price={inverterPrice} setPrice={setInverterPrice}
+              placeholder="Hybrid Inverter (see suggestion above)"
+            />
+            <PricedComponent
+              label={`Battery — ${batteryQty} pcs`}
+              products={products}
+              desc={batteryDesc} setDesc={setBatteryDesc}
+              price={batteryPrice} setPrice={setBatteryPrice}
+              placeholder={`Battery, LiFePO4, ${battery.ah}AH, 51.2V`}
+            />
+
+            <p className="mb-1 mt-3 text-xs font-semibold text-gray-600">
+              Mounting piece prices (₱ each)
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { l: `Rail ×${rails}`, v: railPrice, s: setRailPrice },
+                { l: `End ×${endClamps}`, v: endPrice, s: setEndPrice },
+                { l: `Mid ×${midClamps}`, v: midPrice, s: setMidPrice },
+                { l: `L-foot ×${lFeet}`, v: lfootPrice, s: setLfootPrice },
+              ].map((f) => (
+                <div key={f.l}>
+                  <label className="text-[10px] text-gray-500">{f.l}</label>
+                  <input
+                    type="number" min="0" step="any" inputMode="decimal"
+                    value={f.v} onChange={(e) => f.s(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 space-y-1 border-t border-gray-100 pt-2 text-sm">
+              <CostRow label={`Solar panels (${panels} × ₱${fmt(num(panelPrice))})`} value={panelsCost} />
+              <CostRow label="Hybrid inverter" value={inverterCost} />
+              <CostRow label={`Battery (${batteryQty} × ₱${fmt(num(batteryPrice))})`} value={batteryCost} />
+              <CostRow label="Mounting materials (summed)" value={mountingCost} />
+              <CostRow label="Sub-total 1" value={sub1} bold />
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1 text-gray-600">
+                  BOS at
+                  <input
+                    type="number" min="0" step="any" inputMode="decimal"
+                    value={bosPct} onChange={(e) => setBosPct(e.target.value)}
+                    className="w-14 rounded border border-gray-300 px-1 py-0.5 text-center text-xs"
+                  />
+                  %
+                </span>
+                <span className="font-medium">₱{fmt(bosCost)}</span>
+              </div>
+              <CostRow label="Sub-total 2" value={sub2} bold />
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1 text-gray-600">
+                  Installation, Testing &amp; Commissioning at
+                  <input
+                    type="number" min="0" step="any" inputMode="decimal"
+                    value={itcPct} onChange={(e) => setItcPct(e.target.value)}
+                    className="w-14 rounded border border-gray-300 px-1 py-0.5 text-center text-xs"
+                  />
+                  %
+                </span>
+                <span className="font-medium">₱{fmt(itcCost)}</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between border-t border-gray-200 pt-2">
+                <span className="text-base font-bold text-gray-900">TOTAL PROJECT COST</span>
+                <span className="text-lg font-extrabold text-brand-green-dark">₱{fmt(totalProject)}</span>
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Discount is left for the owner to decide — set it in the
+                quotation builder.
+              </p>
+            </div>
+
+            {canQuote && (
+              <button
+                type="button"
+                disabled={!pricingReady}
+                onClick={createQuotation}
+                className="mt-3 w-full rounded-xl bg-brand-green px-4 py-3.5 text-base font-semibold text-white active:bg-brand-green-dark disabled:opacity-50"
+              >
+                📄 Create quotation from these results
+              </button>
+            )}
+          </div>
+
           <p className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs text-blue-900">
             <span className="font-semibold">Next step:</span> use this result
             to build the customer&apos;s quotation — create a lead, then a
@@ -363,6 +609,77 @@ export function SizingCalculator() {
           </p>
         </>
       )}
+    </div>
+  );
+}
+
+function CostRow({ label, value, bold = false }: { label: string; value: number; bold?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between ${bold ? "border-t border-gray-100 pt-1 font-bold text-gray-900" : "text-gray-600"}`}>
+      <span>{label}</span>
+      <span className={bold ? "" : "font-medium"}>₱{fmt(value)}</span>
+    </div>
+  );
+}
+
+// One priced component (panel/inverter/battery): optional pick from the
+// Products list (auto-fills description + selling price, still editable),
+// or free-text description with a typed price.
+function PricedComponent({
+  label,
+  products,
+  desc,
+  setDesc,
+  price,
+  setPrice,
+  placeholder,
+}: {
+  label: string;
+  products: SizingProduct[];
+  desc: string;
+  setDesc: (v: string) => void;
+  price: string;
+  setPrice: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="mb-2">
+      <p className="text-xs font-semibold text-gray-600">{label}</p>
+      {products.length > 0 && (
+        <select
+          value=""
+          onChange={(e) => {
+            const p = products.find((x) => x.id === e.target.value);
+            if (!p) return;
+            setDesc(`${p.name} (${p.sku})`);
+            setPrice(String(p.selling_price));
+            e.target.value = "";
+          }}
+          className="mt-1 w-full rounded-lg border border-gray-300 px-2 py-2 text-xs text-gray-600 focus:border-brand-green focus:outline-none"
+        >
+          <option value="">📦 Pick from Products (auto-fills price)…</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} — ₱{p.selling_price.toLocaleString("en-PH")}
+            </option>
+          ))}
+        </select>
+      )}
+      <div className="mt-1 grid grid-cols-3 gap-2">
+        <input
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+          placeholder={placeholder}
+          className="col-span-2 w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+        />
+        <input
+          type="number" min="0" step="any" inputMode="decimal"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="₱ each"
+          className="w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+        />
+      </div>
     </div>
   );
 }
