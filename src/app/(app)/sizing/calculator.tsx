@@ -34,6 +34,15 @@ const INVERTERS: Inverter[] = [
 
 const BRANDS = ["Deye", "Solis", "SRNE"] as const;
 
+// 51.2 V LiFePO4 battery options (kWh = 51.2 V × Ah ÷ 1000). LV Topsun is
+// the house brand; the Ah choices cover the common LV sizes.
+const BATTERY_OPTIONS = [
+  { ah: 100, kwh: 5.12 },
+  { ah: 200, kwh: 10.24 },
+  { ah: 280, kwh: 14.34 },
+  { ah: 314, kwh: 16.08 },
+] as const;
+
 function num(v: string): number {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -50,6 +59,8 @@ export function SizingCalculator() {
   const [psh, setPsh] = useState("4");
   const [factor, setFactor] = useState("1.2");
   const [panelW, setPanelW] = useState("585");
+  const [nightPct, setNightPct] = useState("50");
+  const [batteryAh, setBatteryAh] = useState("314");
 
   // ── The sizing worksheet, exactly as specified ─────────────────────────
   const monthlyKwh =
@@ -65,6 +76,20 @@ export function SizingCalculator() {
   const monthlyProduction = (arrayW * pshN * 30) / 1000; // kWh the array can make
 
   const ready = monthlyKwh > 0 && panelWN > 0;
+
+  // ── Battery: cover the night share of daily use at 80% usable depth ────
+  const nightFrac = Math.min(100, Math.max(0, num(nightPct))) / 100;
+  const requiredBatteryKwh = (kwhPerDay * nightFrac) / 0.8;
+  const battery =
+    BATTERY_OPTIONS.find((b) => b.ah === Number(batteryAh)) ?? BATTERY_OPTIONS[3];
+  const batteryQty =
+    requiredBatteryKwh > 0 ? Math.max(1, Math.ceil(requiredBatteryKwh / battery.kwh)) : 0;
+
+  // ── Mounting materials, per the company's counting rules ───────────────
+  const rails = panels; // 2.4 m aluminum rails = number of panels
+  const endClamps = arrayW > 0 ? Math.ceil(arrayW / 2000) * 4 : 0; // 4 pcs per 2 kW
+  const midClamps = Math.max(0, (panels - 2) * 2);
+  const lFeet = panels * 3;
 
   // Per brand: the smallest inverter whose datasheet max PV fits the array.
   const suggestions = BRANDS.map((brand) => {
@@ -240,11 +265,101 @@ export function SizingCalculator() {
             </p>
           </div>
 
+          {/* ── Battery suggestion ── */}
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 font-semibold text-gray-900">Battery (LiFePO4, 51.2 V)</p>
+            <div className="mb-2 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-500">Night-time use (% of daily)</label>
+                <input
+                  type="number" min="0" max="100" step="any" inputMode="numeric"
+                  value={nightPct} onChange={(e) => setNightPct(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Battery size</label>
+                <select
+                  value={batteryAh}
+                  onChange={(e) => setBatteryAh(e.target.value)}
+                  className={inputClass}
+                >
+                  {BATTERY_OPTIONS.map((b) => (
+                    <option key={b.ah} value={b.ah}>
+                      {b.ah} Ah · {fmt(b.kwh)} kWh
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="text-sm text-gray-700">
+              {fmt(kwhPerDay)} kWh/day × {fmt(nightFrac * 100, 0)}% night use ÷ 80%
+              usable depth = <b>{fmt(requiredBatteryKwh)} kWh needed</b>
+            </p>
+            <div className="mt-2 rounded-lg bg-brand-green/10 p-3 text-center">
+              <p className="text-2xl font-extrabold text-brand-green-dark">
+                {batteryQty} × LV Topsun 51.2 V {battery.ah} Ah
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-gray-700">
+                = {fmt(batteryQty * battery.kwh)} kWh storage ({fmt(battery.kwh)} kWh each)
+              </p>
+            </div>
+            <p className="mt-2 text-[11px] text-gray-500">
+              51.2 V LV batteries match the 48 V-class hybrid inverters above.
+              Check the inverter&apos;s battery charge/discharge current limit
+              and the battery brand&apos;s parallel limit when using several
+              units. Adjust the night-use % for customers who run aircon at
+              night (higher) or mostly daytime loads (lower).
+            </p>
+          </div>
+
+          {/* ── Mounting materials ── */}
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 font-semibold text-gray-900">
+              Mounting materials ({panels} panels · {fmt(arrayW / 1000)} kW)
+            </p>
+            <ul className="divide-y divide-gray-100 text-sm">
+              <li className="flex items-center justify-between py-2">
+                <span className="text-gray-700">
+                  Aluminum rail, 2.4 m
+                  <span className="block text-xs text-gray-400">1 per panel</span>
+                </span>
+                <span className="text-base font-extrabold text-gray-900">{rails} pcs</span>
+              </li>
+              <li className="flex items-center justify-between py-2">
+                <span className="text-gray-700">
+                  End clamps
+                  <span className="block text-xs text-gray-400">
+                    4 pcs per 2 kW → {Math.ceil(arrayW / 2000)} × 4
+                  </span>
+                </span>
+                <span className="text-base font-extrabold text-gray-900">{endClamps} pcs</span>
+              </li>
+              <li className="flex items-center justify-between py-2">
+                <span className="text-gray-700">
+                  Mid clamps
+                  <span className="block text-xs text-gray-400">
+                    ({panels} − 2) × 2
+                  </span>
+                </span>
+                <span className="text-base font-extrabold text-gray-900">{midClamps} pcs</span>
+              </li>
+              <li className="flex items-center justify-between py-2">
+                <span className="text-gray-700">
+                  L-foot
+                  <span className="block text-xs text-gray-400">{panels} × 3</span>
+                </span>
+                <span className="text-base font-extrabold text-gray-900">{lFeet} pcs</span>
+              </li>
+            </ul>
+          </div>
+
           <p className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs text-blue-900">
             <span className="font-semibold">Next step:</span> use this result
             to build the customer&apos;s quotation — create a lead, then a
-            quotation with {panels} × {fmt(panelWN, 0)} W panels and the
-            suggested inverter, or start from a package template.
+            quotation with {panels} × {fmt(panelWN, 0)} W panels, the
+            suggested inverter and battery, and the mounting list above, or
+            start from a package template.
           </p>
         </>
       )}
