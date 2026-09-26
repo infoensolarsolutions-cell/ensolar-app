@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { saveQuotation, saveQuotationTemplate } from "./actions";
 import { formatPeso } from "@/lib/format";
 
@@ -110,6 +110,40 @@ export function QuotationBuilder({
   const [discount, setDiscount] = useState<string>(
     quotation ? String(quotation.discount || "") : "",
   );
+  const [sizingName, setSizingName] = useState<string | null>(null);
+
+  // Hand-off from the Solar PV Sizing calculator: a new quotation opened
+  // right after "Create quotation from these results" starts with the sized
+  // and priced items instead of one blank row.
+  useEffect(() => {
+    if (quotation) return;
+    try {
+      const raw = sessionStorage.getItem("sizing-quotation");
+      if (!raw) return;
+      sessionStorage.removeItem("sizing-quotation");
+      const parsed = JSON.parse(raw) as {
+        items?: { description: string; qty: number; unit?: string | null; unit_price: number }[];
+        project_name?: string;
+      };
+      if (parsed.items?.length) {
+        setRows(
+          parsed.items.map((i) => ({
+            key: nextKey++,
+            product_id: null,
+            description: String(i.description ?? ""),
+            qty: String(i.qty ?? 1),
+            unit: i.unit ?? "",
+            unit_price: String(i.unit_price ?? ""),
+          })),
+        );
+        if (parsed.project_name) setSizingName(parsed.project_name);
+      }
+    } catch {
+      // Malformed hand-off — the blank builder still works.
+    }
+    // Run once on mount for a new quotation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const subtotal = useMemo(
     () =>
@@ -174,8 +208,9 @@ export function QuotationBuilder({
             <label className="text-xs text-gray-500">Project name</label>
             <input
               name="project_name"
+              key={sizingName ?? "no-sizing"}
               placeholder="e.g. Hotel Essencia 74 kWp Solar PV Project"
-              defaultValue={quotation?.project_name ?? ""}
+              defaultValue={quotation?.project_name ?? sizingName ?? ""}
               className={inputClass}
             />
           </div>
