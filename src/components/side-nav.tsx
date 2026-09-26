@@ -25,6 +25,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
       title: "CRM",
       items: [
         { href: "/leads", label: "🧲 Leads" },
+        { href: "/sizing", label: "📐 Solar Sizing" },
         { href: "/quotations", label: "📄 Quotations" },
         { href: "/settings/quotation-templates", label: "📋 Quotation Templates" },
         { href: "/campaigns", label: "📣 Marketing" },
@@ -91,6 +92,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
       title: "CRM",
       items: [
         { href: "/leads", label: "🧲 Leads" },
+        { href: "/sizing", label: "📐 Solar Sizing" },
         { href: "/quotations", label: "📄 Quotations" },
         { href: "/settings/quotation-templates", label: "📋 Quotation Templates" },
         { href: "/campaigns", label: "📣 Marketing" },
@@ -120,6 +122,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/", label: "🏠 Dashboard" },
         { href: "/messages", label: "💬 Messages" },
         { href: "/projects", label: "🏗️ My Projects" },
+        { href: "/sizing", label: "📐 Solar Sizing" },
         { href: "/knowledge", label: "🛠️ Troubleshooting" },
         { href: "/attendance", label: "🕐 My Attendance" },
         { href: "/kpi", label: "📈 My KPI" },
