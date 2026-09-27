@@ -252,14 +252,6 @@ export function SizingCalculator({
             unit_price: num(batteryPrice),
           }]
         : []),
-      ...(qRsd > 0 && num(rsdPrice) > 0
-        ? [{
-            description: rsdDesc.trim() || "Tigo Rapid Shutdown Device (RSD)",
-            qty: qRsd,
-            unit: "pcs",
-            unit_price: num(rsdPrice),
-          }]
-        : []),
       {
         description: `Mounting materials — aluminum rails 2.4m (${qRails} pcs), end clamps (${qEnd} pcs), mid clamps (${qMid} pcs), L-foot (${qLfoot} pcs)`,
         qty: 1,
@@ -273,6 +265,14 @@ export function SizingCalculator({
         unit: "lot",
         unit_price: bosCost,
       },
+      ...(qRsd > 0 && num(rsdPrice) > 0
+        ? [{
+            description: rsdDesc.trim() || "Tigo Rapid Shutdown Device (RSD)",
+            qty: qRsd,
+            unit: "pcs",
+            unit_price: num(rsdPrice),
+          }]
+        : []),
       {
         description: "Installation, Testing & Commissioning",
         qty: 1,
