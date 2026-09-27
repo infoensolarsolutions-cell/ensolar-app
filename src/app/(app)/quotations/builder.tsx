@@ -31,11 +31,18 @@ type Row = {
 const inputClass =
   "w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30";
 
-const DEFAULT_TERMS =
-  "Payment terms: 50% downpayment upon acceptance, 40% upon delivery of materials, 10% upon completion.\nPrices are valid until the date indicated above.";
+const DEFAULT_TERMS = [
+  "PAYMENT TERMS: 50% downpayment after signing of the project installation agreement; 30% after delivery of inverter, solar panels and batteries to the job site; 20% after testing and commissioning.",
+  "PRICE VALIDITY: Prices are in Philippine Pesos, valid for ten (10) days from date of proposal.",
+  "LEAD TIME: Materials available within 1 week from purchase order signing (barring delivery disruptions); installation work is about 1-2 weeks.",
+  "NET METERING: Not included.",
+  "WARRANTIES: Hybrid inverter-5 years; Solar panels-12 years; LiFePO4 battery Gen4-10 years; Tigo RSD-5 years; Installation workmanship-3 years.",
+  "NOTE: Any civil works required are not included in the Quotation.",
+].join("\n");
 
-function plus30(): string {
-  const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+// Default validity matches the terms: ten (10) days from the proposal date.
+function plus10(): string {
+  const d = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(d);
@@ -414,7 +421,7 @@ export function QuotationBuilder({
         </label>
         <input
           id="valid_until" name="valid_until" type="date"
-          defaultValue={quotation?.valid_until ?? plus30()}
+          defaultValue={quotation?.valid_until ?? plus10()}
           className={inputClass}
         />
       </div>
