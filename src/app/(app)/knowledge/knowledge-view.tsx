@@ -16,6 +16,7 @@ export type KbRow = {
   problem: string;
   solution: string;
   source: string | null;
+  created_by: string | null;
   created_at: string;
 };
 
@@ -23,10 +24,12 @@ export function KnowledgeView({
   entries,
   isStaff,
   isOwner,
+  meId,
 }: {
   entries: KbRow[];
   isStaff: boolean;
   isOwner: boolean;
+  meId: string;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<KbCategory | "all">("all");
@@ -88,19 +91,16 @@ export function KnowledgeView({
           ))}
       </div>
 
-      {isStaff && (
-        <>
-          {!showForm ? (
-            <button
-              onClick={() => setShowForm(true)}
-              className="w-full rounded-lg bg-brand-green px-4 py-3 text-sm font-semibold text-white active:bg-brand-green-dark"
-            >
-              + Add problem &amp; solution
-            </button>
-          ) : (
-            <EntryForm onDone={() => setShowForm(false)} />
-          )}
-        </>
+      {/* The whole team contributes — solutions from the field are the point. */}
+      {!showForm ? (
+        <button
+          onClick={() => setShowForm(true)}
+          className="w-full rounded-lg bg-brand-green px-4 py-3 text-sm font-semibold text-white active:bg-brand-green-dark"
+        >
+          + Add problem &amp; solution
+        </button>
+      ) : (
+        <EntryForm onDone={() => setShowForm(false)} />
       )}
       {isOwner && <ImportTicketsButton />}
 
@@ -115,7 +115,12 @@ export function KnowledgeView({
       )}
 
       {filtered.map((e) => (
-        <EntryCard key={e.id} entry={e} isStaff={isStaff} isOwner={isOwner} />
+        <EntryCard
+          key={e.id}
+          entry={e}
+          canEdit={isStaff || e.created_by === meId}
+          isOwner={isOwner}
+        />
       ))}
     </div>
   );
@@ -166,11 +171,11 @@ function ImportTicketsButton() {
 
 function EntryCard({
   entry,
-  isStaff,
+  canEdit,
   isOwner,
 }: {
   entry: KbRow;
-  isStaff: boolean;
+  canEdit: boolean;
   isOwner: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -212,7 +217,7 @@ function EntryCard({
               {entry.source && ` · from ${entry.source}`}
             </span>
             <span className="flex gap-3">
-              {isStaff && (
+              {canEdit && (
                 <button onClick={() => setEditing(true)} className="text-brand-green-dark underline">
                   edit
                 </button>

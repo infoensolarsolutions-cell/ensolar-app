@@ -13,7 +13,7 @@ export default async function KnowledgePage() {
 
   const { data: entries } = await supabase
     .from("kb_issues")
-    .select("id, category, brand, model, problem, solution, source, created_at")
+    .select("id, category, brand, model, problem, solution, source, created_by, created_at")
     .order("created_at", { ascending: false })
     .limit(500)
     .overrideTypes<KbRow[]>();
@@ -25,6 +25,7 @@ export default async function KnowledgePage() {
         entries={entries ?? []}
         isStaff={isStaff}
         isOwner={profile.role === "owner"}
+        meId={profile.id}
       />
     </>
   );
