@@ -25,12 +25,21 @@ const INVERTERS: Inverter[] = [
   { brand: "Deye", model: "SUN-8K-SG01LP1", kw: 8, maxPvW: 10400, phase: "1φ" },
   { brand: "Deye", model: "SUN-10K-SG04LP3", kw: 10, maxPvW: 13000, phase: "3φ" },
   { brand: "Deye", model: "SUN-12K-SG04LP3", kw: 12, maxPvW: 15600, phase: "3φ" },
+  { brand: "Deye", model: "SUN-16K-SG01LP1", kw: 16, maxPvW: 20800, phase: "1φ" },
+  { brand: "Deye", model: "SUN-20K-SG01HP3 (HV)", kw: 20, maxPvW: 26000, phase: "3φ" },
+  { brand: "Deye", model: "SUN-30K-SG01HP3 (HV)", kw: 30, maxPvW: 39000, phase: "3φ" },
+  { brand: "Deye", model: "SUN-50K-SG01HP3 (HV)", kw: 50, maxPvW: 65000, phase: "3φ" },
   { brand: "Solis", model: "S6-EH1P3.6K-L-PLUS", kw: 3.6, maxPvW: 5760, phase: "1φ" },
   { brand: "Solis", model: "S6-EH1P5K-L-PLUS", kw: 5, maxPvW: 8000, phase: "1φ" },
   { brand: "Solis", model: "S6-EH1P6K-L-PLUS", kw: 6, maxPvW: 9600, phase: "1φ" },
   { brand: "Solis", model: "S6-EH1P8K-L-PLUS", kw: 8, maxPvW: 12800, phase: "1φ" },
+  { brand: "Solis", model: "S6-EH3P10K02-NV-YD-L", kw: 10, maxPvW: 16000, phase: "3φ" },
+  { brand: "Solis", model: "S6-EH3P15K02-NV-YD-L", kw: 15, maxPvW: 24000, phase: "3φ" },
+  { brand: "Solis", model: "S6-EH3P29.9K-H (HV)", kw: 29.9, maxPvW: 47840, phase: "3φ" },
+  { brand: "Solis", model: "S6-EH3P50K-H (HV)", kw: 50, maxPvW: 80000, phase: "3φ" },
   { brand: "SRNE", model: "HYP4850S100-H (5 kW)", kw: 5, maxPvW: 6000, phase: "1φ" },
   { brand: "SRNE", model: "HESP48100U200-H (10 kW)", kw: 10, maxPvW: 12000, phase: "1φ" },
+  { brand: "SRNE", model: "HESP48120U200-H (12 kW)", kw: 12, maxPvW: 14400, phase: "1φ" },
 ];
 
 const BRANDS = ["Deye", "Solis", "SRNE"] as const;
@@ -390,9 +399,10 @@ export function SizingCalculator({
                     </>
                   ) : (
                     <p className="text-sm text-gray-700">
-                      Array exceeds the largest {brand} unit here ({largest.model},{" "}
-                      max PV {fmt(largest.maxPvW, 0)} W) — consider two units in
-                      parallel or a bigger three-phase model.
+                      The array is beyond even the largest {brand} hybrid
+                      listed here ({largest.model}, max PV{" "}
+                      {fmt(largest.maxPvW, 0)} W) — a system this size needs a
+                      commercial-scale design by the engineer.
                     </p>
                   )}
                 </div>
@@ -400,10 +410,11 @@ export function SizingCalculator({
             </div>
             <p className="mt-2 text-[11px] text-gray-500">
               Max PV figures are from the manufacturers&apos; datasheets (Deye
-              ≈130% of rated AC, Solis S6 ≈160%, SRNE ≈120%). Verify against
-              the datasheet of the exact unit on hand, and check string
-              voltage (Voc at low temperature) and MPPT current limits before
-              final design.
+              ≈130% of rated AC, Solis S6 ≈160%, SRNE ≈120%). Models marked
+              (HV) use high-voltage battery stacks instead of the 51.2 V LV
+              units below. Verify against the datasheet of the exact unit on
+              hand, and check string voltage (Voc at low temperature) and
+              MPPT current limits before final design.
             </p>
           </div>
 
