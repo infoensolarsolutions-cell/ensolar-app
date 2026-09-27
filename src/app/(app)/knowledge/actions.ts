@@ -20,7 +20,7 @@ export async function addKbIssue(
   _prev: { error?: string; saved?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; saved?: boolean }> {
-  const profile = await requireRole("owner", "office_staff");
+  const profile = await requireRole("owner", "office_staff", "technician");
   const fields = readFields(formData);
   if (!(fields.category in KB_CATEGORIES)) return { error: "Choose a category." };
   if (!fields.problem) return { error: "Describe the problem." };
@@ -40,7 +40,9 @@ export async function updateKbIssue(
   _prev: { error?: string; saved?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; saved?: boolean }> {
-  await requireRole("owner", "office_staff");
+  // Technicians may edit only their own entries — enforced by RLS, which
+  // returns zero updated rows for someone else's entry.
+  await requireRole("owner", "office_staff", "technician");
   const id = String(formData.get("id") ?? "");
   const fields = readFields(formData);
   if (!id) return { error: "Missing entry reference." };
@@ -55,7 +57,7 @@ export async function updateKbIssue(
     .eq("id", id)
     .select("id");
   if (error) return { error: `Could not save: ${error.message}` };
-  if (!updated?.length) return { error: "Entry not found." };
+  if (!updated?.length) return { error: "Entry not found (or it isn't yours to edit)." };
 
   revalidatePath("/knowledge");
   return { saved: true };
