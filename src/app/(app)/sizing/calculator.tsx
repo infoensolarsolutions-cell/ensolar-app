@@ -120,6 +120,8 @@ export function SizingCalculator({
   const [inverterPrice, setInverterPrice] = useState("");
   const [batteryDesc, setBatteryDesc] = useState("");
   const [batteryPrice, setBatteryPrice] = useState("");
+  const [rsdDesc, setRsdDesc] = useState("");
+  const [rsdPrice, setRsdPrice] = useState("");
   const [railPrice, setRailPrice] = useState("");
   const [endPrice, setEndPrice] = useState("");
   const [midPrice, setMidPrice] = useState("");
@@ -140,6 +142,7 @@ export function SizingCalculator({
         if (p.panelPrice) setPanelPrice(p.panelPrice);
         if (p.inverterPrice) setInverterPrice(p.inverterPrice);
         if (p.batteryPrice) setBatteryPrice(p.batteryPrice);
+        if (p.rsdPrice) setRsdPrice(p.rsdPrice);
         if (p.railPrice) setRailPrice(p.railPrice);
         if (p.endPrice) setEndPrice(p.endPrice);
         if (p.midPrice) setMidPrice(p.midPrice);
@@ -155,12 +158,12 @@ export function SizingCalculator({
     try {
       localStorage.setItem(
         "sizing-prices",
-        JSON.stringify({ panelPrice, inverterPrice, batteryPrice, railPrice, endPrice, midPrice, lfootPrice }),
+        JSON.stringify({ panelPrice, inverterPrice, batteryPrice, rsdPrice, railPrice, endPrice, midPrice, lfootPrice }),
       );
     } catch {
       // Nothing to do — prices just won't be remembered.
     }
-  }, [loadedPrices, panelPrice, inverterPrice, batteryPrice, railPrice, endPrice, midPrice, lfootPrice]);
+  }, [loadedPrices, panelPrice, inverterPrice, batteryPrice, rsdPrice, railPrice, endPrice, midPrice, lfootPrice]);
 
   // ── The sizing worksheet, exactly as specified ─────────────────────────
   const monthlyKwh =
@@ -198,6 +201,8 @@ export function SizingCalculator({
   const qPanels = effQty(qtyOv.panel, panels);
   const qInverter = effQty(qtyOv.inverter, 1);
   const qBattery = effQty(qtyOv.battery, batteryQty);
+  // Tigo RSD: default one unit per panel (adjust for TS4-A-2F duo units).
+  const qRsd = effQty(qtyOv.rsd, panels);
   const qRails = effQty(qtyOv.rail, rails);
   const qEnd = effQty(qtyOv.end, endClamps);
   const qMid = effQty(qtyOv.mid, midClamps);
@@ -206,12 +211,13 @@ export function SizingCalculator({
   const panelsCost = qPanels * num(panelPrice);
   const inverterCost = qInverter * num(inverterPrice);
   const batteryCost = qBattery * num(batteryPrice);
+  const rsdCost = qRsd * num(rsdPrice);
   const mountingCost =
     qRails * num(railPrice) +
     qEnd * num(endPrice) +
     qMid * num(midPrice) +
     qLfoot * num(lfootPrice);
-  const sub1 = panelsCost + inverterCost + batteryCost + mountingCost;
+  const sub1 = panelsCost + inverterCost + batteryCost + rsdCost + mountingCost;
   const bosCost = r2(sub1 * ((num(bosPct) || 0) / 100));
   const sub2 = sub1 + bosCost;
   const itcCost = r2(sub2 * ((num(itcPct) || 0) / 100));
@@ -240,10 +246,18 @@ export function SizingCalculator({
         ? [{
             description:
               batteryDesc.trim() ||
-              `Battery, LiFePO4, ${battery.ah}AH, 51.2V, LV Topsun`,
+              `Battery, LiFePO4, ${battery.ah}AH, 51.2V, Gen4, LV Topsun`,
             qty: qBattery,
             unit: "pcs",
             unit_price: num(batteryPrice),
+          }]
+        : []),
+      ...(qRsd > 0 && num(rsdPrice) > 0
+        ? [{
+            description: rsdDesc.trim() || "Tigo Rapid Shutdown Device (RSD)",
+            qty: qRsd,
+            unit: "pcs",
+            unit_price: num(rsdPrice),
           }]
         : []),
       {
@@ -488,7 +502,7 @@ export function SizingCalculator({
             </p>
             <div className="mt-2 rounded-lg bg-brand-green/10 p-3 text-center">
               <p className="text-2xl font-extrabold text-brand-green-dark">
-                {batteryQty} × LV Topsun 51.2 V {battery.ah} Ah
+                {batteryQty} × LV Topsun Gen4 51.2 V {battery.ah} Ah
               </p>
               <p className="mt-0.5 text-sm font-semibold text-gray-700">
                 = {fmt(batteryQty * battery.kwh)} kWh storage ({fmt(battery.kwh)} kWh each)
@@ -582,7 +596,17 @@ export function SizingCalculator({
               qtyPlaceholder={String(batteryQty)}
               desc={batteryDesc} setDesc={setBatteryDesc}
               price={batteryPrice} setPrice={setBatteryPrice}
-              placeholder={`Battery, LiFePO4, ${battery.ah}AH, 51.2V`}
+              placeholder={`Battery, LiFePO4, ${battery.ah}AH, 51.2V, Gen4`}
+            />
+            <PricedComponent
+              label="Tigo RSD (rapid shutdown)"
+              products={products}
+              qty={qtyOv.rsd ?? String(panels)}
+              setQty={(v) => setQtyOv("rsd", v)}
+              qtyPlaceholder={String(panels)}
+              desc={rsdDesc} setDesc={setRsdDesc}
+              price={rsdPrice} setPrice={setRsdPrice}
+              placeholder="Tigo Rapid Shutdown Device (RSD) — set qty 0 if not offered"
             />
 
             <p className="mb-1 mt-3 text-xs font-semibold text-gray-600">
@@ -620,6 +644,7 @@ export function SizingCalculator({
               <CostRow label={`Solar panels (${fmt(qPanels, 2)} × ₱${fmt(num(panelPrice))})`} value={panelsCost} />
               <CostRow label={`Hybrid inverter (${fmt(qInverter, 2)} × ₱${fmt(num(inverterPrice))})`} value={inverterCost} />
               <CostRow label={`Battery (${fmt(qBattery, 2)} × ₱${fmt(num(batteryPrice))})`} value={batteryCost} />
+              <CostRow label={`Tigo RSD (${fmt(qRsd, 2)} × ₱${fmt(num(rsdPrice))})`} value={rsdCost} />
               <CostRow label="Mounting materials (summed)" value={mountingCost} />
               <CostRow label="Sub-total 1" value={sub1} bold />
               <div className="flex items-center justify-between gap-2">
