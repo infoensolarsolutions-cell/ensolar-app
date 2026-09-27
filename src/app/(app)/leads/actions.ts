@@ -191,9 +191,19 @@ export async function deleteLead(leadId: string): Promise<{ error?: string }> {
     .eq("id", leadId)
     .single();
   if (!lead) return { error: "Lead not found." };
-  if (lead.status !== "new_inquiry") {
-    return { error: "Only leads still in New Inquiry can be deleted. Move it to Lost instead." };
+  // Any quotation (even a binned one) still references this lead, and losing
+  // a lead with real sales history would skew the win-rate stats anyway.
+  const { count: leadQuotes } = await supabase
+    .from("quotations")
+    .select("id", { count: "exact", head: true })
+    .eq("lead_id", leadId);
+  if (leadQuotes) {
+    return {
+      error:
+        "This lead has a quotation on record — mark the lead Lost instead, or permanently delete its quotation(s) from the Recycle Bin first.",
+    };
   }
+
 
   const { error } = await supabase.from("leads").delete().eq("id", leadId);
   if (error) {

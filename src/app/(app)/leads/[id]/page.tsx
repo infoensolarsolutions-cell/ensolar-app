@@ -256,7 +256,7 @@ export default async function LeadDetailPage({
           staff={staff ?? []}
         />
 
-        {profile.role === "owner" && lead.status === "new_inquiry" && (
+        {profile.role === "owner" && (
           <DeleteLeadButton leadId={lead.id} />
         )}
 
