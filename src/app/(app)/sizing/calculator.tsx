@@ -25,7 +25,12 @@ const INVERTERS: Inverter[] = [
   { brand: "Deye", model: "SUN-8K-SG01LP1", kw: 8, maxPvW: 10400, phase: "1φ" },
   { brand: "Deye", model: "SUN-10K-SG04LP3", kw: 10, maxPvW: 13000, phase: "3φ" },
   { brand: "Deye", model: "SUN-12K-SG04LP3", kw: 12, maxPvW: 15600, phase: "3φ" },
-  { brand: "Deye", model: "SUN-16K-SG01LP1", kw: 16, maxPvW: 20800, phase: "1φ" },
+  // SG01LP1-EU-AM3-P single-phase LV series: datasheet "Max. PV Access
+  // Power" allows up to 200% oversizing; battery range 40–60 V (LV).
+  { brand: "Deye", model: "SUN-12K-SG01LP1-AM3-P", kw: 12, maxPvW: 24000, phase: "1φ" },
+  { brand: "Deye", model: "SUN-14K-SG01LP1-AM3-P", kw: 14, maxPvW: 28000, phase: "1φ" },
+  { brand: "Deye", model: "SUN-16K-SG01LP1-AM3-P", kw: 16, maxPvW: 32000, phase: "1φ" },
+  { brand: "Deye", model: "SUN-18K-SG01LP1-AM3-P", kw: 18, maxPvW: 36000, phase: "1φ" },
   { brand: "Deye", model: "SUN-20K-SG01HP3 (HV)", kw: 20, maxPvW: 26000, phase: "3φ" },
   { brand: "Deye", model: "SUN-30K-SG01HP3 (HV)", kw: 30, maxPvW: 39000, phase: "3φ" },
   { brand: "Deye", model: "SUN-50K-SG01HP3 (HV)", kw: 50, maxPvW: 65000, phase: "3φ" },
@@ -410,11 +415,12 @@ export function SizingCalculator({
             </div>
             <p className="mt-2 text-[11px] text-gray-500">
               Max PV figures are from the manufacturers&apos; datasheets (Deye
-              ≈130% of rated AC, Solis S6 ≈160%, SRNE ≈120%). Models marked
-              (HV) use high-voltage battery stacks instead of the 51.2 V LV
-              units below. Verify against the datasheet of the exact unit on
-              hand, and check string voltage (Voc at low temperature) and
-              MPPT current limits before final design.
+              SG03/SG04 ≈130% of rated AC; Deye SG01LP1 AM3-P uses the Max. PV
+              Access Power at up to 200%; Solis S6 ≈160%; SRNE ≈120%). Models
+              marked (HV) use high-voltage battery stacks instead of the
+              51.2 V LV units below. Verify against the datasheet of the
+              exact unit on hand, and check string voltage (Voc at low
+              temperature) and MPPT current limits before final design.
             </p>
           </div>
 
