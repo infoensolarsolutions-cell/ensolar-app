@@ -39,8 +39,13 @@ const INVERTERS: Inverter[] = [
   { brand: "Solis", model: "S6-EH1P5K-L-PLUS", kw: 5, maxPvW: 8000, phase: "1φ" },
   { brand: "Solis", model: "S6-EH1P6K-L-PLUS", kw: 6, maxPvW: 9600, phase: "1φ" },
   { brand: "Solis", model: "S6-EH1P8K-L-PLUS", kw: 8, maxPvW: 12800, phase: "1φ" },
-  { brand: "Solis", model: "S6-EH3P10K02-NV-YD-L", kw: 10, maxPvW: 16000, phase: "3φ" },
-  { brand: "Solis", model: "S6-EH3P15K02-NV-YD-L", kw: 15, maxPvW: 24000, phase: "3φ" },
+  // S6-EH3P…-L three-phase LV series (battery 40–60 V): sized on the
+  // datasheet's "Max. usable PV input power" (160% of rated AC).
+  { brand: "Solis", model: "S6-EH3P8K-L", kw: 8, maxPvW: 12800, phase: "3φ" },
+  { brand: "Solis", model: "S6-EH3P10K-L", kw: 10, maxPvW: 16000, phase: "3φ" },
+  { brand: "Solis", model: "S6-EH3P12K-L", kw: 12, maxPvW: 19200, phase: "3φ" },
+  { brand: "Solis", model: "S6-EH3P15K-L", kw: 15, maxPvW: 24000, phase: "3φ" },
+  { brand: "Solis", model: "S6-EH3P18K-L", kw: 18, maxPvW: 28800, phase: "3φ" },
   { brand: "Solis", model: "S6-EH3P29.9K-H (HV)", kw: 29.9, maxPvW: 47840, phase: "3φ" },
   { brand: "Solis", model: "S6-EH3P50K-H (HV)", kw: 50, maxPvW: 80000, phase: "3φ" },
   { brand: "SRNE", model: "HYP4850S100-H (5 kW)", kw: 5, maxPvW: 6000, phase: "1φ" },
