@@ -48,9 +48,14 @@ const INVERTERS: Inverter[] = [
   { brand: "Solis", model: "S6-EH3P18K-L", kw: 18, maxPvW: 28800, phase: "3φ" },
   { brand: "Solis", model: "S6-EH3P29.9K-H (HV)", kw: 29.9, maxPvW: 47840, phase: "3φ" },
   { brand: "Solis", model: "S6-EH3P50K-H (HV)", kw: 50, maxPvW: 80000, phase: "3φ" },
-  { brand: "SRNE", model: "HYP4850S100-H (5 kW)", kw: 5, maxPvW: 6000, phase: "1φ" },
-  { brand: "SRNE", model: "HESP48100U200-H (10 kW)", kw: 10, maxPvW: 12000, phase: "1φ" },
-  { brand: "SRNE", model: "HESP48120U200-H (12 kW)", kw: 12, maxPvW: 14400, phase: "1φ" },
+  // SRNE HESP 48 V single-phase hybrids, sized on the datasheets' "Max. PV
+  // Input Power" (S200-H: two MPPTs summed; S300/S340/S380-H: three MPPTs).
+  { brand: "SRNE", model: "HESP4880S200-H (8.8 kW)", kw: 8.8, maxPvW: 11000, phase: "1φ" },
+  { brand: "SRNE", model: "HESP48100S200-H (10 kW)", kw: 10, maxPvW: 11000, phase: "1φ" },
+  { brand: "SRNE", model: "HESP48120S200-H (12 kW)", kw: 12, maxPvW: 13200, phase: "1φ" },
+  { brand: "SRNE", model: "HESP48140S300-H (14 kW)", kw: 14, maxPvW: 22400, phase: "1φ" },
+  { brand: "SRNE", model: "HESP48160S340-H (16 kW)", kw: 16, maxPvW: 25600, phase: "1φ" },
+  { brand: "SRNE", model: "HESP48180S380-H (18 kW)", kw: 18, maxPvW: 28800, phase: "1φ" },
 ];
 
 const BRANDS = ["Deye", "Solis", "SRNE"] as const;
@@ -420,13 +425,13 @@ export function SizingCalculator({
               ))}
             </div>
             <p className="mt-2 text-[11px] text-gray-500">
-              Max PV figures are from the manufacturers&apos; datasheets (Deye
-              SG03/SG04 ≈130% of rated AC; Deye SG01LP1 AM3-P uses the Max. PV
-              Input Power, 160% of rated AC; Solis S6 ≈160%; SRNE ≈120%).
-              Models marked (HV) use high-voltage battery stacks instead of
-              the 51.2 V LV units below. Verify against the datasheet of the
-              exact unit on hand, and check string voltage (Voc at low
-              temperature) and MPPT current limits before final design.
+              Max PV figures use each datasheet&apos;s Max. PV Input Power
+              (Deye SG03/SG04 ≈130% of rated AC; Deye SG01LP1 AM3-P, Solis S6
+              and SRNE HESP from their datasheets). Models marked (HV) use
+              high-voltage battery stacks instead of the 51.2 V LV units
+              below. Verify against the datasheet of the exact unit on hand,
+              and check string voltage (Voc at low temperature) and MPPT
+              current limits before final design.
             </p>
           </div>
 
