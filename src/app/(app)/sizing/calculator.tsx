@@ -74,6 +74,14 @@ function num(v: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+// Effective quantity: an edited value wins; empty/blank means "use the
+// computed count".
+function effQty(ov: string | undefined, computed: number): number {
+  if (ov === undefined || ov.trim() === "") return computed;
+  const n = Number(ov);
+  return Number.isFinite(n) && n >= 0 ? n : computed;
+}
+
 const fmt = (n: number, digits = 2) =>
   n.toLocaleString("en-PH", { maximumFractionDigits: digits });
 
@@ -119,6 +127,9 @@ export function SizingCalculator({
   const [bosPct, setBosPct] = useState("30");
   const [itcPct, setItcPct] = useState("25");
   const [loadedPrices, setLoadedPrices] = useState(false);
+  // Quantity overrides for the quotation: absent/empty = computed count.
+  const [qtyOv, setQtyOvState] = useState<Record<string, string>>({});
+  const setQtyOv = (k: string, v: string) => setQtyOvState((p) => ({ ...p, [k]: v }));
 
   // Remember typed prices on this device so staff enter them once.
   useEffect(() => {
@@ -182,15 +193,24 @@ export function SizingCalculator({
 
   // ── Costing: panels + inverter + battery + mounting, then BOS % on the
   // sub-total, then Installation/Testing/Commissioning % on the second
-  // sub-total — the company's standard quotation build-up.
-  const panelsCost = panels * num(panelPrice);
-  const inverterCost = num(inverterPrice);
-  const batteryCost = batteryQty * num(batteryPrice);
+  // sub-total — the company's standard quotation build-up. Quantities
+  // default to the computed counts but staff can override any of them.
+  const qPanels = effQty(qtyOv.panel, panels);
+  const qInverter = effQty(qtyOv.inverter, 1);
+  const qBattery = effQty(qtyOv.battery, batteryQty);
+  const qRails = effQty(qtyOv.rail, rails);
+  const qEnd = effQty(qtyOv.end, endClamps);
+  const qMid = effQty(qtyOv.mid, midClamps);
+  const qLfoot = effQty(qtyOv.lfoot, lFeet);
+
+  const panelsCost = qPanels * num(panelPrice);
+  const inverterCost = qInverter * num(inverterPrice);
+  const batteryCost = qBattery * num(batteryPrice);
   const mountingCost =
-    rails * num(railPrice) +
-    endClamps * num(endPrice) +
-    midClamps * num(midPrice) +
-    lFeet * num(lfootPrice);
+    qRails * num(railPrice) +
+    qEnd * num(endPrice) +
+    qMid * num(midPrice) +
+    qLfoot * num(lfootPrice);
   const sub1 = panelsCost + inverterCost + batteryCost + mountingCost;
   const bosCost = r2(sub1 * ((num(bosPct) || 0) / 100));
   const sub2 = sub1 + bosCost;
@@ -204,7 +224,7 @@ export function SizingCalculator({
       {
         description:
           panelDesc.trim() || `Solar PV Module, ${fmt(panelWN, 0)}W, N-type Bifacial`,
-        qty: panels,
+        qty: qPanels,
         unit: "pcs",
         unit_price: num(panelPrice),
       },
@@ -212,22 +232,22 @@ export function SizingCalculator({
         description:
           inverterDesc.trim() ||
           `Hybrid Inverter${deyeFit ? `, ${fmt(deyeFit.kw)}kW (${deyeFit.model})` : ""}`,
-        qty: 1,
-        unit: "pc",
+        qty: qInverter,
+        unit: qInverter === 1 ? "pc" : "pcs",
         unit_price: num(inverterPrice),
       },
-      ...(batteryQty > 0 && num(batteryPrice) > 0
+      ...(qBattery > 0 && num(batteryPrice) > 0
         ? [{
             description:
               batteryDesc.trim() ||
               `Battery, LiFePO4, ${battery.ah}AH, 51.2V, LV Topsun`,
-            qty: batteryQty,
+            qty: qBattery,
             unit: "pcs",
             unit_price: num(batteryPrice),
           }]
         : []),
       {
-        description: `Mounting materials — aluminum rails 2.4m (${rails} pcs), end clamps (${endClamps} pcs), mid clamps (${midClamps} pcs), L-foot (${lFeet} pcs)`,
+        description: `Mounting materials — aluminum rails 2.4m (${qRails} pcs), end clamps (${qEnd} pcs), mid clamps (${qMid} pcs), L-foot (${qLfoot} pcs)`,
         qty: 1,
         unit: "lot",
         unit_price: r2(mountingCost),
@@ -529,56 +549,77 @@ export function SizingCalculator({
             <p className="mb-1 font-semibold text-gray-900">💰 Pricing → Quotation</p>
             <p className="mb-3 text-xs text-gray-500">
               Pick from Products (price auto-fills) or type prices. Prices are
-              remembered on this device.
+              remembered on this device. Quantities start at the computed
+              counts — edit any of them; clear the box to go back to the
+              computed number.
             </p>
 
             <PricedComponent
-              label={`Solar panels — ${panels} pcs`}
+              label="Solar panels"
               products={products}
+              qty={qtyOv.panel ?? String(panels)}
+              setQty={(v) => setQtyOv("panel", v)}
+              qtyPlaceholder={String(panels)}
               desc={panelDesc} setDesc={setPanelDesc}
               price={panelPrice} setPrice={setPanelPrice}
               placeholder={`Solar PV Module, ${fmt(panelWN, 0)}W`}
             />
             <PricedComponent
-              label="Hybrid inverter — 1 pc"
+              label="Hybrid inverter"
               products={products}
+              qty={qtyOv.inverter ?? "1"}
+              setQty={(v) => setQtyOv("inverter", v)}
+              qtyPlaceholder="1"
               desc={inverterDesc} setDesc={setInverterDesc}
               price={inverterPrice} setPrice={setInverterPrice}
               placeholder="Hybrid Inverter (see suggestion above)"
             />
             <PricedComponent
-              label={`Battery — ${batteryQty} pcs`}
+              label="Battery"
               products={products}
+              qty={qtyOv.battery ?? String(batteryQty)}
+              setQty={(v) => setQtyOv("battery", v)}
+              qtyPlaceholder={String(batteryQty)}
               desc={batteryDesc} setDesc={setBatteryDesc}
               price={batteryPrice} setPrice={setBatteryPrice}
               placeholder={`Battery, LiFePO4, ${battery.ah}AH, 51.2V`}
             />
 
             <p className="mb-1 mt-3 text-xs font-semibold text-gray-600">
-              Mounting piece prices (₱ each)
+              Mounting pieces (qty · ₱ each)
             </p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {[
-                { l: `Rail ×${rails}`, v: railPrice, s: setRailPrice },
-                { l: `End ×${endClamps}`, v: endPrice, s: setEndPrice },
-                { l: `Mid ×${midClamps}`, v: midPrice, s: setMidPrice },
-                { l: `L-foot ×${lFeet}`, v: lfootPrice, s: setLfootPrice },
+                { l: "Rail 2.4m", k: "rail", c: rails, v: railPrice, s: setRailPrice },
+                { l: "End clamp", k: "end", c: endClamps, v: endPrice, s: setEndPrice },
+                { l: "Mid clamp", k: "mid", c: midClamps, v: midPrice, s: setMidPrice },
+                { l: "L-foot", k: "lfoot", c: lFeet, v: lfootPrice, s: setLfootPrice },
               ].map((f) => (
-                <div key={f.l}>
+                <div key={f.k}>
                   <label className="text-[10px] text-gray-500">{f.l}</label>
-                  <input
-                    type="number" min="0" step="any" inputMode="decimal"
-                    value={f.v} onChange={(e) => f.s(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
-                  />
+                  <div className="grid grid-cols-2 gap-1">
+                    <input
+                      type="number" min="0" step="any" inputMode="numeric"
+                      value={qtyOv[f.k] ?? String(f.c)}
+                      placeholder={String(f.c)}
+                      onChange={(e) => setQtyOv(f.k, e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+                    />
+                    <input
+                      type="number" min="0" step="any" inputMode="decimal"
+                      value={f.v} onChange={(e) => f.s(e.target.value)}
+                      placeholder="₱"
+                      className="w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
 
             <div className="mt-3 space-y-1 border-t border-gray-100 pt-2 text-sm">
-              <CostRow label={`Solar panels (${panels} × ₱${fmt(num(panelPrice))})`} value={panelsCost} />
-              <CostRow label="Hybrid inverter" value={inverterCost} />
-              <CostRow label={`Battery (${batteryQty} × ₱${fmt(num(batteryPrice))})`} value={batteryCost} />
+              <CostRow label={`Solar panels (${fmt(qPanels, 2)} × ₱${fmt(num(panelPrice))})`} value={panelsCost} />
+              <CostRow label={`Hybrid inverter (${fmt(qInverter, 2)} × ₱${fmt(num(inverterPrice))})`} value={inverterCost} />
+              <CostRow label={`Battery (${fmt(qBattery, 2)} × ₱${fmt(num(batteryPrice))})`} value={batteryCost} />
               <CostRow label="Mounting materials (summed)" value={mountingCost} />
               <CostRow label="Sub-total 1" value={sub1} bold />
               <div className="flex items-center justify-between gap-2">
@@ -652,10 +693,13 @@ function CostRow({ label, value, bold = false }: { label: string; value: number;
 
 // One priced component (panel/inverter/battery): optional pick from the
 // Products list (auto-fills description + selling price, still editable),
-// or free-text description with a typed price.
+// or free-text description, with editable quantity and unit price.
 function PricedComponent({
   label,
   products,
+  qty,
+  setQty,
+  qtyPlaceholder,
   desc,
   setDesc,
   price,
@@ -664,6 +708,9 @@ function PricedComponent({
 }: {
   label: string;
   products: SizingProduct[];
+  qty: string;
+  setQty: (v: string) => void;
+  qtyPlaceholder: string;
   desc: string;
   setDesc: (v: string) => void;
   price: string;
@@ -693,20 +740,33 @@ function PricedComponent({
           ))}
         </select>
       )}
-      <div className="mt-1 grid grid-cols-3 gap-2">
-        <input
-          value={desc}
-          onChange={(e) => setDesc(e.target.value)}
-          placeholder={placeholder}
-          className="col-span-2 w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
-        />
-        <input
-          type="number" min="0" step="any" inputMode="decimal"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="₱ each"
-          className="w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
-        />
+      <input
+        value={desc}
+        onChange={(e) => setDesc(e.target.value)}
+        placeholder={placeholder}
+        className="mt-1 w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+      />
+      <div className="mt-1 grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] text-gray-500">Qty</label>
+          <input
+            type="number" min="0" step="any" inputMode="numeric"
+            value={qty}
+            placeholder={qtyPlaceholder}
+            onChange={(e) => setQty(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] text-gray-500">₱ each</label>
+          <input
+            type="number" min="0" step="any" inputMode="decimal"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="₱ each"
+            className="w-full rounded-lg border border-gray-300 px-2 py-2.5 text-sm focus:border-brand-green focus:outline-none"
+          />
+        </div>
       </div>
     </div>
   );
