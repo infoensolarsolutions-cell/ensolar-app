@@ -13,16 +13,25 @@ export async function createContract(
   const projectId = String(formData.get("project_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   const docTypeRaw = String(formData.get("doc_type") ?? "contract");
-  const docType = ["certificate", "completion"].includes(docTypeRaw) ? docTypeRaw : "contract";
+  const docType = ["certificate", "completion", "commissioning", "specs"].includes(docTypeRaw)
+    ? docTypeRaw
+    : "contract";
   if (!projectId || body.length < 100) {
     return { error: "The document text looks empty." };
   }
 
   const supabase = await createClient();
-  // Both certificate kinds store doc_type 'certificate'; the number prefix
-  // (COC vs COMP) tells them apart everywhere they are listed.
+  // All non-contract documents store doc_type 'certificate'; the number
+  // prefix (COC/COMP/ETC/SPEC) tells them apart everywhere they are listed.
+  const prefixByType: Record<string, string> = {
+    contract: "IA",
+    certificate: "COC",
+    completion: "COMP",
+    commissioning: "ETC",
+    specs: "SPEC",
+  };
   const { data: contractNo, error: noError } = await supabase.rpc("next_doc_no", {
-    p_doc_type: docType === "completion" ? "COMP" : docType === "certificate" ? "COC" : "IA",
+    p_doc_type: prefixByType[docType],
   });
   if (noError || !contractNo) return { error: "Could not generate a document number." };
 
@@ -115,6 +124,8 @@ const TEMPLATE_KEYS: Record<string, string> = {
   solar_contract: "/settings/contract-template",
   compliance_certificate: "/settings/certificate-template",
   completion_certificate: "/settings/completion-template",
+  commissioning_report: "/settings/commissioning-template",
+  equipment_specs: "/settings/specs-template",
 };
 
 export async function saveTemplate(

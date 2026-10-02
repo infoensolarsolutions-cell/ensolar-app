@@ -12,13 +12,18 @@ export function ContractEditor({
   projectId?: string;
   contractId?: string;
   initialBody: string;
-  docType?: "contract" | "certificate" | "completion";
+  docType?: "contract" | "certificate" | "completion" | "commissioning" | "specs";
 }) {
   const [state, formAction, pending] = useActionState(
     contractId ? updateContract : createContract,
     null,
   );
-  const noun = docType === "contract" ? "contract" : "certificate";
+  const noun =
+    docType === "contract"
+      ? "contract"
+      : ["commissioning", "specs"].includes(docType)
+        ? "document"
+        : "certificate";
 
   return (
     <form action={formAction} className="space-y-3 p-4">
