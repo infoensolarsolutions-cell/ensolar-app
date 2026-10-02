@@ -55,8 +55,16 @@ export function IssueForm({
         required
         className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
       />
+      <textarea
+        name="serials"
+        rows={2}
+        placeholder="Serial numbers — one per line (for inverters/batteries; optional)"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+      />
       <p className="text-xs text-gray-500">
         Stock goes down and the cost is added to this project automatically.
+        Typed serials are filed in the Equipment Registry under this project —
+        units already registered from delivery are simply assigned here.
       </p>
       {state?.error && <p className="text-xs font-medium text-red-600">{state.error}</p>}
       <div className="flex gap-2">
