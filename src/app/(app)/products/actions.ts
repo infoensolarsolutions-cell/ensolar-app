@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getWriteBranchId } from "@/lib/branch";
+import { todayManila } from "@/lib/format";
+import { parseSerials, serializedEquipmentType } from "@/lib/equipment";
 
 // Show the real database error so failures are diagnosable, with a plain
 // translation for the two most common cases.
@@ -86,12 +88,52 @@ export async function stockIn(
   const qty = Number(formData.get("qty") ?? 0);
   const unitCost = Math.max(0, Number(formData.get("unit_cost") ?? 0) || 0);
   const supplier = String(formData.get("supplier") ?? "").trim().slice(0, 200);
+  const supplierContact = String(formData.get("supplier_contact") ?? "").trim().slice(0, 200);
   const referenceNo = String(formData.get("reference_no") ?? "").trim().slice(0, 100);
   const date = String(formData.get("date") ?? "");
+  const serials = parseSerials(String(formData.get("serials") ?? ""));
 
   if (!productId || !(qty > 0)) return { error: "Enter the quantity received." };
 
   const supabase = await createClient();
+
+  // Serialized equipment (inverters, batteries, panels): every delivered
+  // unit must be registered with its serial and supplier right here, so the
+  // Equipment Registry, project issues and warranty lookups all stay true.
+  const { data: product } = await supabase
+    .from("products")
+    .select("name, sku")
+    .eq("id", productId)
+    .single();
+  if (!product) return { error: "Product not found." };
+  const equipmentType = serializedEquipmentType(product.name);
+  if (equipmentType) {
+    if (!supplier) {
+      return { error: "Supplier is required for inverters, batteries and panels — warranty claims need it." };
+    }
+    if (serials.length !== qty) {
+      return {
+        error: `This is serialized equipment — enter exactly ${qty} serial number${qty === 1 ? "" : "s"} (one per unit received). You entered ${serials.length}.`,
+      };
+    }
+    const dup = serials.find(
+      (s, i) => serials.findIndex((x) => x.toLowerCase() === s.toLowerCase()) !== i,
+    );
+    if (dup) return { error: `Serial ${dup} is listed twice.` };
+    for (const serial of serials) {
+      const { data: existing } = await supabase
+        .from("equipment_units")
+        .select("id")
+        .ilike("serial_no", serial)
+        .maybeSingle();
+      if (existing) {
+        return { error: `Serial ${serial} is already registered — check the Equipment Registry.` };
+      }
+    }
+  } else if (serials.length > qty) {
+    return { error: `You listed ${serials.length} serials but received only ${qty} unit(s).` };
+  }
+
   const branchId = await getWriteBranchId(supabase, profile.branch_id);
   const { error } = await supabase.from("inventory_txns").insert({
     product_id: productId,
@@ -105,6 +147,23 @@ export async function stockIn(
     user_id: profile.id,
   });
   if (error) return { error: "Could not record the delivery." };
+
+  // Register each delivered unit as in-stock in the Equipment Registry.
+  if (serials.length) {
+    await supabase.from("equipment_units").insert(
+      serials.map((serial) => ({
+        equipment_type: equipmentType ?? "other",
+        model: `${product.name} (${product.sku})`,
+        serial_no: serial,
+        supplier: supplier || null,
+        supplier_contact: supplierContact || null,
+        purchase_date: date || todayManila(),
+        branch_id: branchId,
+        created_by: profile.id,
+      })),
+    );
+    revalidatePath("/equipment");
+  }
 
   // Keep latest purchase cost as the product's cost price.
   if (unitCost > 0) {

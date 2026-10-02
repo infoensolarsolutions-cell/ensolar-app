@@ -5,16 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getWriteBranchId } from "@/lib/branch";
 import { todayManila } from "@/lib/format";
-
-// Guess the registry type from the product name so issued serials land in
-// the right category without extra typing.
-function guessEquipmentType(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes("inverter")) return "inverter";
-  if (n.includes("battery") || n.includes("lifepo") || n.includes("batt ")) return "battery";
-  if (n.includes("panel") || n.includes("module")) return "solar_panel";
-  return "other";
-}
+import { parseSerials, serializedEquipmentType } from "@/lib/equipment";
 
 // Issue store-room materials to a project: stock goes down, the project's
 // material cost goes up at cost price (Spec §5.3 → §5.2 profitability).
@@ -29,11 +20,7 @@ export async function issueToProject(
   const projectId = String(formData.get("project_id") ?? "");
   const productId = String(formData.get("product_id") ?? "");
   const qty = Number(formData.get("qty") ?? 0);
-  const serials = String(formData.get("serials") ?? "")
-    .split(/[\n,;]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, 200);
+  const serials = parseSerials(String(formData.get("serials") ?? ""));
 
   if (!projectId || !productId) return { error: "Choose a product." };
   if (!(qty > 0)) return { error: "Enter the quantity to issue." };
@@ -115,7 +102,7 @@ export async function issueToProject(
     const branchId = await getWriteBranchId(supabase, profile.branch_id);
     await supabase.from("equipment_units").insert(
       toRegister.map((serial) => ({
-        equipment_type: guessEquipmentType(product.name),
+        equipment_type: serializedEquipmentType(product.name) ?? "other",
         model: `${product.name} (${product.sku})`,
         serial_no: serial,
         project_id: projectId,
