@@ -69,7 +69,7 @@ export default async function ProductDetailPage({
             })()}
           </div>
           <div className="mt-3">
-            <StockForms productId={product.id} />
+            <StockForms productId={product.id} productName={product.name} />
           </div>
         </div>
 
