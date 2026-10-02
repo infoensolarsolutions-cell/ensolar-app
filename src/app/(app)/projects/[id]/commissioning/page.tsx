@@ -14,7 +14,7 @@ export default async function NewCommissioningPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("owner", "office_staff");
+  await requireRole("owner", "office_staff", "technician");
   const { id } = await params;
   const supabase = await createClient();
 

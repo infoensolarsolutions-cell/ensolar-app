@@ -11,7 +11,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const profile = await getProfile();
-  if (!profile || !["owner", "office_staff"].includes(profile.role)) {
+  // Technicians can print too — RLS limits them to ETC-/SPEC- documents.
+  if (!profile || !["owner", "office_staff", "technician"].includes(profile.role)) {
     return NextResponse.json({ error: "Not allowed" }, { status: 403 });
   }
 

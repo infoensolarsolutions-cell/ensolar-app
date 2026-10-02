@@ -9,13 +9,17 @@ export async function createContract(
   _prev: { error?: string; saved?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; saved?: boolean }> {
-  const profile = await requireRole("owner", "office_staff");
+  const profile = await requireRole("owner", "office_staff", "technician");
   const projectId = String(formData.get("project_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   const docTypeRaw = String(formData.get("doc_type") ?? "contract");
   const docType = ["certificate", "completion", "commissioning", "specs"].includes(docTypeRaw)
     ? docTypeRaw
     : "contract";
+  // Technicians only handle the two field documents (RLS enforces this too).
+  if (profile.role === "technician" && !["commissioning", "specs"].includes(docType)) {
+    return { error: "Technicians can create Test & Commissioning and Equipment Specification documents only." };
+  }
   if (!projectId || body.length < 100) {
     return { error: "The document text looks empty." };
   }
@@ -72,17 +76,21 @@ export async function updateContract(
   _prev: { error?: string; saved?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; saved?: boolean }> {
-  await requireRole("owner", "office_staff");
+  // Technicians can save only ETC-/SPEC- documents — enforced by RLS, which
+  // updates zero rows for anything else.
+  await requireRole("owner", "office_staff", "technician");
   const contractId = String(formData.get("contract_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   if (!contractId || body.length < 100) return { error: "The contract text looks empty." };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("contracts")
     .update({ body })
-    .eq("id", contractId);
+    .eq("id", contractId)
+    .select("id");
   if (error) return { error: `Could not save: ${error.message}` };
+  if (!updated?.length) return { error: "Document not found (or not yours to edit)." };
 
   revalidatePath(`/contracts/${contractId}`);
   return { saved: true };

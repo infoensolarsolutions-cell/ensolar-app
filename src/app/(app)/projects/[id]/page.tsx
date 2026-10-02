@@ -702,8 +702,12 @@ export default async function ProjectDetailPage({
             >
               + Generate Certificate of Completion
             </Link>
+          </div>
+        )}
 
-            <p className="mb-2 mt-5 font-semibold text-gray-900">Electrical Test &amp; Commissioning Data</p>
+        {/* Field documents — technicians fill these in at the site. */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 font-semibold text-gray-900">Electrical Test &amp; Commissioning Data</p>
             {!commissionings.length && (
               <p className="mb-2 text-sm text-gray-500">
                 No commissioning report yet — the record of Voc readings and
@@ -768,8 +772,7 @@ export default async function ProjectDetailPage({
             >
               + Generate Equipment Specifications
             </Link>
-          </div>
-        )}
+        </div>
 
         <TicketsPanel
           projectId={project.id}

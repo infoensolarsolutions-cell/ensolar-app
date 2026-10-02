@@ -15,7 +15,9 @@ export default async function ContractPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const profile = await requireRole("owner", "office_staff");
+  // Technicians can open only ETC-/SPEC- documents — RLS hides the rest,
+  // so anything else 404s for them.
+  const profile = await requireRole("owner", "office_staff", "technician");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -64,7 +66,11 @@ export default async function ContractPage({
             ? "completion"
             : contract.contract_no.startsWith("COC-")
               ? "certificate"
-              : "contract"
+              : contract.contract_no.startsWith("ETC-")
+                ? "commissioning"
+                : contract.contract_no.startsWith("SPEC-")
+                  ? "specs"
+                  : "contract"
         }
       />
       {profile.role === "owner" && (
