@@ -185,6 +185,14 @@ export default async function MorePage() {
               <span className="font-medium text-gray-800">🏁 Completion Template</span>
               <span className="text-gray-400">›</span>
             </Link>
+            <Link href="/settings/commissioning-template" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">🧪 Commissioning Template</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+            <Link href="/settings/specs-template" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">📋 Equipment Specs Template</span>
+              <span className="text-gray-400">›</span>
+            </Link>
             <Link href="/settings/branches" className="flex items-center justify-between border-t border-gray-100 px-4 py-3.5">
               <span className="font-medium text-gray-800">🏢 Branches</span>
               <span className="text-gray-400">›</span>

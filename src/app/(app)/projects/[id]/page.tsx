@@ -174,11 +174,14 @@ export default async function ProjectDetailPage({
     ]);
 
   // Split by document-number prefix (COC- = compliance certificate,
-  // COMP- = completion certificate, everything else = agreement).
+  // COMP- = completion certificate, ETC- = test & commissioning,
+  // SPEC- = equipment specifications, everything else = agreement).
   const certificates = (contracts ?? []).filter((c) => c.contract_no.startsWith("COC-"));
   const completions = (contracts ?? []).filter((c) => c.contract_no.startsWith("COMP-"));
+  const commissionings = (contracts ?? []).filter((c) => c.contract_no.startsWith("ETC-"));
+  const specDocs = (contracts ?? []).filter((c) => c.contract_no.startsWith("SPEC-"));
   const agreements = (contracts ?? []).filter(
-    (c) => !c.contract_no.startsWith("COC-") && !c.contract_no.startsWith("COMP-"),
+    (c) => !["COC-", "COMP-", "ETC-", "SPEC-"].some((p) => c.contract_no.startsWith(p)),
   );
 
   const paid = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
@@ -698,6 +701,72 @@ export default async function ProjectDetailPage({
               className="mt-2 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
             >
               + Generate Certificate of Completion
+            </Link>
+
+            <p className="mb-2 mt-5 font-semibold text-gray-900">Electrical Test &amp; Commissioning Data</p>
+            {!commissionings.length && (
+              <p className="mb-2 text-sm text-gray-500">
+                No commissioning report yet — the record of Voc readings and
+                tests at turnover.
+              </p>
+            )}
+            <ul className="divide-y divide-gray-100">
+              {commissionings.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <Link href={`/contracts/${c.id}`} className="font-medium text-brand-green-dark underline">
+                    {c.contract_no}
+                  </Link>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{formatDate(c.created_at)}</span>
+                    <a
+                      href={`/api/contracts/${c.id}/pdf`}
+                      target="_blank"
+                      className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700"
+                    >
+                      PDF
+                    </a>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href={`/projects/${project.id}/commissioning`}
+              className="mt-2 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
+            >
+              + Generate Test &amp; Commissioning Data
+            </Link>
+
+            <p className="mb-2 mt-5 font-semibold text-gray-900">Solar Equipment Technical Specifications</p>
+            {!specDocs.length && (
+              <p className="mb-2 text-sm text-gray-500">
+                No specifications sheet yet — RE facility technical information
+                with the equipment serial numbers.
+              </p>
+            )}
+            <ul className="divide-y divide-gray-100">
+              {specDocs.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <Link href={`/contracts/${c.id}`} className="font-medium text-brand-green-dark underline">
+                    {c.contract_no}
+                  </Link>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{formatDate(c.created_at)}</span>
+                    <a
+                      href={`/api/contracts/${c.id}/pdf`}
+                      target="_blank"
+                      className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700"
+                    >
+                      PDF
+                    </a>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href={`/projects/${project.id}/specs`}
+              className="mt-2 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
+            >
+              + Generate Equipment Specifications
             </Link>
           </div>
         )}
