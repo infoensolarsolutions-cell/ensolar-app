@@ -36,6 +36,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
       title: "Store",
       items: [
         { href: "/products", label: "📦 Products & Stock" },
+        { href: "/equipment", label: "🔢 Equipment Registry" },
         { href: "/pos", label: "🛒 POS" },
       ],
     },
@@ -102,6 +103,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
       title: "Store",
       items: [
         { href: "/products", label: "📦 Products & Stock" },
+        { href: "/equipment", label: "🔢 Equipment Registry" },
         { href: "/pos", label: "🛒 POS" },
       ],
     },
@@ -125,6 +127,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/projects", label: "🏗️ My Projects" },
         { href: "/sizing", label: "📐 Solar Sizing" },
         { href: "/knowledge", label: "🛠️ Troubleshooting" },
+        { href: "/equipment", label: "🔢 Equipment Registry" },
         { href: "/attendance", label: "🕐 My Attendance" },
         { href: "/kpi", label: "📈 My KPI" },
         { href: "/my-trainings", label: "🎓 My Trainings" },

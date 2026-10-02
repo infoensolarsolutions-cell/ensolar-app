@@ -113,6 +113,7 @@ export default async function ProjectDetailPage({
     { data: tickets },
     { data: contracts },
     { data: checklists },
+    { data: equipmentUnits },
   ] = await Promise.all([
       isStaff
         ? supabase
@@ -165,6 +166,11 @@ export default async function ProjectDetailPage({
         .select("id, title, items, completed_at")
         .eq("project_id", id)
         .order("created_at"),
+      supabase
+        .from("equipment_units")
+        .select("id, equipment_type, brand, model, serial_no, supplier, supplier_contact, issued_date")
+        .eq("project_id", id)
+        .order("equipment_type"),
     ]);
 
   // Split by document-number prefix (COC- = compliance certificate,
@@ -545,6 +551,35 @@ export default async function ProjectDetailPage({
             isOwner={profile.role === "owner"}
             {...(await deyePanelProps(project.deye_station_id, project.deye_station_name, profile.role === "owner"))}
           />
+        )}
+
+        {(equipmentUnits?.length ?? 0) > 0 && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 font-semibold text-gray-900">🔢 Serialized Equipment</p>
+            <ul className="divide-y divide-gray-100">
+              {equipmentUnits!.map((u) => (
+                <li key={u.id} className="py-2 text-sm">
+                  <p className="font-mono font-bold text-gray-900">{u.serial_no}</p>
+                  <p className="text-xs text-gray-600">
+                    {[u.brand, u.model].filter(Boolean).join(" ") || u.equipment_type}
+                    {u.issued_date && ` · issued ${formatDate(u.issued_date)}`}
+                  </p>
+                  {u.supplier && (
+                    <p className="text-xs text-gray-500">
+                      🏪 {u.supplier}
+                      {u.supplier_contact && ` · ${u.supplier_contact}`}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/equipment"
+              className="mt-2 block text-xs font-medium text-brand-green-dark underline"
+            >
+              Open Equipment Registry →
+            </Link>
+          </div>
         )}
 
         <ChecklistsPanel
