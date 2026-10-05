@@ -13,14 +13,28 @@ export type IssueProduct = {
   on_hand: number;
 };
 
+export type StockUnit = {
+  id: string;
+  serial_no: string;
+  product_id: string | null;
+  model: string | null;
+};
+
 export function IssueForm({
   projectId,
   products,
+  stockUnits = [],
 }: {
   projectId: string;
   products: IssueProduct[];
+  // Registered, not-yet-issued units — serials were typed once at delivery
+  // and are only PICKED here, never re-typed.
+  stockUnits?: StockUnit[];
 }) {
   const [show, setShow] = useState(false);
+  const [productId, setProductId] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [showTypeBox, setShowTypeBox] = useState(false);
   const [state, formAction, pending] = useActionState(issueToProject, null);
 
   if (!products.length) return null;
@@ -36,11 +50,33 @@ export function IssueForm({
     );
   }
 
+  const product = products.find((p) => p.id === productId);
+  const availableUnits = product
+    ? stockUnits.filter(
+        (u) =>
+          u.product_id === product.id ||
+          (!u.product_id && (u.model ?? "").includes(`(${product.sku})`)),
+      )
+    : [];
+
+  const togglePicked = (id: string) =>
+    setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+
   return (
     <form action={formAction} className="space-y-2 rounded-xl border border-blue-200 bg-white p-3">
       <p className="text-sm font-semibold text-gray-800">Issue materials to this project</p>
       <input type="hidden" name="project_id" value={projectId} />
-      <select name="product_id" required className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm" defaultValue="">
+      <input type="hidden" name="unit_ids" value={JSON.stringify(picked)} />
+      <select
+        name="product_id"
+        required
+        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+        value={productId}
+        onChange={(e) => {
+          setProductId(e.target.value);
+          setPicked([]);
+        }}
+      >
         <option value="" disabled>Choose a product…</option>
         {products.map((p) => (
           <option key={p.id} value={p.id}>
@@ -55,16 +91,51 @@ export function IssueForm({
         required
         className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
       />
-      <textarea
-        name="serials"
-        rows={2}
-        placeholder="Serial numbers — one per line (for inverters/batteries; optional)"
-        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
-      />
+
+      {availableUnits.length > 0 && (
+        <div className="rounded-lg border border-gray-200 p-2">
+          <p className="mb-1 text-xs font-semibold text-gray-600">
+            Tap the serial numbers being taken ({picked.length} selected)
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {availableUnits.map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => togglePicked(u.id)}
+                className={`rounded-full px-2.5 py-1.5 font-mono text-xs font-semibold ${
+                  picked.includes(u.id)
+                    ? "bg-brand-green text-white"
+                    : "border border-gray-300 text-gray-700"
+                }`}
+              >
+                {u.serial_no}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!showTypeBox ? (
+        <button
+          type="button"
+          onClick={() => setShowTypeBox(true)}
+          className="text-xs text-gray-500 underline"
+        >
+          Serial not in the list? Type it instead
+        </button>
+      ) : (
+        <textarea
+          name="serials"
+          rows={2}
+          placeholder="Unregistered serial numbers — one per line (will be registered to this project)"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+        />
+      )}
+
       <p className="text-xs text-gray-500">
         Stock goes down and the cost is added to this project automatically.
-        Typed serials are filed in the Equipment Registry under this project —
-        units already registered from delivery are simply assigned here.
+        Picked serials are assigned to this project in the Equipment Registry.
       </p>
       {state?.error && <p className="text-xs font-medium text-red-600">{state.error}</p>}
       <div className="flex gap-2">

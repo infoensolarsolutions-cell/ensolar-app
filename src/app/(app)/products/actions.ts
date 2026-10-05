@@ -155,6 +155,7 @@ export async function stockIn(
         equipment_type: equipmentType ?? "other",
         model: `${product.name} (${product.sku})`,
         serial_no: serial,
+        product_id: productId,
         supplier: supplier || null,
         supplier_contact: supplierContact || null,
         purchase_date: date || todayManila(),

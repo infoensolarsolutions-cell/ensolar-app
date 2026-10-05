@@ -18,7 +18,7 @@ import { CostsPanel, type CostRow } from "./costs-panel";
 import { PhotosPanel, type PhotoRow } from "./photos-panel";
 import { TicketsPanel, type TicketRow } from "./tickets-panel";
 import { InviteButton } from "./invite-button";
-import { IssueForm, type IssueProduct } from "./issue-form";
+import { IssueForm, type IssueProduct, type StockUnit } from "./issue-form";
 import { AssignForm } from "./assign-form";
 import { NoteForm } from "./note-form";
 import { DatesForm } from "./dates-form";
@@ -252,14 +252,24 @@ export default async function ProjectDetailPage({
     .filter((p) => p.url);
 
   let issueProducts: IssueProduct[] = [];
+  let stockUnits: StockUnit[] = [];
   if (isStaff) {
-    const { data: stockProducts } = await supabase
-      .from("products_with_stock")
-      .select("id, sku, name, unit, cost_price, on_hand")
-      .eq("active", true)
-      .gt("on_hand", 0)
-      .order("name");
+    const [{ data: stockProducts }, { data: freeUnits }] = await Promise.all([
+      supabase
+        .from("products_with_stock")
+        .select("id, sku, name, unit, cost_price, on_hand")
+        .eq("active", true)
+        .gt("on_hand", 0)
+        .order("name"),
+      supabase
+        .from("equipment_units")
+        .select("id, serial_no, product_id, model")
+        .is("project_id", null)
+        .order("serial_no")
+        .limit(500),
+    ]);
     issueProducts = (stockProducts ?? []) as IssueProduct[];
+    stockUnits = (freeUnits ?? []) as StockUnit[];
   }
 
   const ticketRows: TicketRow[] = (tickets ?? []).map((t) => {
@@ -544,7 +554,7 @@ export default async function ProjectDetailPage({
               overheadRate={overhead?.rate ?? null}
               durationAlt={durationAlt}
             />
-            <IssueForm projectId={project.id} products={issueProducts} />
+            <IssueForm projectId={project.id} products={issueProducts} stockUnits={stockUnits} />
           </>
         )}
 

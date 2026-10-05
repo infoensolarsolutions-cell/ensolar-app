@@ -9,9 +9,8 @@ import { parseSerials, serializedEquipmentType } from "@/lib/equipment";
 
 // Issue store-room materials to a project: stock goes down, the project's
 // material cost goes up at cost price (Spec §5.3 → §5.2 profitability).
-// Serial numbers typed with the issue are registered in the Equipment
-// Registry (or, if already registered from delivery, assigned to the
-// project) with today's date.
+// Serials are picked from the registered in-stock units (entered once at
+// delivery); a free-text box remains for units that were never registered.
 export async function issueToProject(
   _prev: { error?: string } | null,
   formData: FormData,
@@ -21,11 +20,20 @@ export async function issueToProject(
   const productId = String(formData.get("product_id") ?? "");
   const qty = Number(formData.get("qty") ?? 0);
   const serials = parseSerials(String(formData.get("serials") ?? ""));
+  let unitIds: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("unit_ids") ?? "[]"));
+    if (Array.isArray(parsed)) unitIds = parsed.map(String).slice(0, 200);
+  } catch {
+    // No picked units — fine.
+  }
 
   if (!projectId || !productId) return { error: "Choose a product." };
   if (!(qty > 0)) return { error: "Enter the quantity to issue." };
-  if (serials.length > qty) {
-    return { error: `You listed ${serials.length} serial numbers but are issuing only ${qty} unit(s).` };
+  if (unitIds.length + serials.length > qty) {
+    return {
+      error: `You selected/listed ${unitIds.length + serials.length} serial numbers but are issuing only ${qty} unit(s).`,
+    };
   }
   const dupInForm = serials.find((s, i) => serials.findIndex((x) => x.toLowerCase() === s.toLowerCase()) !== i);
   if (dupInForm) return { error: `Serial ${dupInForm} is listed twice.` };
@@ -47,6 +55,21 @@ export async function issueToProject(
   const today = todayManila();
   const toAssign: string[] = [];
   const toRegister: string[] = [];
+  for (const unitId of unitIds) {
+    const { data: unit } = await supabase
+      .from("equipment_units")
+      .select("id, serial_no, project_id, projects (project_no)")
+      .eq("id", unitId)
+      .maybeSingle();
+    if (!unit) return { error: "A selected unit no longer exists — reload and try again." };
+    if (unit.project_id && unit.project_id !== projectId) {
+      const proj = Array.isArray(unit.projects) ? unit.projects[0] : unit.projects;
+      return {
+        error: `Serial ${unit.serial_no} was just issued to project ${proj?.project_no ?? "another project"} — reload and pick again.`,
+      };
+    }
+    toAssign.push(unit.id);
+  }
   for (const serial of serials) {
     const { data: existing } = await supabase
       .from("equipment_units")
@@ -105,6 +128,7 @@ export async function issueToProject(
         equipment_type: serializedEquipmentType(product.name) ?? "other",
         model: `${product.name} (${product.sku})`,
         serial_no: serial,
+        product_id: productId,
         project_id: projectId,
         issued_date: today,
         branch_id: branchId,
@@ -122,6 +146,6 @@ export async function issueToProject(
 
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/products");
-  if (serials.length) revalidatePath("/equipment");
+  if (serials.length || unitIds.length) revalidatePath("/equipment");
   return {};
 }
