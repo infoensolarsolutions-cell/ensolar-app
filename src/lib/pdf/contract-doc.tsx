@@ -91,12 +91,13 @@ export function ContractPdf({
           const heading = lines.length === 1 && isHeadingLine(lines[0].trim());
           // The owner's signature block gets the e-signature laid over its
           // line — matched by "First Party" (contracts) or the engineer's
-          // name (certificates), never the customer's blank line. Kept
-          // unsplit so the image and name stay together.
+          // name written in capitals as the signatory line (certificates and
+          // technical documents). A case-sensitive match on the full name
+          // keeps addresses like "Ciriaco Espina Street" from triggering it.
           const ownerSig =
             signature &&
             block.includes("____") &&
-            (block.includes("First Party") || block.toUpperCase().includes("ESPINA"));
+            (block.includes("First Party") || block.includes("LORENZO G. ESPINA"));
           if (ownerSig) {
             return (
               <View key={i} wrap={false} style={styles.para}>
