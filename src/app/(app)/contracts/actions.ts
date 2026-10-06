@@ -120,7 +120,7 @@ export async function deleteContract(
       user_id: profile.id,
       event: "note",
       detail: {
-        text: `deleted ${contract.contract_no.startsWith("COC-") ? "certificate" : "contract"} ${contract.contract_no}`,
+        text: `deleted ${["COC-", "COMP-"].some((p) => contract.contract_no.startsWith(p)) ? "certificate" : ["ETC-", "SPEC-"].some((p) => contract.contract_no.startsWith(p)) ? "document" : "contract"} ${contract.contract_no}`,
       },
     });
     revalidatePath(`/projects/${contract.project_id}`);
