@@ -12,7 +12,11 @@ export function DeleteContractButton({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const noun = contractNo.startsWith("COC-") ? "certificate" : "contract";
+  const noun = ["COC-", "COMP-"].some((p) => contractNo.startsWith(p))
+    ? "certificate"
+    : ["ETC-", "SPEC-"].some((p) => contractNo.startsWith(p))
+      ? "document"
+      : "contract";
 
   return (
     <div className="mt-6 border-t border-gray-100 pt-4">
