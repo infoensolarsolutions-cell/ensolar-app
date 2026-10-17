@@ -13,7 +13,7 @@ export async function createContract(
   const projectId = String(formData.get("project_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   const docTypeRaw = String(formData.get("doc_type") ?? "contract");
-  const docType = ["certificate", "completion", "commissioning", "specs"].includes(docTypeRaw)
+  const docType = ["certificate", "completion", "commissioning", "specs", "inspection"].includes(docTypeRaw)
     ? docTypeRaw
     : "contract";
   // Technicians only handle the two field documents (RLS enforces this too).
@@ -33,6 +33,7 @@ export async function createContract(
     completion: "COMP",
     commissioning: "ETC",
     specs: "SPEC",
+    inspection: "CSI",
   };
   const { data: contractNo, error: noError } = await supabase.rpc("next_doc_no", {
     p_doc_type: prefixByType[docType],
@@ -134,6 +135,7 @@ const TEMPLATE_KEYS: Record<string, string> = {
   completion_certificate: "/settings/completion-template",
   commissioning_report: "/settings/commissioning-template",
   equipment_specs: "/settings/specs-template",
+  site_inspection_certificate: "/settings/inspection-template",
 };
 
 export async function saveTemplate(

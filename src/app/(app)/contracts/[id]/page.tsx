@@ -66,11 +66,13 @@ export default async function ContractPage({
             ? "completion"
             : contract.contract_no.startsWith("COC-")
               ? "certificate"
-              : contract.contract_no.startsWith("ETC-")
-                ? "commissioning"
-                : contract.contract_no.startsWith("SPEC-")
-                  ? "specs"
-                  : "contract"
+              : contract.contract_no.startsWith("CSI-")
+                ? "inspection"
+                : contract.contract_no.startsWith("ETC-")
+                  ? "commissioning"
+                  : contract.contract_no.startsWith("SPEC-")
+                    ? "specs"
+                    : "contract"
         }
       />
       {profile.role === "owner" && (

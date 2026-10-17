@@ -12,7 +12,7 @@ export function ContractEditor({
   projectId?: string;
   contractId?: string;
   initialBody: string;
-  docType?: "contract" | "certificate" | "completion" | "commissioning" | "specs";
+  docType?: "contract" | "certificate" | "completion" | "commissioning" | "specs" | "inspection";
 }) {
   const [state, formAction, pending] = useActionState(
     contractId ? updateContract : createContract,
