@@ -69,7 +69,7 @@ export default async function LeadDetailPage({
 
   if (!lead) notFound();
 
-  const [{ data: staff }, { data: events }] = await Promise.all([
+  const [{ data: staff }, { data: events }, { data: inspections }] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, name, role")
@@ -83,6 +83,12 @@ export default async function LeadDetailPage({
       .order("created_at", { ascending: false })
       .limit(30)
       .overrideTypes<EventRow[]>(),
+    supabase
+      .from("contracts")
+      .select("id, contract_no, created_at")
+      .eq("lead_id", id)
+      .like("contract_no", "CSI-%")
+      .order("created_at", { ascending: false }),
   ]);
 
   const c = lead.customers;
@@ -244,6 +250,42 @@ export default async function LeadDetailPage({
           Create Quotation
         </Link>
 
+        {/* Pre-sale site inspection certificate (DCCCO solar loan support). */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="mb-2 font-semibold text-gray-900">Certificate of Site Inspection</p>
+          {!(inspections?.length ?? 0) && (
+            <p className="mb-2 text-sm text-gray-500">
+              Issued after the site visit — supports this customer&apos;s DCCCO
+              Solar PV Loan application, before any project exists.
+            </p>
+          )}
+          <ul className="divide-y divide-gray-100">
+            {(inspections ?? []).map((cert) => (
+              <li key={cert.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                <Link href={`/contracts/${cert.id}`} className="font-medium text-brand-green-dark underline">
+                  {cert.contract_no}
+                </Link>
+                <span className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">{formatDate(cert.created_at)}</span>
+                  <a
+                    href={`/api/contracts/${cert.id}/pdf`}
+                    target="_blank"
+                    className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700"
+                  >
+                    PDF
+                  </a>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href={`/leads/${lead.id}/inspection`}
+            className="mt-2 block w-full rounded-lg border border-brand-green px-4 py-2.5 text-center text-sm font-semibold text-brand-green-dark active:bg-brand-green/5"
+          >
+            + Generate Site Inspection Certificate
+          </Link>
+        </div>
+
         <LeadEditForm
           lead={{
             id: lead.id,
@@ -293,5 +335,9 @@ function describeEvent(ev: EventRow): string {
       to ? LEAD_STATUSES[to] : "?"
     }${reason ? ` (${reason})` : ""}`;
   }
+  if (ev.event === "site_inspection_issued") {
+    return `${who} issued site inspection certificate ${ev.detail?.contract_no ?? ""}`;
+  }
+  if (ev.event === "note") return `${who}: ${ev.detail?.text ?? ""}`;
   return `${who}: ${ev.event}`;
 }
