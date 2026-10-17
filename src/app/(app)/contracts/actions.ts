@@ -11,6 +11,7 @@ export async function createContract(
 ): Promise<{ error?: string; saved?: boolean }> {
   const profile = await requireRole("owner", "office_staff", "technician");
   const projectId = String(formData.get("project_id") ?? "");
+  const leadId = String(formData.get("lead_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   const docTypeRaw = String(formData.get("doc_type") ?? "contract");
   const docType = ["certificate", "completion", "commissioning", "specs", "inspection"].includes(docTypeRaw)
@@ -20,7 +21,12 @@ export async function createContract(
   if (profile.role === "technician" && !["commissioning", "specs"].includes(docType)) {
     return { error: "Technicians can create Test & Commissioning and Equipment Specification documents only." };
   }
-  if (!projectId || body.length < 100) {
+  // Site inspection certificates may hang off a lead (pre-sale); everything
+  // else needs its project.
+  if (!projectId && !(leadId && docType === "inspection")) {
+    return { error: "Missing project reference." };
+  }
+  if (body.length < 100) {
     return { error: "The document text looks empty." };
   }
 
@@ -44,7 +50,8 @@ export async function createContract(
     .from("contracts")
     .insert({
       contract_no: contractNo,
-      project_id: projectId,
+      project_id: projectId || null,
+      lead_id: leadId || null,
       body,
       created_by: profile.id,
       // Only sent for certificates so contract generation keeps working
@@ -62,14 +69,23 @@ export async function createContract(
     };
   }
 
-  await supabase.from("project_events").insert({
-    project_id: projectId,
-    user_id: profile.id,
-    event: docType === "contract" ? "contract_created" : "certificate_created",
-    detail: { contract_no: contractNo },
-  });
-
-  revalidatePath(`/projects/${projectId}`);
+  if (projectId) {
+    await supabase.from("project_events").insert({
+      project_id: projectId,
+      user_id: profile.id,
+      event: docType === "contract" ? "contract_created" : "certificate_created",
+      detail: { contract_no: contractNo },
+    });
+    revalidatePath(`/projects/${projectId}`);
+  } else if (leadId) {
+    await supabase.from("lead_events").insert({
+      lead_id: leadId,
+      user_id: profile.id,
+      event: "site_inspection_issued",
+      detail: { contract_no: contractNo },
+    });
+    revalidatePath(`/leads/${leadId}`);
+  }
   redirect(`/contracts/${created.id}`);
 }
 
@@ -107,7 +123,7 @@ export async function deleteContract(
 
   const { data: contract } = await supabase
     .from("contracts")
-    .select("id, contract_no, project_id")
+    .select("id, contract_no, project_id, lead_id")
     .eq("id", contractId)
     .single();
   if (!contract) return { error: "Document not found." };
@@ -125,8 +141,22 @@ export async function deleteContract(
       },
     });
     revalidatePath(`/projects/${contract.project_id}`);
+  } else if (contract.lead_id) {
+    await supabase.from("lead_events").insert({
+      lead_id: contract.lead_id,
+      user_id: profile.id,
+      event: "note",
+      detail: { text: `deleted certificate ${contract.contract_no}` },
+    });
+    revalidatePath(`/leads/${contract.lead_id}`);
   }
-  redirect(contract.project_id ? `/projects/${contract.project_id}` : "/projects");
+  redirect(
+    contract.project_id
+      ? `/projects/${contract.project_id}`
+      : contract.lead_id
+        ? `/leads/${contract.lead_id}`
+        : "/projects",
+  );
 }
 
 const TEMPLATE_KEYS: Record<string, string> = {

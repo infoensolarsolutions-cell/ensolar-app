@@ -5,11 +5,13 @@ import { createContract, updateContract } from "./actions";
 
 export function ContractEditor({
   projectId,
+  leadId,
   contractId,
   initialBody,
   docType = "contract",
 }: {
   projectId?: string;
+  leadId?: string;
   contractId?: string;
   initialBody: string;
   docType?: "contract" | "certificate" | "completion" | "commissioning" | "specs" | "inspection";
@@ -28,6 +30,7 @@ export function ContractEditor({
   return (
     <form action={formAction} className="space-y-3 p-4">
       {projectId && <input type="hidden" name="project_id" value={projectId} />}
+      {leadId && <input type="hidden" name="lead_id" value={leadId} />}
       {contractId && <input type="hidden" name="contract_id" value={contractId} />}
       <input type="hidden" name="doc_type" value={docType} />
 

@@ -23,18 +23,23 @@ export default async function ContractPage({
 
   const { data: contract } = await supabase
     .from("contracts")
-    .select("id, contract_no, body, created_at, projects (id, project_no)")
+    .select("id, contract_no, body, created_at, lead_id, projects (id, project_no)")
     .eq("id", id)
     .single();
   if (!contract) notFound();
 
   const project = Array.isArray(contract.projects) ? contract.projects[0] : contract.projects;
+  const backHref = project
+    ? `/projects/${project.id}`
+    : contract.lead_id
+      ? `/leads/${contract.lead_id}`
+      : "/projects";
 
   return (
     <>
       <TopBar
         title={contract.contract_no}
-        backHref={project ? `/projects/${project.id}` : "/projects"}
+        backHref={backHref}
       />
       <div className="px-4 pt-3">
         <div className="flex items-center justify-between">
