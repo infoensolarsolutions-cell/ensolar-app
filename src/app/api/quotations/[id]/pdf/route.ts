@@ -20,7 +20,7 @@ export async function GET(
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "quote_no, created_at, created_by, valid_until, subtotal, discount, total, terms, project_name, site_location, revision_no, revision_date, customers (name, phone, address, barangay), quotation_items (description, qty, unit, unit_price, line_total, sort_order), profiles:created_by (name)",
+      "quote_no, created_at, created_by, valid_until, subtotal, discount, total, terms, project_name, site_location, revision_no, revision_date, roi, customers (name, phone, address, barangay), quotation_items (description, qty, unit, unit_price, line_total, sort_order), profiles:created_by (name)",
     )
     .eq("id", id)
     .single();
@@ -54,6 +54,7 @@ export async function GET(
     terms: q.terms,
     prepared_by: preparedBy?.name ?? "Ensolar Solutions",
     signature: await getSignature(q.created_by),
+    roi: (q.roi as QuotationPdfData["roi"]) ?? null,
   };
 
   const doc = createElement(QuotationPdf, { data }) as Parameters<

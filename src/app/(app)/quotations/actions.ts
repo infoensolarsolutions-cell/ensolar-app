@@ -61,6 +61,23 @@ export async function saveQuotation(
 
   if (!items) return { error: "Add at least one line item." };
 
+  // ROI estimate handed over from the sizing calculator — stored only when
+  // the form carries it (edits without the field leave the saved value).
+  const roiRaw = formData.get("roi");
+  let roiUpdate: { roi: Record<string, number> | null } | Record<string, never> = {};
+  if (roiRaw !== null) {
+    try {
+      const p = JSON.parse(String(roiRaw)) as Record<string, unknown>;
+      const nums = ["monthly_savings", "months", "years", "capacity_pct", "psh", "rate"]
+        .map((k) => [k, Number(p[k])] as const);
+      roiUpdate = nums.every(([, v]) => Number.isFinite(v) && v > 0)
+        ? { roi: Object.fromEntries(nums) }
+        : { roi: null };
+    } catch {
+      roiUpdate = { roi: null };
+    }
+  }
+
   const subtotal = items.reduce((sum, i) => sum + i.qty * i.unit_price, 0);
   const total = Math.max(0, subtotal - discount);
 
@@ -122,7 +139,7 @@ export async function saveQuotation(
 
     const { error } = await supabase
       .from("quotations")
-      .update({ valid_until: validUntil || null, terms, discount, subtotal, total, ...meta })
+      .update({ valid_until: validUntil || null, terms, discount, subtotal, total, ...meta, ...roiUpdate })
       .eq("id", quotationId);
     if (error) return { error: "Could not save. Please try again." };
 
@@ -187,6 +204,7 @@ export async function saveQuotation(
         subtotal,
         total,
         ...meta,
+        ...roiUpdate,
         created_by: profile.id,
       })
       .select("id")

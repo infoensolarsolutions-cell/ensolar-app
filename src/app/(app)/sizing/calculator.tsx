@@ -298,7 +298,22 @@ export function SizingCalculator({
     try {
       sessionStorage.setItem(
         "sizing-quotation",
-        JSON.stringify({ items, project_name: `${fmt(arrayW / 1000)} kWp Hybrid Solar PV System` }),
+        JSON.stringify({
+          items,
+          project_name: `${fmt(arrayW / 1000)} kWp Hybrid Solar PV System`,
+          // ROI estimate rides along and prints as a highlight box on the PDF.
+          roi:
+            roiMonthlySavings > 0 && roiPrice > 0
+              ? {
+                  monthly_savings: r2(roiMonthlySavings),
+                  months: r2(roiMonths),
+                  years: r2(roiYears),
+                  capacity_pct: num(capacityPct) || 80,
+                  psh: pshN,
+                  rate: effRate,
+                }
+              : undefined,
+        }),
       );
     } catch {
       alert("Could not hand the items to the quotation builder — please copy them manually.");
