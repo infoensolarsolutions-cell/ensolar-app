@@ -128,6 +128,8 @@ export function SizingCalculator({
   const [lfootPrice, setLfootPrice] = useState("");
   const [bosPct, setBosPct] = useState("30");
   const [itcPct, setItcPct] = useState("25");
+  const [capacityPct, setCapacityPct] = useState("80");
+  const [roiPriceOv, setRoiPriceOv] = useState("");
   const [loadedPrices, setLoadedPrices] = useState(false);
   // Quantity overrides for the quotation: absent/empty = computed count.
   const [qtyOv, setQtyOvState] = useState<Record<string, string>>({});
@@ -223,6 +225,19 @@ export function SizingCalculator({
   const itcCost = r2(sub2 * ((num(itcPct) || 0) / 100));
   const totalProject = sub2 + itcCost;
   const pricingReady = sub1 > 0;
+
+  // ── Return of Investment, per the company's ROI worksheet: generation at
+  // a capacity factor (default 80%) × peak sun hours × the electricity
+  // rate gives the savings; contract price ÷ monthly savings = payback.
+  const effRate = num(rate) || 0;
+  const capFactor = (num(capacityPct) || 80) / 100;
+  const actualArrayKw = (qPanels * panelWN) / 1000;
+  const roiDailyKwh = actualArrayKw * capFactor * pshN;
+  const roiDailySavings = roiDailyKwh * effRate;
+  const roiMonthlySavings = roiDailySavings * 30;
+  const roiPrice = roiPriceOv.trim() === "" ? totalProject : num(roiPriceOv);
+  const roiMonths = roiMonthlySavings > 0 ? roiPrice / roiMonthlySavings : 0;
+  const roiYears = roiMonths / 12;
 
   function createQuotation() {
     const deyeFit = suggestions.find((s) => s.brand === "Deye")?.fit;
@@ -692,6 +707,107 @@ export function SizingCalculator({
                 📄 Create quotation from these results
               </button>
             )}
+          </div>
+
+          {/* ── Return of Investment ── */}
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-1 font-semibold text-gray-900">📈 Return of Investment (ROI)</p>
+            <div className="mb-2 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-500">Generation capacity (%)</label>
+                <input
+                  type="number" min="1" max="100" step="any" inputMode="numeric"
+                  value={capacityPct} onChange={(e) => setCapacityPct(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              {mode === "kwh" ? (
+                <div>
+                  <label className="text-xs text-gray-500">Electricity rate (₱/kWh)</label>
+                  <input
+                    type="number" min="0" step="any" inputMode="decimal"
+                    value={rate} onChange={(e) => setRate(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs text-gray-500">Total project price (₱)</label>
+                  <input
+                    type="number" min="0" step="any" inputMode="decimal"
+                    value={roiPriceOv}
+                    placeholder={fmt(totalProject)}
+                    onChange={(e) => setRoiPriceOv(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              )}
+            </div>
+            {mode === "kwh" && (
+              <div className="mb-2">
+                <label className="text-xs text-gray-500">Total project price (₱)</label>
+                <input
+                  type="number" min="0" step="any" inputMode="decimal"
+                  value={roiPriceOv}
+                  placeholder={fmt(totalProject)}
+                  onChange={(e) => setRoiPriceOv(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            <ol className="space-y-1.5 text-sm text-gray-700">
+              <li>
+                1. Customer&apos;s usage: {fmt(monthlyKwh)} kWh/month ÷ 30 ={" "}
+                <b>{fmt(kwhPerDay)} kWh/day</b> (₱{fmt(kwhPerDay * effRate, 0)}/day at ₱{fmt(effRate)}/kWh)
+              </li>
+              <li>
+                2. System: {fmt(qPanels, 0)} × {fmt(panelWN, 0)} W ={" "}
+                {fmt(actualArrayKw)} kW × {fmt(capFactor * 100, 0)}% capacity ={" "}
+                <b>{fmt(actualArrayKw * capFactor)} kW</b>
+              </li>
+              <li>
+                3. Daily generation: {fmt(actualArrayKw * capFactor)} kW ×{" "}
+                {fmt(pshN)} sun hours = <b>{fmt(roiDailyKwh)} kWh/day</b>
+              </li>
+              <li>
+                4. Daily savings: {fmt(roiDailyKwh)} kWh × ₱{fmt(effRate)} ={" "}
+                <b>₱{fmt(roiDailySavings)}</b>
+              </li>
+              <li>
+                5. Monthly savings: × 30 = <b>₱{fmt(roiMonthlySavings)}</b>
+              </li>
+              <li>
+                6. Payback: ₱{fmt(roiPrice)} ÷ ₱{fmt(roiMonthlySavings)} ={" "}
+                <b>{fmt(roiMonths)} months</b>
+              </li>
+            </ol>
+
+            <div className="mt-3 rounded-lg bg-brand-green/10 p-3 text-center">
+              <p className="text-3xl font-extrabold text-brand-green-dark">
+                {roiMonthlySavings > 0 && roiPrice > 0 ? `${fmt(roiYears)} years` : "—"}
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-gray-700">
+                return of investment
+                {roiMonthlySavings > 0 && roiPrice > 0 && (
+                  <> · ₱{fmt(roiMonthlySavings, 0)} saved per month</>
+                )}
+              </p>
+            </div>
+            {roiDailyKwh > kwhPerDay && kwhPerDay > 0 && (
+              <p className="mt-2 text-[11px] text-amber-700">
+                ⚠ The system generates more ({fmt(roiDailyKwh)} kWh/day) than the
+                customer uses ({fmt(kwhPerDay)} kWh/day) — actual peso savings
+                depend on daytime usage, battery storage, or net metering, so
+                quote the ROI conservatively.
+              </p>
+            )}
+            <p className="mt-1 text-[11px] text-gray-500">
+              Project price defaults to the Total Project Cost above — type a
+              different amount (e.g. the final discounted contract price) to
+              recompute. Savings assume the generated energy offsets grid use
+              at the entered rate.
+            </p>
           </div>
 
           <p className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs text-blue-900">
