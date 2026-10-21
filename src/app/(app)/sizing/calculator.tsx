@@ -301,13 +301,12 @@ export function SizingCalculator({
         JSON.stringify({
           items,
           project_name: `${fmt(arrayW / 1000)} kWp Hybrid Solar PV System`,
-          // ROI estimate rides along and prints as a highlight box on the PDF.
+          // ROI savings basis rides along; payback is recomputed from the
+          // quotation's own total wherever it is shown.
           roi:
-            roiMonthlySavings > 0 && roiPrice > 0
+            roiMonthlySavings > 0
               ? {
                   monthly_savings: r2(roiMonthlySavings),
-                  months: r2(roiMonths),
-                  years: r2(roiYears),
                   capacity_pct: num(capacityPct) || 80,
                   psh: pshN,
                   rate: effRate,

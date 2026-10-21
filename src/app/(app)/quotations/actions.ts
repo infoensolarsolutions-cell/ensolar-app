@@ -61,14 +61,16 @@ export async function saveQuotation(
 
   if (!items) return { error: "Add at least one line item." };
 
-  // ROI estimate handed over from the sizing calculator — stored only when
-  // the form carries it (edits without the field leave the saved value).
+  // ROI savings basis handed over from the sizing calculator — stored only
+  // when the form carries it (edits without the field leave the saved
+  // value). Payback months/years are never stored: every view recomputes
+  // them from the quotation's current total.
   const roiRaw = formData.get("roi");
   let roiUpdate: { roi: Record<string, number> | null } | Record<string, never> = {};
   if (roiRaw !== null) {
     try {
       const p = JSON.parse(String(roiRaw)) as Record<string, unknown>;
-      const nums = ["monthly_savings", "months", "years", "capacity_pct", "psh", "rate"]
+      const nums = ["monthly_savings", "capacity_pct", "psh", "rate"]
         .map((k) => [k, Number(p[k])] as const);
       roiUpdate = nums.every(([, v]) => Number.isFinite(v) && v > 0)
         ? { roi: Object.fromEntries(nums) }
