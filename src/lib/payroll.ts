@@ -12,7 +12,15 @@ export type Settings = {
     min_monthly: number;
     max_monthly: number;
   };
-  pagibig: { employee_percent: number; max_monthly_compensation: number };
+  pagibig: {
+    employee_percent: number;
+    max_monthly_compensation: number;
+    // HDMF: 1% employee share at or below the low-income threshold (₱1,500),
+    // the regular 2% above it. Defaults applied when the settings row
+    // predates these fields.
+    low_income_percent?: number;
+    low_income_threshold?: number;
+  };
   tax: { brackets: { over: number; base: number; percent: number }[] };
 };
 
@@ -26,11 +34,18 @@ export function monthlyBase(rateType: "daily" | "monthly", rate: number): number
 }
 
 export function weeklyContributions(base: number, s: Settings) {
-  const sss = round2(
-    (clamp(base, s.sss.min_monthly, s.sss.max_monthly) * s.sss.employee_percent) /
-      100 /
-      WEEKS_PER_MONTH,
+  // SSS is computed on the Monthly Salary Credit, not the raw salary: the
+  // salary rounds to the nearest ₱500 bracket (…5,250–5,749.99 → 5,500…),
+  // clamped to the MSC floor/ceiling. Employee share = employee_percent of
+  // the MSC (2026: 5% of ₱5,000–₱35,000 → ₱250–₱1,750/month).
+  const msc = clamp(
+    Math.round(base / 500) * 500,
+    s.sss.min_monthly,
+    s.sss.max_monthly,
   );
+  const sss = round2((msc * s.sss.employee_percent) / 100 / WEEKS_PER_MONTH);
+  // PhilHealth: employee share of the premium on the salary clamped to the
+  // income floor/ceiling (2026: 2.5% of ₱10,000–₱100,000 → ₱250–₱2,500).
   const philhealth = round2(
     (clamp(base, s.philhealth.min_monthly, s.philhealth.max_monthly) *
       s.philhealth.total_percent *
@@ -38,9 +53,15 @@ export function weeklyContributions(base: number, s: Settings) {
       10000 /
       WEEKS_PER_MONTH,
   );
+  // Pag-IBIG: 1% at or below the ₱1,500 low-income threshold, else the
+  // regular rate, on compensation capped at the max fund salary (₱10,000 →
+  // employee max ₱200/month).
+  const piRate =
+    base <= (s.pagibig.low_income_threshold ?? 1500)
+      ? (s.pagibig.low_income_percent ?? 1)
+      : s.pagibig.employee_percent;
   const pagibig = round2(
-    (Math.min(base, s.pagibig.max_monthly_compensation) *
-      s.pagibig.employee_percent) /
+    (Math.min(base, s.pagibig.max_monthly_compensation) * piRate) /
       100 /
       WEEKS_PER_MONTH,
   );
