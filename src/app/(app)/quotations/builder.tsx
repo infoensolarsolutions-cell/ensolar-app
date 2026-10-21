@@ -210,13 +210,17 @@ export function QuotationBuilder({
       {quotation && <input type="hidden" name="quotation_id" value={quotation.id} />}
       {leadId && <input type="hidden" name="lead_id" value={leadId} />}
       <input type="hidden" name="items" value={itemsJson} />
-      {sizingRoi && (
+      {sizingRoi && Number(sizingRoi.monthly_savings) > 0 && (
         <>
           <input type="hidden" name="roi" value={JSON.stringify(sizingRoi)} />
           <p className="flex items-center justify-between rounded-lg border border-brand-green/40 bg-brand-green/5 px-3 py-2 text-xs text-gray-700">
             <span>
-              📈 ROI from sizing: ≈ {Number(sizingRoi.years).toLocaleString("en-PH", { maximumFractionDigits: 1 })}{" "}
-              years payback — will print as a highlight box on the PDF.
+              📈 ROI: ≈{" "}
+              {total > 0
+                ? (total / Number(sizingRoi.monthly_savings) / 12).toLocaleString("en-PH", { maximumFractionDigits: 1 })
+                : "—"}{" "}
+              years payback at this total — recomputes automatically and prints
+              on the PDF.
             </span>
             <button
               type="button"

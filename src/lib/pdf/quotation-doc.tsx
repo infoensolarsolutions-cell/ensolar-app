@@ -85,11 +85,11 @@ export type QuotationPdfData = {
   terms: string | null;
   prepared_by: string;
   signature?: string | null; // data URI of the preparer's e-signature
-  // Estimated savings/payback from the sizing calculator (optional).
+  // Estimated savings basis from the sizing calculator (optional). The
+  // payback is always recomputed from the quotation's CURRENT total, so
+  // discounts and revisions keep the printed ROI honest.
   roi?: {
     monthly_savings: number;
-    months: number;
-    years: number;
     capacity_pct: number;
     psh: number;
     rate: number;
@@ -111,6 +111,11 @@ function d(date: string | null): string {
 }
 
 export function QuotationPdf({ data }: { data: QuotationPdfData }) {
+  // Payback recomputed from the current total every time the PDF renders.
+  const roiMonths =
+    data.roi && data.roi.monthly_savings > 0 && data.total > 0
+      ? data.total / data.roi.monthly_savings
+      : 0;
   return (
     <Document title={data.quote_no}>
       <Page size="A4" style={styles.page}>
@@ -216,13 +221,13 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
           </View>
         </View>
 
-        {data.roi && data.roi.months > 0 ? (
+        {data.roi && roiMonths > 0 ? (
           <View style={styles.roiBox} wrap={false}>
             <Text style={styles.roiTitle}>ESTIMATED SAVINGS &amp; RETURN OF INVESTMENT</Text>
             <Text style={styles.roiBig}>
               ≈ {peso(data.roi.monthly_savings)} savings per month · investment
-              recovered in about {Math.round(data.roi.months)} months (≈{" "}
-              {data.roi.years.toLocaleString("en-PH", { maximumFractionDigits: 1 })} years)
+              recovered in about {Math.round(roiMonths)} months (≈{" "}
+              {(roiMonths / 12).toLocaleString("en-PH", { maximumFractionDigits: 1 })} years)
             </Text>
             <Text style={styles.roiNote}>
               Basis: {data.roi.capacity_pct}% generation capacity ·{" "}
