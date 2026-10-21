@@ -48,6 +48,10 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2 },
   grand: { borderTopWidth: 1, borderTopColor: "#111", marginTop: 3, paddingTop: 4, fontSize: 11, fontWeight: "bold" },
   terms: { marginTop: 16 },
+  roiBox: { marginTop: 12, borderWidth: 1, borderColor: GREEN, backgroundColor: "#F0FAF2", padding: 8 },
+  roiTitle: { fontWeight: "bold", color: "#157A2C", marginBottom: 3 },
+  roiBig: { fontSize: 11, fontWeight: "bold" },
+  roiNote: { fontSize: 7, color: "#555", marginTop: 3 },
   sigRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 44 },
   sigBox: { width: 200 },
   sigLine: { borderTopWidth: 1, borderTopColor: "#111", marginTop: 28, paddingTop: 3, textAlign: "center" },
@@ -81,6 +85,15 @@ export type QuotationPdfData = {
   terms: string | null;
   prepared_by: string;
   signature?: string | null; // data URI of the preparer's e-signature
+  // Estimated savings/payback from the sizing calculator (optional).
+  roi?: {
+    monthly_savings: number;
+    months: number;
+    years: number;
+    capacity_pct: number;
+    psh: number;
+    rate: number;
+  } | null;
 };
 
 function peso(n: number): string {
@@ -202,6 +215,23 @@ export function QuotationPdf({ data }: { data: QuotationPdfData }) {
             <Text>{peso(data.total)}</Text>
           </View>
         </View>
+
+        {data.roi && data.roi.months > 0 ? (
+          <View style={styles.roiBox} wrap={false}>
+            <Text style={styles.roiTitle}>ESTIMATED SAVINGS &amp; RETURN OF INVESTMENT</Text>
+            <Text style={styles.roiBig}>
+              ≈ {peso(data.roi.monthly_savings)} savings per month · investment
+              recovered in about {Math.round(data.roi.months)} months (≈{" "}
+              {data.roi.years.toLocaleString("en-PH", { maximumFractionDigits: 1 })} years)
+            </Text>
+            <Text style={styles.roiNote}>
+              Basis: {data.roi.capacity_pct}% generation capacity ·{" "}
+              {data.roi.psh} peak sun hours/day · grid rate ₱{data.roi.rate}/kWh.
+              Estimates only — actual savings vary with weather, usage pattern,
+              and utility rates.
+            </Text>
+          </View>
+        ) : null}
 
         {data.terms ? (
           <View style={styles.terms}>

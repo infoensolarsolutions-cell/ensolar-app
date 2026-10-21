@@ -26,6 +26,7 @@ type Detail = {
   site_location: string | null;
   revision_no: number;
   revision_date: string | null;
+  roi: { monthly_savings: number; months: number; years: number } | null;
   customers: { name: string; phone: string | null; address: string | null; barangay: string | null } | null;
   quotation_items: {
     id: string;
@@ -51,7 +52,7 @@ export default async function QuotationDetailPage({
   const { data: q } = await supabase
     .from("quotations")
     .select(
-      "id, quote_no, status, valid_until, subtotal, discount, total, terms, created_at, deleted_at, project_name, site_location, revision_no, revision_date, customers (name, phone, address, barangay), quotation_items (id, description, qty, unit, unit_price, line_total, sort_order), projects (id, project_no)",
+      "id, quote_no, status, valid_until, subtotal, discount, total, terms, created_at, deleted_at, project_name, site_location, revision_no, revision_date, roi, customers (name, phone, address, barangay), quotation_items (id, description, qty, unit, unit_price, line_total, sort_order), projects (id, project_no)",
     )
     .eq("id", id)
     .single()
@@ -135,6 +136,12 @@ export default async function QuotationDetailPage({
               <span>TOTAL</span>
               <span className="text-brand-green-dark">{formatPeso(q.total)}</span>
             </div>
+            {q.roi && q.roi.months > 0 && (
+              <p className="mt-1 rounded-lg bg-brand-green/10 px-2 py-1.5 text-xs font-semibold text-brand-green-dark">
+                📈 Estimated ROI: ≈ {Number(q.roi.years).toLocaleString("en-PH", { maximumFractionDigits: 1 })}{" "}
+                years ({formatPeso(q.roi.monthly_savings)}/month savings) — printed on the PDF
+              </p>
+            )}
           </div>
         </div>
 

@@ -118,6 +118,7 @@ export function QuotationBuilder({
     quotation ? String(quotation.discount || "") : "",
   );
   const [sizingName, setSizingName] = useState<string | null>(null);
+  const [sizingRoi, setSizingRoi] = useState<Record<string, number> | null>(null);
 
   // Hand-off from the Solar PV Sizing calculator: a new quotation opened
   // right after "Create quotation from these results" starts with the sized
@@ -131,6 +132,7 @@ export function QuotationBuilder({
       const parsed = JSON.parse(raw) as {
         items?: { description: string; qty: number; unit?: string | null; unit_price: number }[];
         project_name?: string;
+        roi?: Record<string, number>;
       };
       if (parsed.items?.length) {
         setRows(
@@ -144,6 +146,7 @@ export function QuotationBuilder({
           })),
         );
         if (parsed.project_name) setSizingName(parsed.project_name);
+        if (parsed.roi) setSizingRoi(parsed.roi);
       }
     } catch {
       // Malformed hand-off — the blank builder still works.
@@ -207,6 +210,24 @@ export function QuotationBuilder({
       {quotation && <input type="hidden" name="quotation_id" value={quotation.id} />}
       {leadId && <input type="hidden" name="lead_id" value={leadId} />}
       <input type="hidden" name="items" value={itemsJson} />
+      {sizingRoi && (
+        <>
+          <input type="hidden" name="roi" value={JSON.stringify(sizingRoi)} />
+          <p className="flex items-center justify-between rounded-lg border border-brand-green/40 bg-brand-green/5 px-3 py-2 text-xs text-gray-700">
+            <span>
+              📈 ROI from sizing: ≈ {Number(sizingRoi.years).toLocaleString("en-PH", { maximumFractionDigits: 1 })}{" "}
+              years payback — will print as a highlight box on the PDF.
+            </span>
+            <button
+              type="button"
+              onClick={() => setSizingRoi(null)}
+              className="ml-2 shrink-0 text-gray-400 underline"
+            >
+              remove
+            </button>
+          </p>
+        </>
+      )}
 
       <div className="rounded-xl border border-gray-200 bg-white p-3">
         <p className="mb-2 text-sm font-semibold text-gray-700">Project details</p>
