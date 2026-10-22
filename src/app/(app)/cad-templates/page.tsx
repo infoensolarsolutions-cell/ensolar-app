@@ -25,12 +25,16 @@ export default async function CadTemplatesPage() {
       <TopBar title="CAD Templates" />
       <div className="space-y-3 p-4">
         <p className="rounded-xl bg-blue-50 px-4 py-3 text-xs text-blue-900">
-          📐 Standard single-line diagrams (A3, DXF format — opens directly in
-          AutoCAD; Save As .dwg after editing). Each sheet has the PV strings
-          with Tigo RSD notes, DC isolation/SPD, hybrid inverter, LiFePO4
-          battery bank, AC protection, kWh meter, grid, PEC notes and the
-          Ensolar title block. Wire sizes, fuse ratings and string Voc are
-          left blank for the engineer to fill per final design.
+          📐 Standard single-line diagrams in the Ensolar permit-drawing style
+          (A3, DXF format — opens directly in AutoCAD; Save As .dwg after
+          editing). Each sheet has the Legend &amp; Symbols, Hybrid Inverter
+          and Solar Panel specification blocks, voltage-drop and string load
+          computations, PV string arrays with Tigo RSD, DC isolator switch,
+          PV combiner box, hybrid inverter, LiFePO4 battery bank, net meter,
+          ATS, existing panel board, and the Ensolar multi-column title block
+          (Contractor / Owner / Project Title / PEE / Designer / Sheet
+          Content). Wire sizes, breaker ratings and string Voc/Isc are left
+          blank for the engineer to fill per final design.
         </p>
 
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
