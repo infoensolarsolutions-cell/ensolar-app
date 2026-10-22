@@ -19,6 +19,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/projects", label: "🏗️ Projects" },
         { href: "/monitoring", label: "☀️ Monitoring" },
         { href: "/knowledge", label: "🛠️ Troubleshooting" },
+        { href: "/cad-templates", label: "📐 CAD Templates" },
       ],
     },
     {
@@ -90,6 +91,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/projects", label: "🏗️ Projects" },
         { href: "/monitoring", label: "☀️ Monitoring" },
         { href: "/knowledge", label: "🛠️ Troubleshooting" },
+        { href: "/cad-templates", label: "📐 CAD Templates" },
       ],
     },
     {
@@ -131,6 +133,7 @@ const GROUPS: Record<"owner" | "office_staff" | "technician", Group[]> = {
         { href: "/sizing", label: "📐 Solar Sizing" },
         { href: "/knowledge", label: "🛠️ Troubleshooting" },
         { href: "/equipment", label: "🔢 Equipment Registry" },
+        { href: "/cad-templates", label: "📐 CAD Templates" },
         { href: "/attendance", label: "🕐 My Attendance" },
         { href: "/kpi", label: "📈 My KPI" },
         { href: "/my-trainings", label: "🎓 My Trainings" },
