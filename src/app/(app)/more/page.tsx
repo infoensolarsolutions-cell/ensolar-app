@@ -52,6 +52,10 @@ export default async function MorePage() {
               <span className="font-medium text-gray-800">📐 Solar PV Sizing</span>
               <span className="text-gray-400">›</span>
             </Link>
+            <Link href="/cad-templates" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">📐 CAD Templates (SLD)</span>
+              <span className="text-gray-400">›</span>
+            </Link>
             <Link href="/quotations" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
               <span className="font-medium text-gray-800">📄 Quotations</span>
               <span className="text-gray-400">›</span>
