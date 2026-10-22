@@ -15,6 +15,8 @@ import {
 import { formatPeso, todayManila, TIMEZONE } from "@/lib/format";
 import { BarRows } from "@/components/charts";
 import { DashboardView, type DashboardData } from "./dashboard-view";
+import { CelebrationsBanner, type Celebration } from "@/components/celebrations-banner";
+import { upcomingCelebrations } from "@/lib/celebrations";
 
 type OverdueRow = {
   id: string;
@@ -30,11 +32,12 @@ type SourceRow = {
 
 export default async function DashboardPage() {
   const profile = (await getProfile())!;
+  const celebrations = await upcomingCelebrations();
 
   // Technicians get a work-focused dashboard: their projects, tickets,
   // and clocked hours this week.
   if (profile.role === "technician") {
-    return <TechnicianDashboard profile={profile} />;
+    return <TechnicianDashboard profile={profile} celebrations={celebrations} />;
   }
 
   const supabase = await createClient();
@@ -538,6 +541,7 @@ export default async function DashboardPage() {
   return (
     <>
       <TopBar title="Ensolar" />
+      <CelebrationsBanner items={celebrations} todayKey={today} />
       {kpiAlert && (
         <div className="px-4 pt-3">
           <Link
@@ -590,7 +594,13 @@ export default async function DashboardPage() {
   );
 }
 
-async function TechnicianDashboard({ profile }: { profile: Profile }) {
+async function TechnicianDashboard({
+  profile,
+  celebrations,
+}: {
+  profile: Profile;
+  celebrations: Celebration[];
+}) {
   const supabase = await createClient();
   const today = todayManila();
 
@@ -674,6 +684,7 @@ async function TechnicianDashboard({ profile }: { profile: Profile }) {
   return (
     <>
       <TopBar title="Ensolar" />
+      <CelebrationsBanner items={celebrations} todayKey={today} />
       <div className="space-y-4 p-4">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="font-semibold text-gray-900">
