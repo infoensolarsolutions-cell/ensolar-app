@@ -12,9 +12,9 @@ const TEMPLATES = [
   { file: "SLD-5kW-hybrid-template.dxf", kw: "5 kW", inverter: "Deye SUN-5K-SG03LP1", panels: "9 × 585 W (5+4)", batteries: "1 × 314 Ah" },
   { file: "SLD-6kW-hybrid-template.dxf", kw: "6 kW", inverter: "Deye SUN-6K-SG03LP1", panels: "11 × 585 W (6+5)", batteries: "1 × 314 Ah" },
   { file: "SLD-8kW-hybrid-template.dxf", kw: "8 kW", inverter: "Deye SUN-8K-SG01LP1", panels: "14 × 585 W (7+7)", batteries: "2 × 314 Ah" },
-  { file: "SLD-12kW-hybrid-template.dxf", kw: "12 kW", inverter: "Deye SUN-12K-SG01LP1-AM3-P", panels: "21 × 585 W (7+7+7)", batteries: "2 × 314 Ah" },
-  { file: "SLD-16kW-hybrid-template.dxf", kw: "16 kW", inverter: "Deye SUN-16K-SG01LP1-AM3-P", panels: "28 × 585 W (10+9+9)", batteries: "3 × 314 Ah" },
-  { file: "SLD-18kW-hybrid-template.dxf", kw: "18 kW", inverter: "Deye SUN-18K-SG01LP1-AM3-P", panels: "31 × 585 W (8+8+8+7)", batteries: "3 × 314 Ah" },
+  { file: "SLD-12kW-hybrid-template.dxf", kw: "12 kW", inverter: "Deye SUN-12K-SG06LP1-AM3-P", panels: "21 × 585 W (7+7+7)", batteries: "2 × 314 Ah" },
+  { file: "SLD-16kW-hybrid-template.dxf", kw: "16 kW", inverter: "Deye SUN-16K-SG06LP1-AM3-P", panels: "28 × 585 W (10+9+9)", batteries: "3 × 314 Ah" },
+  { file: "SLD-18kW-hybrid-template.dxf", kw: "18 kW", inverter: "Deye SUN-18K-SG06LP1-AM3-P", panels: "31 × 585 W (8+8+8+7)", batteries: "3 × 314 Ah" },
 ];
 
 export default async function CadTemplatesPage() {
@@ -28,13 +28,14 @@ export default async function CadTemplatesPage() {
           📐 Standard single-line diagrams in the Ensolar permit-drawing style
           (A3, DXF format — opens directly in AutoCAD; Save As .dwg after
           editing). Each sheet has the Legend &amp; Symbols, Hybrid Inverter
-          and Solar Panel specification blocks, voltage-drop and string load
-          computations, PV string arrays with Tigo RSD, DC isolator switch,
-          PV combiner box, hybrid inverter, LiFePO4 battery bank, net meter,
-          ATS, existing panel board, and the Ensolar multi-column title block
-          (Contractor / Owner / Project Title / PEE / Designer / Sheet
-          Content). Wire sizes, breaker ratings and string Voc/Isc are left
-          blank for the engineer to fill per final design.
+          and Solar Panel specification blocks, voltage-drop, string and
+          battery load computations, PV string arrays with TW grounding
+          notes, DC isolator switch, PV combiner box, hybrid inverter with
+          separate AC IN / AC OUT breakers, LiFePO4 battery bank with DC
+          breaker, net meter, ATS (N/R), existing panel board, Electrical
+          Load Schedule, and the Ensolar multi-column title block. Wire
+          sizes, breaker ratings and string Voc/Isc are left blank for the
+          engineer to fill per final design.
         </p>
 
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
