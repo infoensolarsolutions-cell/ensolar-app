@@ -14,11 +14,20 @@ type ActionState = { error?: string; saved?: boolean } | null;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Next month, same day, clamped to the month's length (Jan 31 → Feb 28).
-function plusOneMonth(date: string): string {
+// Months to roll the due date forward after a payment, per frequency.
+const FREQ_MONTHS: Record<string, number> = {
+  monthly: 1,
+  quarterly: 3,
+  semi_annual: 6,
+  annual: 12,
+};
+
+// N months later, same day, clamped to the month's length (Jan 31 → Feb 28).
+function plusMonths(date: string, months: number): string {
   const [y, m, day] = date.split("-").map(Number);
-  const ny = m === 12 ? y + 1 : y;
-  const nm = m === 12 ? 1 : m + 1;
+  const total = y * 12 + (m - 1) + months;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12) + 1;
   const lastDay = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
   return `${ny}-${String(nm).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
 }
@@ -32,6 +41,7 @@ function readPayableForm(formData: FormData) {
   const due_date = String(formData.get("due_date") ?? "");
   const monthlyRaw = String(formData.get("monthly_amount") ?? "").trim();
   const monthly_amount = monthlyRaw ? Number(monthlyRaw) : null;
+  const payment_frequency = String(formData.get("payment_frequency") ?? "monthly").trim();
   const interest_note = String(formData.get("interest_note") ?? "").trim().slice(0, 200);
 
   if (!category) return { error: "Pick a category." as const };
@@ -40,7 +50,10 @@ function readPayableForm(formData: FormData) {
   if (incurred_date && !DATE_RE.test(incurred_date)) return { error: "Invalid date incurred." as const };
   if (due_date && !DATE_RE.test(due_date)) return { error: "Invalid due date." as const };
   if (monthly_amount !== null && !(monthly_amount > 0)) {
-    return { error: "Monthly payment must be more than zero (or leave it blank)." as const };
+    return { error: "Installment amount must be more than zero (or leave it blank)." as const };
+  }
+  if (!(payment_frequency in FREQ_MONTHS)) {
+    return { error: "Pick a payment schedule." as const };
   }
   return {
     values: {
@@ -51,6 +64,7 @@ function readPayableForm(formData: FormData) {
       incurred_date: incurred_date || todayManila(),
       due_date: due_date || null,
       monthly_amount,
+      payment_frequency,
       interest_note: interest_note || null,
     },
   };
@@ -122,8 +136,8 @@ export async function setPayableSettled(
   return {};
 }
 
-// After a payment: fully paid → settle automatically; a monthly obligation
-// → roll the next due date one month forward.
+// After a payment: fully paid → settle automatically; a recurring obligation
+// → roll the next due date forward by its payment frequency.
 async function refreshAfterPayment(
   supabase: Awaited<ReturnType<typeof createClient>>,
   payableId: string,
@@ -131,7 +145,7 @@ async function refreshAfterPayment(
 ) {
   const { data: p } = await supabase
     .from("payables")
-    .select("original_amount, due_date, monthly_amount, settled_at, payable_payments (amount)")
+    .select("original_amount, due_date, monthly_amount, payment_frequency, settled_at, payable_payments (amount)")
     .eq("id", payableId)
     .single();
   if (!p) return;
@@ -149,7 +163,10 @@ async function refreshAfterPayment(
     p.monthly_amount !== null &&
     p.due_date
   ) {
-    patch.due_date = plusOneMonth(p.due_date as string);
+    patch.due_date = plusMonths(
+      p.due_date as string,
+      FREQ_MONTHS[(p.payment_frequency as string) ?? "monthly"] ?? 1,
+    );
   }
   if (Object.keys(patch).length) {
     await supabase.from("payables").update(patch).eq("id", payableId);
