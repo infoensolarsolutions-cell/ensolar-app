@@ -8,6 +8,7 @@ import {
   deletePayablePayment,
   setPayableSettled,
   updatePayable,
+  updatePayablePayment,
 } from "./actions";
 import { PAYABLE_CATEGORIES, type PayableCategory } from "./categories";
 import { formatDate, formatPeso } from "@/lib/format";
@@ -245,29 +246,20 @@ export function PayableCard({ payable, today }: { payable: PayableRow; today: st
           {payable.payments.length > 0 && (
             <ul className="divide-y divide-gray-50">
               {payable.payments.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
-                  <span className="text-gray-600">
-                    {formatDate(p.paid_at)}
-                    {p.note && <span className="text-xs text-gray-400"> · {p.note}</span>}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <span className="font-semibold">{formatPeso(p.amount)}</span>
-                    <button
-                      disabled={pending}
-                      onClick={() => {
-                        if (!confirm(`Remove this payment of ${formatPeso(p.amount)}?`)) return;
-                        setError(null);
-                        startTransition(async () => {
-                          const res = await deletePayablePayment(p.id, payable.id);
-                          if (res.error) setError(res.error);
-                        });
-                      }}
-                      className="text-xs text-gray-400 underline disabled:opacity-50"
-                    >
-                      remove
-                    </button>
-                  </span>
-                </li>
+                <PaymentRow
+                  key={p.id}
+                  payment={p}
+                  payableId={payable.id}
+                  pending={pending}
+                  onDelete={() => {
+                    if (!confirm(`Remove this payment of ${formatPeso(p.amount)}?`)) return;
+                    setError(null);
+                    startTransition(async () => {
+                      const res = await deletePayablePayment(p.id, payable.id);
+                      if (res.error) setError(res.error);
+                    });
+                  }}
+                />
               ))}
             </ul>
           )}
@@ -318,6 +310,90 @@ export function PayableCard({ payable, today }: { payable: PayableRow; today: st
         </div>
       )}
     </div>
+  );
+}
+
+function PaymentRow({
+  payment,
+  payableId,
+  pending,
+  onDelete,
+}: {
+  payment: PayablePaymentRow;
+  payableId: string;
+  pending: boolean;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [state, formAction, saving] = useActionState(updatePayablePayment, null);
+
+  useEffect(() => {
+    if (state?.saved) setEditing(false);
+  }, [state]);
+
+  if (editing) {
+    return (
+      <li className="py-2">
+        <form action={formAction} className="space-y-2 rounded-lg border border-gray-200 p-2.5">
+          <input type="hidden" name="payment_id" value={payment.id} />
+          <input type="hidden" name="payable_id" value={payableId} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500">Amount paid (₱)</label>
+              <input
+                name="amount" type="number" min="0.01" step="any" inputMode="decimal"
+                defaultValue={payment.amount} required className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Date paid</label>
+              <input name="paid_at" type="date" defaultValue={payment.paid_at} className={inputClass} />
+            </div>
+          </div>
+          <input
+            name="note" placeholder="Note, e.g. OR / reference no. (optional)"
+            defaultValue={payment.note ?? ""} className={inputClass}
+          />
+          {state?.error && <p className="text-xs font-medium text-red-600">{state.error}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button" onClick={() => setEditing(false)}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 active:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button disabled={saving} className="rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">
+              {saving ? "Saving…" : "Save payment"}
+            </button>
+          </div>
+        </form>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center justify-between gap-2 py-1.5 text-sm">
+      <span className="text-gray-600">
+        {formatDate(payment.paid_at)}
+        {payment.note && <span className="text-xs text-gray-400"> · {payment.note}</span>}
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        <span className="font-semibold">{formatPeso(payment.amount)}</span>
+        <button
+          onClick={() => setEditing(true)}
+          className="text-xs font-medium text-brand-green-dark underline"
+        >
+          edit
+        </button>
+        <button
+          disabled={pending}
+          onClick={onDelete}
+          className="text-xs text-gray-400 underline disabled:opacity-50"
+        >
+          remove
+        </button>
+      </span>
+    </li>
   );
 }
 

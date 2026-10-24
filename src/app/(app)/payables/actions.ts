@@ -202,6 +202,34 @@ export async function addPayablePayment(
   return { saved: true };
 }
 
+export async function updatePayablePayment(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireRole("owner");
+  const paymentId = String(formData.get("payment_id") ?? "");
+  const payableId = String(formData.get("payable_id") ?? "");
+  const amount = Number(formData.get("amount") ?? 0);
+  const paid_at = String(formData.get("paid_at") ?? "");
+  const note = String(formData.get("note") ?? "").trim().slice(0, 300);
+
+  if (!paymentId || !payableId) return { error: "Missing payment reference." };
+  if (!(amount > 0)) return { error: "Enter the amount paid." };
+  if (paid_at && !DATE_RE.test(paid_at)) return { error: "Invalid payment date." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("payable_payments")
+    .update({ amount, paid_at: paid_at || todayManila(), note: note || null })
+    .eq("id", paymentId);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  // Correcting a payment re-checks settled state but never moves due dates.
+  await refreshAfterPayment(supabase, payableId, false);
+  revalidatePath(PAYABLE_PATH);
+  return { saved: true };
+}
+
 export async function deletePayablePayment(
   paymentId: string,
   payableId: string,
