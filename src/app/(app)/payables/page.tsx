@@ -20,7 +20,7 @@ export default async function PayablesPage() {
   const { data } = await supabase
     .from("payables")
     .select(
-      "id, category, creditor, description, original_amount, incurred_date, due_date, monthly_amount, interest_note, settled_at, payable_payments (id, amount, paid_at, note)",
+      "id, category, creditor, description, original_amount, incurred_date, due_date, monthly_amount, payment_frequency, interest_note, settled_at, payable_payments (id, amount, paid_at, note)",
     )
     .order("created_at", { ascending: false })
     .limit(500);
@@ -34,6 +34,7 @@ export default async function PayablesPage() {
     incurred_date: p.incurred_date,
     due_date: p.due_date,
     monthly_amount: p.monthly_amount === null ? null : Number(p.monthly_amount),
+    payment_frequency: (p.payment_frequency ?? "monthly") as PayableRow["payment_frequency"],
     interest_note: p.interest_note,
     settled_at: p.settled_at,
     payments: ((p.payable_payments ?? []) as PayableRow["payments"])

@@ -22,6 +22,22 @@ export type PayablePaymentRow = {
   note: string | null;
 };
 
+export type PayableFrequency = "monthly" | "quarterly" | "semi_annual" | "annual";
+
+export const FREQUENCY_LABELS: Record<PayableFrequency, string> = {
+  monthly: "Monthly",
+  quarterly: "Quarterly (every 3 months)",
+  semi_annual: "Semi-annual (every 6 months)",
+  annual: "Annual (once a year)",
+};
+
+const FREQUENCY_SUFFIX: Record<PayableFrequency, string> = {
+  monthly: "/month",
+  quarterly: "/quarter",
+  semi_annual: "/6 months",
+  annual: "/year",
+};
+
 export type PayableRow = {
   id: string;
   category: PayableCategory;
@@ -31,6 +47,7 @@ export type PayableRow = {
   incurred_date: string;
   due_date: string | null;
   monthly_amount: number | null;
+  payment_frequency: PayableFrequency;
   interest_note: string | null;
   settled_at: string | null;
   payments: PayablePaymentRow[];
@@ -113,12 +130,24 @@ function PayableFields({ payable }: { payable?: PayableRow }) {
           <input name="due_date" type="date" defaultValue={payable?.due_date ?? ""} className={inputClass} />
         </div>
         <div>
-          <label className="text-xs text-gray-500">Monthly payment (₱, optional)</label>
-          <input
-            name="monthly_amount" type="number" min="0.01" step="any" inputMode="decimal"
-            defaultValue={payable?.monthly_amount ?? ""} className={inputClass}
-          />
+          <label className="text-xs text-gray-500">Payment schedule</label>
+          <select
+            name="payment_frequency"
+            defaultValue={payable?.payment_frequency ?? "monthly"}
+            className={inputClass}
+          >
+            {(Object.keys(FREQUENCY_LABELS) as PayableFrequency[]).map((f) => (
+              <option key={f} value={f}>{FREQUENCY_LABELS[f]}</option>
+            ))}
+          </select>
         </div>
+      </div>
+      <div>
+        <label className="text-xs text-gray-500">Installment per payment (₱, optional)</label>
+        <input
+          name="monthly_amount" type="number" min="0.01" step="any" inputMode="decimal"
+          defaultValue={payable?.monthly_amount ?? ""} className={inputClass}
+        />
       </div>
       <input
         name="interest_note"
@@ -127,8 +156,9 @@ function PayableFields({ payable }: { payable?: PayableRow }) {
         className={inputClass}
       />
       <p className="text-[11px] text-gray-400">
-        With a monthly payment set, the due date rolls forward one month
-        automatically every time you record a payment.
+        With an installment amount set, the due date rolls forward
+        automatically by the chosen schedule (monthly, quarterly, semi-annual
+        or annual) every time you record a payment.
       </p>
     </>
   );
@@ -202,9 +232,11 @@ export function PayableCard({ payable, today }: { payable: PayableRow; today: st
         <p className="mt-1 text-[11px] text-gray-500">
           Paid {formatPeso(paid)} of {formatPeso(payable.original_amount)}
           {payable.monthly_amount !== null && !settled && (
-            <> · {formatPeso(payable.monthly_amount)}/month</>
+            <> · {formatPeso(payable.monthly_amount)}{FREQUENCY_SUFFIX[payable.payment_frequency]}</>
           )}
-          <span className="float-right text-gray-400">{expanded ? "▲ close" : "▼ details"}</span>
+          <span className={`float-right ${settled ? "text-gray-400" : "font-semibold text-brand-green-dark"}`}>
+            {expanded ? "▲ close" : settled ? "▼ details" : "💰 record payment ▼"}
+          </span>
         </p>
       </button>
 
