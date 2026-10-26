@@ -22,25 +22,68 @@ type QuotationRow = {
   projects: { id: string } | null;
 };
 
-export default async function QuotationsPage() {
+export default async function QuotationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   await requireRole("owner", "office_staff");
+  const { q } = await searchParams;
+  const term = (q ?? "").trim().slice(0, 100);
   const supabase = await createClient();
 
   const activeBranch = await getActiveBranch(await getBranches(supabase));
-  let quotationsQuery = supabase
-    .from("quotations")
-    .select("id, quote_no, status, valid_until, total, created_at, customers (name), projects (id)")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (activeBranch !== "all") quotationsQuery = quotationsQuery.eq("branch_id", activeBranch);
-  const [{ data: quotations }, { count: trashed }] = await Promise.all([
-    quotationsQuery.overrideTypes<QuotationRow[]>(),
-    supabase
+  const SELECT =
+    "id, quote_no, status, valid_until, total, created_at, customers (name), projects (id)";
+
+  let quotations: QuotationRow[];
+  if (term) {
+    // Search the whole history (not just the latest 100): by quote number,
+    // or by customer name (inner join so the ilike applies to the customer).
+    const like = `%${term}%`;
+    let byNo = supabase
       .from("quotations")
-      .select("id", { count: "exact", head: true })
-      .not("deleted_at", "is", null),
-  ]);
+      .select(SELECT)
+      .is("deleted_at", null)
+      .ilike("quote_no", like)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    let byCustomer = supabase
+      .from("quotations")
+      .select(
+        "id, quote_no, status, valid_until, total, created_at, customers!inner (name), projects (id)",
+      )
+      .is("deleted_at", null)
+      .ilike("customers.name", like)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (activeBranch !== "all") {
+      byNo = byNo.eq("branch_id", activeBranch);
+      byCustomer = byCustomer.eq("branch_id", activeBranch);
+    }
+    const [a, b] = await Promise.all([
+      byNo.overrideTypes<QuotationRow[]>(),
+      byCustomer.overrideTypes<QuotationRow[]>(),
+    ]);
+    const seen = new Set<string>();
+    quotations = [...(a.data ?? []), ...(b.data ?? [])]
+      .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+      .sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
+  } else {
+    let listQuery = supabase
+      .from("quotations")
+      .select(SELECT)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (activeBranch !== "all") listQuery = listQuery.eq("branch_id", activeBranch);
+    quotations = (await listQuery.overrideTypes<QuotationRow[]>()).data ?? [];
+  }
+
+  const { count: trashed } = await supabase
+    .from("quotations")
+    .select("id", { count: "exact", head: true })
+    .not("deleted_at", "is", null);
 
   const today = todayManila();
 
@@ -63,15 +106,45 @@ export default async function QuotationsPage() {
           </Link>
         </div>
 
-        {!quotations?.length && (
+        <form method="get" className="flex gap-2 lg:col-span-full">
+          <input
+            type="search"
+            name="q"
+            defaultValue={term}
+            placeholder="🔍 Search quote no. or customer name…"
+            className="min-w-0 flex-1 rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30"
+          />
+          <button className="shrink-0 rounded-xl bg-brand-green px-4 py-3 text-sm font-semibold text-white active:bg-brand-green-dark">
+            Search
+          </button>
+          {term && (
+            <Link
+              href="/quotations"
+              className="shrink-0 self-center text-sm font-medium text-gray-500 underline"
+            >
+              clear
+            </Link>
+          )}
+        </form>
+
+        {term && quotations.length > 0 && (
+          <p className="text-xs font-medium text-gray-500 lg:col-span-full">
+            {quotations.length} quotation{quotations.length === 1 ? "" : "s"} matching
+            &ldquo;{term}&rdquo; — searched across the whole history.
+          </p>
+        )}
+
+        {!quotations.length && (
           <p className="pt-8 text-center text-sm text-gray-500 lg:col-span-full">
-            No quotations yet.
+            {term ? <>No quotations match &ldquo;{term}&rdquo;.</> : "No quotations yet."}
           </p>
         )}
 
         {(() => {
-          // Sent quotations awaiting a customer decision, soonest expiry first.
-          const awaiting = (quotations ?? [])
+          // Sent quotations awaiting a customer decision, soonest expiry
+          // first. Hidden while searching — results take the stage.
+          if (term) return null;
+          const awaiting = quotations
             .filter((q) => q.status === "sent")
             .sort((a, b) => (a.valid_until ?? "9999") < (b.valid_until ?? "9999") ? -1 : 1);
           if (!awaiting.length) return null;
@@ -132,7 +205,7 @@ export default async function QuotationsPage() {
           );
         })()}
 
-        {quotations?.map((q) => (
+        {quotations.map((q) => (
           <div key={q.id} className="relative rounded-xl border border-gray-200 bg-white">
             {!q.projects && (
               <ListTrashButton quotationId={q.id} quoteNo={q.quote_no} />
