@@ -126,7 +126,7 @@ export function SizingCalculator({
   const [endPrice, setEndPrice] = useState("");
   const [midPrice, setMidPrice] = useState("");
   const [lfootPrice, setLfootPrice] = useState("");
-  const [bosPct, setBosPct] = useState("30");
+  const [bosPct, setBosPct] = useState("25");
   const [itcPct, setItcPct] = useState("25");
   const [capacityPct, setCapacityPct] = useState("80");
   const [roiPriceOv, setRoiPriceOv] = useState("");
