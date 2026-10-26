@@ -98,6 +98,12 @@ export default async function EmployeesPage() {
                     {e.contact_no && ` · ${e.contact_no}`}
                     {!e.active && " · inactive"}
                   </p>
+                  {e.active && !e.profile_id && (
+                    <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                      ⚠️ No app login yet — add one in Users &amp; Roles (same
+                      email) to enable login &amp; project assignment
+                    </p>
+                  )}
                 </div>
                 <p className="shrink-0 text-sm font-bold text-gray-800">
                   {formatPeso(e.rate)}

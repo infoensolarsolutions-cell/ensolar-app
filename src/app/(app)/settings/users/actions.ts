@@ -94,7 +94,7 @@ export async function createUser(
   const admin = createAdminClient();
   // app_metadata.role is picked up by the handle_new_user trigger, so the
   // profile is created with the right role from the start.
-  const { error } = await admin.auth.admin.createUser({
+  const { data: created, error } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
@@ -103,6 +103,17 @@ export async function createUser(
   });
   if (error) return { error: `Could not create: ${error.message}` };
 
+  // Auto-link the new login to the employee 201 file with the same email,
+  // so the person immediately appears in project assignment, payroll, etc.
+  if (created?.user) {
+    await admin
+      .from("employees")
+      .update({ profile_id: created.user.id })
+      .ilike("email", email)
+      .is("profile_id", null);
+  }
+
   revalidatePath("/settings/users");
+  revalidatePath("/employees");
   return { saved: true };
 }
