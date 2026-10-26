@@ -17,16 +17,22 @@ export type KbRow = {
   solution: string;
   source: string | null;
   created_by: string | null;
+  assigned_to: string | null;
+  assigned_name: string | null;
   created_at: string;
 };
 
+export type Technician = { id: string; name: string };
+
 export function KnowledgeView({
   entries,
+  technicians,
   isStaff,
   isOwner,
   meId,
 }: {
   entries: KbRow[];
+  technicians: Technician[];
   isStaff: boolean;
   isOwner: boolean;
   meId: string;
@@ -40,7 +46,7 @@ export function KnowledgeView({
     return entries.filter((e) => {
       if (category !== "all" && e.category !== category) return false;
       if (!q) return true;
-      return [e.brand ?? "", e.model ?? "", e.problem, e.solution, e.source ?? ""]
+      return [e.brand ?? "", e.model ?? "", e.problem, e.solution, e.source ?? "", e.assigned_name ?? ""]
         .join(" ")
         .toLowerCase()
         .includes(q);
@@ -100,7 +106,7 @@ export function KnowledgeView({
           + Add problem &amp; solution
         </button>
       ) : (
-        <EntryForm onDone={() => setShowForm(false)} />
+        <EntryForm technicians={technicians} onDone={() => setShowForm(false)} />
       )}
       {isOwner && <ImportTicketsButton />}
 
@@ -118,7 +124,8 @@ export function KnowledgeView({
         <EntryCard
           key={e.id}
           entry={e}
-          canEdit={isStaff || e.created_by === meId}
+          technicians={technicians}
+          canEdit={isStaff || e.created_by === meId || e.assigned_to === meId}
           isOwner={isOwner}
         />
       ))}
@@ -171,10 +178,12 @@ function ImportTicketsButton() {
 
 function EntryCard({
   entry,
+  technicians,
   canEdit,
   isOwner,
 }: {
   entry: KbRow;
+  technicians: Technician[];
   canEdit: boolean;
   isOwner: boolean;
 }) {
@@ -184,7 +193,7 @@ function EntryCard({
   const [pending, startTransition] = useTransition();
 
   if (editing) {
-    return <EntryForm entry={entry} onDone={() => setEditing(false)} />;
+    return <EntryForm entry={entry} technicians={technicians} onDone={() => setEditing(false)} />;
   }
 
   return (
@@ -196,6 +205,11 @@ function EntryCard({
               {KB_CATEGORIES[entry.category]}
               {entry.brand && ` · ${entry.brand}`}
               {entry.model && ` ${entry.model}`}
+              {!entry.solution && (
+                <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                  ⏳ waiting for write-up
+                </span>
+              )}
             </p>
             <p className={`mt-1 text-sm font-medium text-gray-900 ${open ? "" : "line-clamp-2"}`}>
               {entry.problem}
@@ -207,10 +221,23 @@ function EntryCard({
 
       {open && (
         <>
-          <div className="mt-2 whitespace-pre-wrap rounded-lg bg-green-50 px-3 py-2 text-sm text-gray-800">
-            <p className="mb-1 text-xs font-bold text-green-800">✅ Solution</p>
-            {entry.solution}
-          </div>
+          {entry.solution ? (
+            <div className="mt-2 whitespace-pre-wrap rounded-lg bg-green-50 px-3 py-2 text-sm text-gray-800">
+              <p className="mb-1 text-xs font-bold text-green-800">✅ Solution</p>
+              {entry.solution}
+            </div>
+          ) : (
+            <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              ⏳ Waiting for{" "}
+              <span className="font-semibold">{entry.assigned_name ?? "the tagged technician"}</span>{" "}
+              to write the troubleshooting steps (press &ldquo;edit&rdquo; to fill them in).
+            </div>
+          )}
+          {entry.assigned_name && (
+            <p className="mt-2 text-xs font-medium text-gray-600">
+              👷 Attended / solved by: <span className="font-semibold text-gray-800">{entry.assigned_name}</span>
+            </p>
+          )}
           <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
             <span>
               {formatDate(entry.created_at)}
@@ -247,7 +274,15 @@ function EntryCard({
   );
 }
 
-function EntryForm({ entry, onDone }: { entry?: KbRow; onDone: () => void }) {
+function EntryForm({
+  entry,
+  technicians,
+  onDone,
+}: {
+  entry?: KbRow;
+  technicians: Technician[];
+  onDone: () => void;
+}) {
   const [state, formAction, pending] = useActionState(
     entry ? updateKbIssue : addKbIssue,
     null,
@@ -273,8 +308,22 @@ function EntryForm({ entry, onDone }: { entry?: KbRow; onDone: () => void }) {
         <input name="model" defaultValue={entry?.model ?? ""} placeholder="Model (optional)" className={inputClass} />
         <input name="source" defaultValue={entry?.source ?? ""} placeholder="Source (e.g. Messenger chat)" className={inputClass} />
       </div>
+      <div>
+        <label className="text-xs text-gray-500">
+          👷 Technician who attended / solved it (tagging notifies them to write the steps)
+        </label>
+        <select name="assigned_to" defaultValue={entry?.assigned_to ?? ""} className={inputClass}>
+          <option value="">— no technician tagged —</option>
+          {technicians.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+          {entry?.assigned_to && !technicians.some((t) => t.id === entry.assigned_to) && (
+            <option value={entry.assigned_to}>{entry.assigned_name ?? "Assigned member"}</option>
+          )}
+        </select>
+      </div>
       <textarea name="problem" defaultValue={entry?.problem ?? ""} rows={3} required placeholder="Problem — what happened / error shown" className={inputClass} />
-      <textarea name="solution" defaultValue={entry?.solution ?? ""} rows={5} required placeholder="Solution — what fixed it, step by step" className={inputClass} />
+      <textarea name="solution" defaultValue={entry?.solution ?? ""} rows={5} placeholder="Solution — what fixed it, step by step (leave blank if the tagged technician will write it)" className={inputClass} />
       {state?.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{state.error}</p>
       )}
