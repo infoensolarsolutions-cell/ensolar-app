@@ -5,9 +5,10 @@
 alter table public.kb_issues
   add column assigned_to uuid references public.profiles (id) on delete set null;
 
-drop policy "technician updates own kb" on public.kb_issues;
-create policy "technician updates own or assigned kb" on public.kb_issues
-  for update to authenticated
+alter policy "technician updates own kb" on public.kb_issues
+  rename to "technician updates own or assigned kb";
+
+alter policy "technician updates own or assigned kb" on public.kb_issues
   using (
     public.get_my_role() = 'technician'
     and (created_by = (select auth.uid()) or assigned_to = (select auth.uid()))
