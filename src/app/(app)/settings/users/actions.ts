@@ -103,9 +103,13 @@ export async function createUser(
   });
   if (error) return { error: `Could not create: ${error.message}` };
 
-  // Auto-link the new login to the employee 201 file with the same email,
-  // so the person immediately appears in project assignment, payroll, etc.
   if (created?.user) {
+    // Set the role on the profile directly: GoTrue can merge custom
+    // app_metadata after the insert that fires handle_new_user, in which
+    // case the trigger falls back to 'customer'.
+    await admin.from("profiles").update({ role }).eq("id", created.user.id);
+    // Auto-link the new login to the employee 201 file with the same email,
+    // so the person immediately appears in project assignment, payroll, etc.
     await admin
       .from("employees")
       .update({ profile_id: created.user.id })
