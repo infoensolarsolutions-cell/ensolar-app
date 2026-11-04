@@ -45,6 +45,7 @@ export default async function CampaignsPage() {
       leads: mine.length,
       won: mine.filter((l) => l.status === "won").length,
       share_url: `https://ensolar-app.vercel.app/inquire?c=${c.id}`,
+      packages_url: `https://ensolar-app.vercel.app/packages?c=${c.id}`,
     };
   });
 
