@@ -26,6 +26,7 @@ export type CampaignRow = {
   leads: number;
   won: number;
   share_url: string;
+  packages_url: string;
 };
 
 export function CampaignForm() {
@@ -55,6 +56,7 @@ export function CampaignForm() {
 export function CampaignItem({ campaign }: { campaign: CampaignRow }) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedPkg, setCopiedPkg] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const costPerLead = campaign.leads > 0 ? campaign.cost / campaign.leads : null;
@@ -115,6 +117,16 @@ export function CampaignItem({ campaign }: { campaign: CampaignRow }) {
           className="rounded-lg border border-brand-green px-3 py-2 text-xs font-semibold text-brand-green-dark"
         >
           {copied ? "✓ Copied!" : "Copy inquiry link"}
+        </button>
+        <button
+          onClick={() => {
+            navigator.clipboard?.writeText(campaign.packages_url);
+            setCopiedPkg(true);
+            setTimeout(() => setCopiedPkg(false), 2000);
+          }}
+          className="rounded-lg border border-brand-green px-3 py-2 text-xs font-semibold text-brand-green-dark"
+        >
+          {copiedPkg ? "✓ Copied!" : "Copy packages link"}
         </button>
         {campaign.active && (
           <button
