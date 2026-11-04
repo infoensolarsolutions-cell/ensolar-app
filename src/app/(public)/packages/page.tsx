@@ -79,7 +79,7 @@ export default async function PackagesPage({
         {offers.map((o) => (
           <div key={o.id} className="flex flex-col rounded-2xl bg-white p-5 text-gray-900 shadow-lg">
             <p className="text-xs font-bold uppercase tracking-wide text-brand-green-dark">
-              {o.kw ? `${o.kw} kW Hybrid` : "Package"}
+              {o.kw ? `${o.kw} kWp Hybrid` : "Package"}
             </p>
             <h2 className="mt-1 text-lg font-extrabold">{o.name}</h2>
             {o.headline && <p className="text-sm text-gray-600">{o.headline}</p>}
@@ -112,8 +112,13 @@ export default async function PackagesPage({
       </section>
 
       <footer className="border-t border-white/10 py-6 text-center text-xs text-gray-400">
-        <p>Ensolar Solutions Installation Services · 19 Ciriaco Espina St., Taclobo, Dumaguete City</p>
-        <p className="mt-1">(035) 531-6455 · 0953-561-2557 · info.ensolarsolutions@gmail.com</p>
+        <p className="mx-auto max-w-2xl px-4">
+          Prices are for Deye hybrid inverter systems with LVTOPSUN LiFePO4
+          battery. Transportation will be added for project sites outside
+          Metro Dumaguete.
+        </p>
+        <p className="mt-2">Ensolar Solutions Installation Services · 19 Ciriaco Espina St., Taclobo, Dumaguete City</p>
+        <p className="mt-1">(035) 531-6455 · 0953-561-2557 (TM) · 0961-885-6986 (Smart) · info.ensolarsolutions@gmail.com</p>
         <p className="mt-2">
           Not ready to reserve?{" "}
           <Link href="/inquire" className="font-semibold text-brand-green underline">
