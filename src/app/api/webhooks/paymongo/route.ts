@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyWebhookSignature, type CheckoutSession } from "@/lib/paymongo";
-import { recordOnlinePayment } from "@/lib/paymongo-record";
+import { recordOnlinePayment, recordPackageOrderPayment } from "@/lib/paymongo-record";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -25,7 +25,13 @@ export async function POST(request: Request) {
         metadata: resource.attributes.metadata ?? null,
         payment_status: "",
       };
-      await recordOnlinePayment(session);
+      // Route by metadata: package-store reservations carry order_id,
+      // customer-portal project payments carry project_id.
+      if (session.metadata?.order_id) {
+        await recordPackageOrderPayment(session);
+      } else {
+        await recordOnlinePayment(session);
+      }
     }
     return NextResponse.json({ ok: true });
   } catch {

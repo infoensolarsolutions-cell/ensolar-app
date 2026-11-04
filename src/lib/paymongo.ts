@@ -3,6 +3,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 const API = "https://api.paymongo.com/v1";
 
+// True once the PayMongo secret key is configured — public pages use this
+// to decide between "pay online now" and "reserve, pay later".
+export function paymongoEnabled(): boolean {
+  return !!process.env.PAYMONGO_SECRET_KEY;
+}
+
 function authHeader(): string {
   const key = process.env.PAYMONGO_SECRET_KEY;
   if (!key) throw new Error("PAYMONGO_SECRET_KEY is not set");
