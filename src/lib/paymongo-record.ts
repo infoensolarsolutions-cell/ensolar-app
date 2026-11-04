@@ -47,3 +47,40 @@ export async function recordOnlinePayment(
 
   return { recorded: true };
 }
+
+// Package-store reservations (public /packages funnel): the checkout session
+// carries metadata.order_id pointing at online_orders. Idempotent — a webhook
+// delivery and the thank-you page fallback can both call this.
+export async function recordPackageOrderPayment(
+  session: CheckoutSession,
+): Promise<{ recorded: boolean }> {
+  const orderId = session.metadata?.order_id;
+  if (!orderId) return { recorded: false };
+  const paid = session.payments.find((p) => p.attributes.status === "paid");
+  if (!paid) return { recorded: false };
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("online_orders")
+    .update({
+      status: "paid",
+      paid_at: new Date().toISOString(),
+      provider_payment_id: paid.id,
+    })
+    .eq("id", orderId)
+    .neq("status", "paid")
+    .select("id, order_no, offer_name, amount, lead_id")
+    .maybeSingle();
+  if (!order) return { recorded: true }; // already paid earlier
+
+  if (order.lead_id) {
+    await admin.from("lead_events").insert({
+      lead_id: order.lead_id,
+      event: "note",
+      detail: {
+        note: `💳 Online reservation fee received: ₱${Number(order.amount).toLocaleString()} for ${order.offer_name} (${order.order_no})`,
+      },
+    });
+  }
+  return { recorded: true };
+}

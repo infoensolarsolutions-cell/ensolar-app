@@ -64,6 +64,16 @@ export default async function MorePage() {
               <span className="font-medium text-gray-800">📋 Quotation Templates</span>
               <span className="text-gray-400">›</span>
             </Link>
+            <Link href="/orders" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+              <span className="font-medium text-gray-800">🛒 Online Orders</span>
+              <span className="text-gray-400">›</span>
+            </Link>
+            {profile.role === "owner" && (
+              <Link href="/settings/packages" className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+                <span className="font-medium text-gray-800">🏷️ Package Store</span>
+                <span className="text-gray-400">›</span>
+              </Link>
+            )}
             <Link href="/campaigns" className="flex items-center justify-between px-4 py-3.5">
               <span className="font-medium text-gray-800">📣 Marketing</span>
               <span className="text-gray-400">›</span>
