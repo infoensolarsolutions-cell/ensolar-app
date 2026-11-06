@@ -16,6 +16,7 @@ import { StatusActions } from "./status-actions";
 import { PaymentsPanel } from "./payments-panel";
 import { CostsPanel, type CostRow } from "./costs-panel";
 import { PhotosPanel, type PhotoRow } from "./photos-panel";
+import { FilesPanel, type ProjectFileRow } from "./files-panel";
 import { TicketsPanel, type TicketRow } from "./tickets-panel";
 import { InviteButton } from "./invite-button";
 import { IssueForm, type IssueProduct, type StockUnit } from "./issue-form";
@@ -114,6 +115,7 @@ export default async function ProjectDetailPage({
     { data: contracts },
     { data: checklists },
     { data: equipmentUnits },
+    { data: projectFiles },
   ] = await Promise.all([
       isStaff
         ? supabase
@@ -171,6 +173,12 @@ export default async function ProjectDetailPage({
         .select("id, equipment_type, brand, model, serial_no, supplier, supplier_contact, issued_date")
         .eq("project_id", id)
         .order("equipment_type"),
+      supabase
+        .from("project_files")
+        .select("id, storage_path, title, mime, size_kb, created_at, profiles:uploaded_by (name)")
+        .eq("project_id", id)
+        .order("created_at", { ascending: false })
+        .limit(100),
     ]);
 
   // Split by document-number prefix (COC- = compliance certificate,
@@ -251,6 +259,30 @@ export default async function ProjectDetailPage({
       };
     })
     .filter((p) => p.url);
+
+  // Scanned documents (private bucket → signed URLs, 1 hour).
+  const signedFiles = projectFiles?.length
+    ? await supabase.storage
+        .from("project-files")
+        .createSignedUrls(projectFiles.map((f) => f.storage_path), 3600)
+    : { data: [] };
+  const fileUrlByPath = new Map(
+    (signedFiles.data ?? []).map((s) => [s.path, s.signedUrl]),
+  );
+  const fileRows: ProjectFileRow[] = (projectFiles ?? [])
+    .map((f) => {
+      const uploader = Array.isArray(f.profiles) ? f.profiles[0] : f.profiles;
+      return {
+        id: f.id,
+        url: fileUrlByPath.get(f.storage_path) ?? "",
+        title: f.title,
+        mime: f.mime,
+        size_kb: f.size_kb === null ? null : Number(f.size_kb),
+        created_at: f.created_at,
+        uploader_name: uploader?.name ?? null,
+      };
+    })
+    .filter((f) => f.url);
 
   let issueProducts: IssueProduct[] = [];
   let stockUnits: StockUnit[] = [];
@@ -614,6 +646,13 @@ export default async function ProjectDetailPage({
         <PhotosPanel
           projectId={project.id}
           photos={photoRows}
+          canUpload={isStaff || profile.role === "technician"}
+          isStaff={isStaff}
+        />
+
+        <FilesPanel
+          projectId={project.id}
+          files={fileRows}
           canUpload={isStaff || profile.role === "technician"}
           isStaff={isStaff}
         />
